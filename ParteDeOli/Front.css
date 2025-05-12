@@ -1,0 +1,245 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    }
+
+.top {
+    background-color: rgb(255, 255, 255);
+    width: 100%;
+    height: 38vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 8vh;
+    
+
+.cuadrado {
+    width: 50vh;
+    height: 5vh;
+    background-color: rgb(222, 119, 81);
+
+.cuadrado_cero {
+        width: 35vh;
+        height: 2vh;
+        background-color: rgb(218, 210, 207);
+        margin-left: 4vh;
+        margin-top: 1.5vh;
+        }
+
+.cuadrado_right{
+    width: 5vh;
+    height: 5vh;
+    background-color: rgb(87, 80, 77);
+    margin-left: 45vh;
+    margin-top: -3.5vh;
+}
+
+    }
+
+
+.todos {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    flex-direction: row;
+    gap: 7vh;
+    
+
+.rara {
+    background-color: rgb(119, 109, 109);
+    width: 18vh;
+    height: 3vh;
+    }
+}
+}
+
+
+.middle {
+    background-color: rgb(161, 210, 226);
+    width: 100%;
+    height: 30vh;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    
+
+.cuadrado {
+    background-color: rgb(106, 173, 204);
+    width: 20vh;
+    height: 20vh;
+    margin-left: 12vh;
+
+.dentro {
+    flex-direction:column;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    gap: 2vh;
+    margin-top: 3vh;
+
+.linea_cuadrado {
+        width: 16vh;
+        height: 1.5vh;
+        background-color: rgb(242, 227, 227);
+    
+
+.cuadrado_cuadrado {
+        width: 1.5vh;
+        height: 1.5vh;
+        background-color: white;
+}
+
+.cuadrado_invi {
+        width: 2vh;
+        height: 2vh;
+        background-color: rgb(106, 173, 204);
+        margin-left: 1.6vh;
+        margin-top: -2vh;
+    }
+}
+}
+}
+}
+
+.titulos {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    flex-direction: column;
+    gap: 2vh;
+    margin-left: 12vh;
+    margin-bottom: 5vh;
+    
+
+.hablar {
+    background-color: rgb(104, 104, 105);
+    width: 50vh;
+    height: 4vh;
+    }
+
+
+.charlar {
+    width: 50vh;
+    height: 1vh;
+    background-color: azure;
+    }
+
+
+.charlar_one {
+    width: 50vh;
+    height: 1vh;
+    background-color: azure;
+    }
+
+.charlar_two {
+    width: 30vh;
+    height: 1vh;
+    background-color: azure;
+    }
+}
+
+
+.bottom {
+    background-color: rgb(247, 247, 247);
+    width: 100%;
+    height: 38vh;
+
+
+.tres {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    flex-direction: row;
+    gap: 2vh;
+    margin-left: 5vh;
+    margin-bottom: 3vh;
+
+
+.cuadrado {
+    background-color: rgb(238, 115, 115);
+    width: 18vh;
+    height: 18vh;
+    margin-top: 4vh;
+    
+.interna {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: left;
+    flex-direction: column;
+    margin-left: 3vh;
+    margin-top: 3vh;
+    gap: 1.5vh;
+    
+.linea_one {
+        width: 12vh;
+        height: 2vh;
+        background-color: rgba(210, 68, 20, 0.8); 
+    }
+
+.linea_two {
+        width: 12vh;
+        height: 0.6vh;
+        background-color: rgba(222, 220, 220, 0.8); 
+    }
+
+.linea_cero {
+        width: 8vh;
+        height: 0.6vh;
+        background-color: rgba(237, 231, 230, 0.8); 
+    }
+}
+}
+
+.cuadrado_one {
+    background-color: rgb(129, 189, 193);
+    width: 18vh;
+    height: 18vh;
+    margin-top: 4vh;
+    }
+
+.cuadrado_two {
+    background-color: rgb(219, 182, 96);
+    width: 18vh;
+    height: 18vh;
+    margin-top: 4vh;
+    }
+}
+
+.card-descriptions {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    flex-direction: row;
+    gap: 2vh; 
+    margin-left: 5vh;
+    margin-bottom: 5vh;  
+
+.description {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: left;
+    gap: 1vh;
+    
+.rayita_cero {
+    width: 18vh;
+    height: 1vh;
+    background-color: #3f3c3c;
+    }
+
+.rayita {
+    width: 12vh;
+    height: 1vh;
+    background-color: #857373;
+    }
+
+.rayita_one {
+    width: 8vh;
+    height: 1vh;
+    background-color: #8e8080;
+    }
+}
+}
+}
