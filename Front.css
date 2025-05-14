@@ -35,6 +35,27 @@
     margin-left: 45vh;
     margin-top: -3.5vh;
 }
+.boton-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 3vh;
+}
+
+.boton-blanco {
+    background-color: rgb(87, 80, 77); /* mismo color que .cuadrado_right para mantener armonía */
+    color: white;
+    padding: 1vh 3vh;
+    text-decoration: none;
+    font-size: 2vh;
+    border: none;
+    border-radius: 1vh;
+    transition: background-color 0.3s ease;
+}
+
+.boton-blanco:hover {
+    background-color: rgb(119, 109, 109); /* tono más claro al pasar el mouse */
+}
 
     }
 
