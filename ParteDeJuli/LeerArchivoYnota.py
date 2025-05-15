@@ -10,3 +10,5 @@ from pydub import AudioSegment
 #Importamos madmom
 from madmom.audio.onsets import OnsetPeakPickingProcessor, OnsetDetection
 from madmom.features.beats import RNNBeatProcessor, DBNBeatTrackingProcessor
+
+#lolo
