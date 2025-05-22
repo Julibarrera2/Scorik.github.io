@@ -42,7 +42,7 @@ def cargar_audio(filepath, sr=22050):
     print("Audio cargado correctamente.")
     return y, sr
 
-ruta = r"c:/Users/Julia Barrera/Downloads/Scorik.github.io/ParteDeJuli/piano-lento.mp3"
+ruta = r"C:\Users\48592310\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
 y, sr = cargar_audio(ruta)
 
 if not os.path.exists(ruta):
