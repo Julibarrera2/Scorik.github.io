@@ -44,9 +44,51 @@ def cargar_audio(filepath, sr=22050):
     print(f"Cargando archivo: {filepath}")
     y, sr = librosa.load(filepath, sr=sr)
     print("Audio cargado correctamente.")
-    return y, sr
+    return y, sr, filepath
 
 #Carga el audio a la ruta
-y, sr = cargar_audio(ruta)
+y, sr, filepath= cargar_audio(ruta)
 
+#DETECTAR PITCH
+def detectar_pitch(y, sr, step_size_ms=10, threshold=0.8):
+    #Usa CREPE para detectar el pitch en una señal de audio.
+    #Parámetros:
+    # - y: señal de audio    
+    # - sr: sample rate (frecuencia de muestreo)
+    #- step_size_ms: resolución temporal en milisegundos
+    #- threshold: umbral de confianza mínima (0 a 1)
+    #  Devuelve:
+    #- pitches_filtradas: lista de notas detectadas con tiempo y frecuencia
+    print("Detectando pitch con CREPE...")
+
+    # CREPE necesita un sample rate de 16000
+    #Resampleo a 16000 Hz: CREPE solo funciona con 16000 Hz, por lo tanto si cargamos a 22050 Hz lo transformamos.
+    if sr != 16000:
+        y = librosa.resample(y, orig_sr=sr, target_sr=16000)
+        sr = 16000
+    
+    # CREPE requiere una señal estéreo
+    #Reformateo del audio: CREPE espera entrada estéreo (matriz Nx1).
+    if len(y.shape) == 1:
+        y = np.expand_dims(y, axis=1)
+    
+    # Ejecutamos CREPE
+    #crepe.predict(...): Devuelve arrays de tiempo, frecuencia, confianza y activación
+    time, frequency, confidence, _ = crepe.predict(y, sr, step_size=step_size_ms, viterbi=True)
+
+    # Filtrar por confianza
+    #Filtro de confianza: descartamos predicciones dudosas (ej: menos de 0.8 de confianza).
+    pitches_filtradas = [] 
+    for t, f, c in zip(time, frequency, confidence):
+        if c >= threshold:
+            pitches_filtradas.append((t, f))  # tiempo y frecuencia
+    
+    #printeamois la informacion
+    print(f"Se detectaron {len(pitches_filtradas)} pitches con confianza > {threshold}.")
+    return pitches_filtradas
+
+#Ejecutar la funcion completita
+y, sr, ruta_wav = cargar_audio(ruta)
+pitches = detectar_pitch(y, sr)
+print("Primeros 10 pitches:", pitches[:10])  # Mostrar algunos resultados
 
