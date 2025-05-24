@@ -12,19 +12,23 @@ import scipy
 import matplotlib.pyplot as plt
 import os
 from pydub import AudioSegment
+from pydub.utils import which
+
+#Los directorios de ffmpeg del .exe para que funciones
+AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+
+#Ruta del archivo
+ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
+
+#verificás si el archivo .mp3 realmente está en esa ruta.
+if not os.path.exists(ruta):
+    raise FileNotFoundError(f"Archivo no encontrado: {ruta}")
 
 def cargar_audio(filepath, sr=22050):
-    """
-    Carga un archivo de audio. Si es .mp3 lo convierte a .wav automáticamente.
-
-    Parámetros:
-    - filepath: Ruta al archivo de audio
-    - sr: Frecuencia de muestreo deseada (por defecto 22050 Hz)
-
-    Devuelve:
-    - y: señal de audio como array numpy
-    - sr: frecuencia de muestreo
-    """
+    #Carga un archivo de audio. Si es .mp3 lo convierte a .wav automáticamente.
+    # Parámetros:- filepath: Ruta al archivo de audio - sr: Frecuencia de muestreo deseada (por defecto 22050 Hz)
+    # Devuelve:- y: señal de audio como array numpy - sr: frecuencia de muestreo
     # Verificar extensión del archivo
     filename, ext = os.path.splitext(filepath)
 
@@ -42,8 +46,7 @@ def cargar_audio(filepath, sr=22050):
     print("Audio cargado correctamente.")
     return y, sr
 
-ruta = r"C:\Users\48592310\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
+#Carga el audio a la ruta
 y, sr = cargar_audio(ruta)
 
-if not os.path.exists(ruta):
-    raise FileNotFoundError(f"Archivo no encontrado: {ruta}")
+
