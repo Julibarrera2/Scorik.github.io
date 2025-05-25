@@ -4,6 +4,10 @@
 
 cd ParteDeJuli
 
+2. Creaar el entorno VIRTUAL
+
+python -m venv .librerias
+
 3. ACTIVAR EL ENTORNO VIRTUAL:
    .\.librerias\Scripts\Activate.ps1
 
