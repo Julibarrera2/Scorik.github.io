@@ -2,8 +2,7 @@
 
 1. ABRIR LA TERMINAL EN LA CARPETA "ParteDeJuli"
 
-2. CREAR EL ENTORNO VIRTUAL (solo la primera vez):
-   py -3.9 -m venv .librerias
+cd ParteDeJuli
 
 3. ACTIVAR EL ENTORNO VIRTUAL:
    .\.librerias\Scripts\Activate.ps1
