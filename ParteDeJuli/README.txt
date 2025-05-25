@@ -23,3 +23,4 @@ python -m venv .librerias
 # CUALQUIER CAMBIO EN LIBRERÍAS
 Si se instala algo nuevo, se actualiza el archivo con:
    pip freeze > requirements.txt
+
