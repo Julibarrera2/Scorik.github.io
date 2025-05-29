@@ -1,0 +1,1178 @@
+[
+  {
+    "nota": "C4",
+    "inicio": 0.06,
+    "duracion": 0.45,
+    "compas": 1,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 0.51,
+    "duracion": 3.17,
+    "compas": 1,
+    "figura": "redonda",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 3.68,
+    "duracion": 1.15,
+    "compas": 2,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 4.83,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 4.84,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G4",
+    "inicio": 4.85,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 4.86,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 4.87,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C#5",
+    "inicio": 4.88,
+    "duracion": 0.04,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G5",
+    "inicio": 4.92,
+    "duracion": 0.38,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 5.3,
+    "duracion": 0.99,
+    "compas": 2,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 6.29,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#4",
+    "inicio": 6.3,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 6.31,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C#5",
+    "inicio": 6.32,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D#5",
+    "inicio": 6.33,
+    "duracion": 0.01,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 6.34,
+    "duracion": 0.53,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F5",
+    "inicio": 6.87,
+    "duracion": 0.96,
+    "compas": 3,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "G5",
+    "inicio": 7.83,
+    "duracion": 0.65,
+    "compas": 3,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A5",
+    "inicio": 8.48,
+    "duracion": 0.88,
+    "compas": 3,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "G#5",
+    "inicio": 9.36,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#5",
+    "inicio": 9.37,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 9.38,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 9.39,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 9.4,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 9.41,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#4",
+    "inicio": 9.42,
+    "duracion": 0.01,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 9.43,
+    "duracion": 0.62,
+    "compas": 3,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "B3",
+    "inicio": 10.05,
+    "duracion": 0.75,
+    "compas": 4,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "F5",
+    "inicio": 10.8,
+    "duracion": 1.22,
+    "compas": 4,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "B3",
+    "inicio": 12.02,
+    "duracion": 0.02,
+    "compas": 4,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D#4",
+    "inicio": 12.04,
+    "duracion": 0.01,
+    "compas": 4,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F4",
+    "inicio": 12.05,
+    "duracion": 0.01,
+    "compas": 4,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G4",
+    "inicio": 12.06,
+    "duracion": 0.01,
+    "compas": 4,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#4",
+    "inicio": 12.07,
+    "duracion": 0.04,
+    "compas": 4,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 12.11,
+    "duracion": 1.33,
+    "compas": 4,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 13.44,
+    "duracion": 1.37,
+    "compas": 5,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 14.81,
+    "duracion": 1.39,
+    "compas": 5,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "B3",
+    "inicio": 16.2,
+    "duracion": 0.01,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 16.21,
+    "duracion": 0.01,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 16.22,
+    "duracion": 0.01,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 16.23,
+    "duracion": 0.01,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 16.24,
+    "duracion": 0.02,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 16.26,
+    "duracion": 0.02,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 16.28,
+    "duracion": 0.39,
+    "compas": 5,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 16.67,
+    "duracion": 0.06,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 16.73,
+    "duracion": 1.01,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "B3",
+    "inicio": 17.74,
+    "duracion": 0.01,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 17.75,
+    "duracion": 0.01,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 17.76,
+    "duracion": 0.01,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 17.77,
+    "duracion": 0.04,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 17.81,
+    "duracion": 0.98,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 18.79,
+    "duracion": 0.93,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 19.72,
+    "duracion": 1.02,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 20.74,
+    "duracion": 0.06,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 20.8,
+    "duracion": 0.01,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F4",
+    "inicio": 20.81,
+    "duracion": 0.01,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G4",
+    "inicio": 20.82,
+    "duracion": 0.01,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 20.83,
+    "duracion": 0.05,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F5",
+    "inicio": 20.88,
+    "duracion": 1.01,
+    "compas": 7,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 21.89,
+    "duracion": 0.68,
+    "compas": 7,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "G3",
+    "inicio": 22.57,
+    "duracion": 0.57,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 23.14,
+    "duracion": 1.35,
+    "compas": 7,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 24.49,
+    "duracion": 1.25,
+    "compas": 8,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 25.74,
+    "duracion": 1.46,
+    "compas": 8,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 27.2,
+    "duracion": 0.96,
+    "compas": 9,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "B3",
+    "inicio": 28.16,
+    "duracion": 0.01,
+    "compas": 9,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 28.17,
+    "duracion": 0.02,
+    "compas": 9,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F3",
+    "inicio": 28.19,
+    "duracion": 0.4,
+    "compas": 9,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G4",
+    "inicio": 28.59,
+    "duracion": 0.01,
+    "compas": 9,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 28.6,
+    "duracion": 2.29,
+    "compas": 9,
+    "figura": "redonda",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 30.89,
+    "duracion": 0.79,
+    "compas": 10,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "F3",
+    "inicio": 31.68,
+    "duracion": 0.7,
+    "compas": 10,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 32.38,
+    "duracion": 0.15,
+    "compas": 10,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A5",
+    "inicio": 32.53,
+    "duracion": 1.62,
+    "compas": 10,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "C#5",
+    "inicio": 34.15,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 34.16,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 34.17,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G4",
+    "inicio": 34.18,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 34.19,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 34.2,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 34.21,
+    "duracion": 1.85,
+    "compas": 11,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 36.06,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#4",
+    "inicio": 36.07,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#4",
+    "inicio": 36.08,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 36.09,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D#5",
+    "inicio": 36.1,
+    "duracion": 0.01,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 36.11,
+    "duracion": 0.45,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E3",
+    "inicio": 36.56,
+    "duracion": 0.24,
+    "compas": 11,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 36.8,
+    "duracion": 0.29,
+    "compas": 12,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 37.09,
+    "duracion": 0.45,
+    "compas": 12,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 37.54,
+    "duracion": 0.02,
+    "compas": 12,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 37.56,
+    "duracion": 0.09,
+    "compas": 12,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 37.65,
+    "duracion": 0.81,
+    "compas": 12,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 38.46,
+    "duracion": 1.01,
+    "compas": 12,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 39.47,
+    "duracion": 1.02,
+    "compas": 12,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 40.49,
+    "duracion": 0.01,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 40.5,
+    "duracion": 0.01,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#4",
+    "inicio": 40.51,
+    "duracion": 0.01,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#4",
+    "inicio": 40.52,
+    "duracion": 0.01,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C#5",
+    "inicio": 40.53,
+    "duracion": 0.03,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 40.56,
+    "duracion": 0.69,
+    "compas": 13,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 41.25,
+    "duracion": 0.37,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 41.62,
+    "duracion": 0.62,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 42.24,
+    "duracion": 0.46,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 42.7,
+    "duracion": 0.01,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 42.71,
+    "duracion": 0.03,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 42.74,
+    "duracion": 1.11,
+    "compas": 13,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 43.85,
+    "duracion": 0.35,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G3",
+    "inicio": 44.2,
+    "duracion": 1.47,
+    "compas": 14,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 45.67,
+    "duracion": 0.01,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 45.68,
+    "duracion": 0.01,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 45.69,
+    "duracion": 0.01,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E4",
+    "inicio": 45.7,
+    "duracion": 0.01,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G4",
+    "inicio": 45.71,
+    "duracion": 0.01,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#4",
+    "inicio": 45.72,
+    "duracion": 0.03,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 45.75,
+    "duracion": 1.77,
+    "compas": 14,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 47.52,
+    "duracion": 0.07,
+    "compas": 15,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 47.59,
+    "duracion": 0.03,
+    "compas": 15,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 47.62,
+    "duracion": 0.97,
+    "compas": 15,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "G#3",
+    "inicio": 48.59,
+    "duracion": 1.76,
+    "compas": 15,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "G#2",
+    "inicio": 50.35,
+    "duracion": 0.08,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "B2",
+    "inicio": 50.43,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 50.44,
+    "duracion": 0.12,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#3",
+    "inicio": 50.56,
+    "duracion": 0.91,
+    "compas": 16,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A#2",
+    "inicio": 51.47,
+    "duracion": 0.21,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 51.68,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D3",
+    "inicio": 51.69,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E3",
+    "inicio": 51.7,
+    "duracion": 0.28,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#3",
+    "inicio": 51.98,
+    "duracion": 0.32,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F#3",
+    "inicio": 52.3,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E3",
+    "inicio": 52.31,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D3",
+    "inicio": 52.32,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 52.33,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#2",
+    "inicio": 52.34,
+    "duracion": 0.63,
+    "compas": 16,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "G3",
+    "inicio": 52.97,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#3",
+    "inicio": 52.98,
+    "duracion": 0.01,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 52.99,
+    "duracion": 0.04,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#3",
+    "inicio": 53.03,
+    "duracion": 0.61,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 53.64,
+    "duracion": 0.29,
+    "compas": 17,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G3",
+    "inicio": 53.93,
+    "duracion": 0.01,
+    "compas": 17,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 53.94,
+    "duracion": 0.08,
+    "compas": 17,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 54.02,
+    "duracion": 3.18,
+    "compas": 17,
+    "figura": "redonda",
+    "tempo": 72
+  },
+  {
+    "nota": "G#3",
+    "inicio": 57.2,
+    "duracion": 0.18,
+    "compas": 18,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 57.38,
+    "duracion": 0.75,
+    "compas": 18,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D3",
+    "inicio": 58.13,
+    "duracion": 0.08,
+    "compas": 18,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 58.21,
+    "duracion": 2.0,
+    "compas": 18,
+    "figura": "blanca",
+    "tempo": 72
+  }
+]
