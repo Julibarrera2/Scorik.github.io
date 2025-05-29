@@ -14,6 +14,8 @@ import os
 from pydub import AudioSegment
 from pydub.utils import which
 
+import json
+
 #Los directorios de ffmpeg del .exe para que funciones
 AudioSegment.converter = which("ffmpeg") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
 AudioSegment.ffprobe = which("ffprobe") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
@@ -92,3 +94,64 @@ y, sr, ruta_wav = cargar_audio(ruta)
 pitches = detectar_pitch(y, sr)
 print("Primeros 10 pitches:", pitches[:10])  # Mostrar algunos resultados
 
+#Pasar de pitch a nota
+# Diccionario de notas
+notas_dict = {
+    'C0': 16.35, 'C#0': 17.32, 'D0': 18.35, 'D#0': 19.45, 'E0': 20.60, 'F0': 21.83, 'F#0': 23.12, 'G0': 24.50,
+    'G#0': 25.96, 'A0': 27.50, 'A#0': 29.14, 'B0': 30.87, 'C1': 32.70, 'C#1': 34.65, 'D1': 36.71, 'D#1': 38.89,
+    'E1': 41.20, 'F1': 43.65, 'F#1': 46.25, 'G1': 49.00, 'G#1': 51.91, 'A1': 55.00, 'A#1': 58.27, 'B1': 61.74,
+    'C2': 65.41, 'C#2': 69.30, 'D2': 73.42, 'D#2': 77.78, 'E2': 82.41, 'F2': 87.31, 'F#2': 92.50, 'G2': 98.00,
+    'G#2': 103.83, 'A2': 110.00, 'A#2': 116.54, 'B2': 123.47, 'C3': 130.81, 'C#3': 138.59, 'D3': 146.83,
+    'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00,
+    'A#3': 233.08, 'B3': 246.94, 'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63,
+    'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+    'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'F#5': 739.99,
+    'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77, 'C6': 1046.50, 'C#6': 1108.73
+}
+
+def frecuencia_a_nota(freq):
+    return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
+
+# Ruta al .wav convertido
+ruta_wav = "piano-lento.wav"
+y, sr = librosa.load(ruta_wav, sr=16000)
+
+tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+if len(y.shape) == 1:
+    y = np.expand_dims(y, axis=1)
+
+time, frequency, confidence, _ = crepe.predict(y, sr, step_size=10, viterbi=True)
+pitch_data = [(t, f) for t, f, c in zip(time, frequency, confidence) if c > 0.8]
+
+notas_json = []
+if pitch_data:
+    prev_nota = frecuencia_a_nota(pitch_data[0][1])
+    inicio = pitch_data[0][0]
+    for i in range(1, len(pitch_data)):
+        t, f = pitch_data[i]
+        nota_actual = frecuencia_a_nota(f)
+        if nota_actual != prev_nota or i == len(pitch_data) - 1:
+            duracion = t - inicio
+            negra_duracion = 60 / tempo
+            if duracion < negra_duracion * 0.75:
+                figura = "corchea"
+            elif duracion < negra_duracion * 1.5:
+                figura = "negra"
+            elif duracion < negra_duracion * 2.5:
+                figura = "blanca"
+            else:
+                figura = "redonda"
+            compas = int(inicio / (60 / tempo * 4)) + 1
+            notas_json.append({
+                "nota": prev_nota,
+                "inicio": round(inicio, 3),
+                "duracion": round(duracion, 3),
+                "compas": compas,
+                "figura": figura,
+                "tempo": int(tempo)
+            })
+            prev_nota = nota_actual
+            inicio = t
+
+with open("notas_detectadas.json", "w") as f:
+    json.dump(notas_json, f, indent=2)
