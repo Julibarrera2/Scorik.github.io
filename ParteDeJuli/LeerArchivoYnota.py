@@ -155,3 +155,36 @@ if pitch_data:
 
 with open("notas_detectadas.json", "w") as f:
     json.dump(notas_json, f, indent=2)
+
+
+
+#Testeo con una devolucion de un archivo .wav
+# Cargar notas desde el JSON
+with open("notas_detectadas.json", "r") as f:
+    notas = json.load(f)
+
+# Frecuencia de muestreo para el audio de salida
+sr = 16000
+
+# Función para generar una onda senoidal por nota
+def generar_onda(freq, duracion, sr=16000):
+    t = np.linspace(0, duracion, int(sr * duracion), False)
+    onda = 0.5 * np.sin(2 * np.pi * freq * t)
+    return onda
+# Crear la pista de audio completa
+audio_total = np.array([], dtype=np.float32)
+
+for nota in notas:
+    nombre = nota["nota"]
+    duracion = nota["duracion"]
+    freq = notas_dict.get(nombre, None)
+    if freq:
+        onda = generar_onda(freq, duracion, sr)
+        audio_total = np.concatenate((audio_total, onda))
+
+# Normalizar para evitar clipping
+audio_total = audio_total / np.max(np.abs(audio_total))
+
+# Guardar en un archivo WAV
+sf.write("reconstruccion.wav", audio_total, sr)
+print("Archivo 'reconstruccion.wav' generado correctamente.")
