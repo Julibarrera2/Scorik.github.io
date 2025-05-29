@@ -51,6 +51,16 @@ def cargar_audio(filepath, sr=22050):
 #Carga el audio a la ruta
 y, sr, filepath= cargar_audio(ruta)
 
+#Confirmacion con el usuario si el archivo esta bien
+# Luego de cargar_audio(...)
+abrir_wav(filepath)
+confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
+if confirm != 's':
+    print("Proceso detenido. Revisá el archivo original.")
+    exit()
+
+
+
 #DETECTAR PITCH
 def detectar_pitch(y, sr, step_size_ms=10, threshold=0.8):
     #Usa CREPE para detectar el pitch en una señal de audio.
@@ -189,4 +199,23 @@ audio_total = audio_total / np.max(np.abs(audio_total))
 sf.write("reconstruccion.wav", audio_total, sr)
 print("Archivo 'reconstruccion.wav' generado correctamente.")
 
+#Chequeo con el usuario
+abrir_wav("reconstruccion.wav")
+confirm = input("¿La reconstrucción se parece al archivo original? (s/n): ").strip().lower()
+if confirm != 's':
+    print("Proceso detenido. Intentá mejorar la detección de notas.")
+    exit()
+else:
+    with open("notas_detectadas.json", "w") as f:
+        json.dump(notas_json, f, indent=2)
+    print("Archivo JSON exportado correctamente.")
+
+def exportar_json_si_confirmado(notas_json):
+    confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
+    if confirmar == 's':
+        with open("notas_detectadas.json", "w") as f:
+            json.dump(notas_json, f, indent=2)
+        print("Archivo JSON guardado.")
+    else:
+        print("No se guardó el archivo JSON.")
 
