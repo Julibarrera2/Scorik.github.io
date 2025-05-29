@@ -188,3 +188,5 @@ audio_total = audio_total / np.max(np.abs(audio_total))
 # Guardar en un archivo WAV
 sf.write("reconstruccion.wav", audio_total, sr)
 print("Archivo 'reconstruccion.wav' generado correctamente.")
+
+
