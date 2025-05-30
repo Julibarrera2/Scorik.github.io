@@ -14,16 +14,29 @@ import os
 from pydub import AudioSegment
 from pydub.utils import which
 import simpleaudio as sa
-
-
 import json
 
+#Links de PC
+# ruta video: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3
+# ruta ffmpeg: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
+# ruta ffprobe: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
+
+#Links ruta Notebook personal
+# ruta video: c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\piano-lento.mp3
+# ruta ffmpeg: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
+# ruta ffprobe: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
+
+#Links ruta Notebook ORT
+# ruta video: NOSE
+# ruta ffmpeg: NOSE
+# ruta ffprobe: NOSE
+
 #Los directorios de ffmpeg del .exe para que funciones
-AudioSegment.converter = which("ffmpeg") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = which("ffprobe") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
 #Ruta del archivo
-ruta = r"c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
+ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
 
 #verificás si el archivo .mp3 realmente está en esa ruta.
 if not os.path.exists(ruta):
