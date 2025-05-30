@@ -8,11 +8,13 @@ import crepe
 # Utilidades numéricas y científicas
 import numpy as np
 import scipy
-# Visualización (opcional, útil para debugging)
+# Visualización 
 import matplotlib.pyplot as plt
 import os
 from pydub import AudioSegment
 from pydub.utils import which
+import simpleaudio as sa
+
 
 import json
 
@@ -53,6 +55,11 @@ y, sr, filepath= cargar_audio(ruta)
 
 #Confirmacion con el usuario si el archivo esta bien
 # Luego de cargar_audio(...)
+def abrir_wav(path):
+    print(f"Reproduciendo {path}...")
+    wave_obj = sa.WaveObject.from_wave_file(path)
+    play_obj = wave_obj.play()
+    play_obj.wait_done()    
 abrir_wav(filepath)
 confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
 if confirm != 's':
@@ -62,7 +69,7 @@ if confirm != 's':
 
 
 #DETECTAR PITCH
-def detectar_pitch(y, sr, step_size_ms=10, threshold=0.8):
+def detectar_pitch(y, sr, step_size_ms=10, threshold=0.85):
     #Usa CREPE para detectar el pitch en una señal de audio.
     #Parámetros:
     # - y: señal de audio    
@@ -201,14 +208,14 @@ print("Archivo 'reconstruccion.wav' generado correctamente.")
 
 #Chequeo con el usuario
 abrir_wav("reconstruccion.wav")
-confirm = input("¿La reconstrucción se parece al archivo original? (s/n): ").strip().lower()
-if confirm != 's':
-    print("Proceso detenido. Intentá mejorar la detección de notas.")
-    exit()
-else:
+confirm = input("¿La reconstrucción suena similar al archivo original? (s/n): ").strip().lower()
+if confirm == 's':
     with open("notas_detectadas.json", "w") as f:
         json.dump(notas_json, f, indent=2)
-    print("Archivo JSON exportado correctamente.")
+    print("✅ Archivo JSON exportado correctamente.")
+else:
+    print("❌ Proceso detenido. La reconstrucción no fue satisfactoria.")
+    exit()x
 
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
