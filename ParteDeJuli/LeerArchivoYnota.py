@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import os
 from pydub import AudioSegment
 from pydub.utils import which
-import simpleaudio as sa
+import pygame
 import json
 
 #Links de PC
@@ -70,9 +70,12 @@ y, sr, filepath= cargar_audio(ruta)
 # Luego de cargar_audio(...)
 def abrir_wav(path):
     print(f"Reproduciendo {path}...")
-    wave_obj = sa.WaveObject.from_wave_file(path)
-    play_obj = wave_obj.play()
-    play_obj.wait_done()    
+    pygame.init()
+    pygame.mixer.init()
+    pygame.mixer.music.load(path)
+    pygame.mixer.music.play()
+    while pygame.mixer.music.get_busy():
+        continue   
 abrir_wav(filepath)
 confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
 if confirm != 's':
@@ -228,7 +231,7 @@ if confirm == 's':
     print("✅ Archivo JSON exportado correctamente.")
 else:
     print("❌ Proceso detenido. La reconstrucción no fue satisfactoria.")
-    exit()x
+    exit()
 
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
