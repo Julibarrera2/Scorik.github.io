@@ -15,6 +15,7 @@ from pydub import AudioSegment
 from pydub.utils import which
 import pygame
 import json
+np.float = float
 
 #Links de PC
 # ruta video: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3
@@ -115,7 +116,7 @@ def detectar_pitch(y, sr, step_size_ms=10, threshold=0.9):
     #Filtro de confianza: descartamos predicciones dudosas (ej: menos de 0.8 de confianza).
     pitches_filtradas = [] 
     for t, f, c in zip(time, frequency, confidence):
-        if c >= threshold:
+        if c >= threshold and 30 < f < 1200:
             pitches_filtradas.append((t, f))  # tiempo y frecuencia
     
     #printeamois la informacion
@@ -180,10 +181,20 @@ if pitch_data:
 
     for i in range(1, len(pitch_data)):
         t, f = pitch_data[i]
+        if not (30 < f < 1200):  # descartar frecuencias fuera del rango
+            continue
         nota_actual = frecuencia_a_nota(f)
 
-        if nota_actual != prev_nota:
-            duracion = t - inicio
+        # Si hay silencio significativo, se agrega pausa
+        if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
+            print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
+
+        if nota_actual != prev_nota and abs(pitch_data[i][0] - inicio) > 0.03:
+            if abs(t - inicio) > 2.0:
+                print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+            duracion = max(t - inicio, 0)
+            if duracion == 0:
+                continue
             if duracion > 0.02:  # descartar eventos muy breves
                 figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
                 notas_json.append({
@@ -228,16 +239,38 @@ def generar_onda(freq, duracion, sr=16000):
     t = np.linspace(0, duracion, int(sr * duracion), False)
     onda = 0.5 * np.sin(2 * np.pi * freq * t)
     return onda
+
 # Crear la pista de audio completa
+# Ajustar duración del output al input si es necesario
+# Ajustar duración del output al input si es necesario
 audio_total = np.array([], dtype=np.float32)
+tiempo_actual = 0.0
 
 for nota in notas:
     nombre = nota["nota"]
+    inicio = nota["inicio"]
     duracion = nota["duracion"]
     freq = notas_dict.get(nombre, None)
+
+    # Insertar silencio si hace falta
+    if inicio > tiempo_actual:
+        silencio = np.zeros(int(sr * (inicio - tiempo_actual)))
+        audio_total = np.concatenate((audio_total, silencio))
+        tiempo_actual = inicio
+
     if freq:
         onda = generar_onda(freq, duracion, sr)
         audio_total = np.concatenate((audio_total, onda))
+        if duracion > 0.02:
+            tiempo_actual += duracion
+
+# Asegurarse que la duración final coincida con el input original
+expected_duration = librosa.get_duration(y=y, sr=sr)  # y es el audio original cargado
+actual_duration = librosa.get_duration(y=audio_total, sr=sr)
+
+if actual_duration < expected_duration:
+    padding = np.zeros(int((expected_duration - actual_duration) * sr))
+    audio_total = np.concatenate((audio_total, padding))
 
 # Normalizar para evitar clipping
 audio_total = audio_total / np.max(np.abs(audio_total))
@@ -264,5 +297,5 @@ def exportar_json_si_confirmado(notas_json):
             json.dump(notas_json, f, indent=2)
         print("Archivo JSON guardado.")
     else:
-        print("No se guardó el archivo JSON.")
+        print("No se guardó el archivo JSON.")  
 
