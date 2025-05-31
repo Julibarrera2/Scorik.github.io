@@ -68,24 +68,24 @@ y, sr, filepath= cargar_audio(ruta)
 
 #Confirmacion con el usuario si el archivo esta bien
 # Luego de cargar_audio(...)
-def abrir_wav(path):
-    print(f"Reproduciendo {path}...")
-    pygame.init()
-    pygame.mixer.init()
-    pygame.mixer.music.load(path)
-    pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy():
-        continue   
-abrir_wav(filepath)
-confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
-if confirm != 's':
-    print("Proceso detenido. Revisá el archivo original.")
-    exit()
+# def abrir_wav(path):
+    # print(f"Reproduciendo {path}...")
+    # pygame.init()
+    # pygame.mixer.init()
+    # pygame.mixer.music.load(path)
+    # pygame.mixer.music.play()
+    # while pygame.mixer.music.get_busy():
+    #     continue   
+# abrir_wav(filepath)
+# confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
+# if confirm != 's':
+#     print("Proceso detenido. Revisá el archivo original.")
+#     exit()
 
 
 
 #DETECTAR PITCH
-def detectar_pitch(y, sr, step_size_ms=10, threshold=0.85):
+def detectar_pitch(y, sr, step_size_ms=10, threshold=0.9):
     #Usa CREPE para detectar el pitch en una señal de audio.
     #Parámetros:
     # - y: señal de audio    
@@ -154,37 +154,61 @@ if len(y.shape) == 1:
     y = np.expand_dims(y, axis=1)
 
 time, frequency, confidence, _ = crepe.predict(y, sr, step_size=10, viterbi=True)
-pitch_data = [(t, f) for t, f, c in zip(time, frequency, confidence) if c > 0.8]
+pitch_data = [
+    (t, f) for t, f, c in zip(time, frequency, confidence)
+    if c > 0.9 and 30 < f < 1200
+]
+
+
+def calcular_figura_y_compas(duracion, tempo, inicio):
+    negra_duracion = 60 / tempo
+    if duracion < negra_duracion * 0.6:
+        figura = "corchea"
+    elif duracion < negra_duracion * 1.2:
+        figura = "negra"
+    elif duracion < negra_duracion * 2.2:
+        figura = "blanca"
+    else:
+        figura = "redonda"
+    compas = int(inicio / (negra_duracion * 4)) + 1
+    return figura, compas
 
 notas_json = []
 if pitch_data:
     prev_nota = frecuencia_a_nota(pitch_data[0][1])
     inicio = pitch_data[0][0]
+
     for i in range(1, len(pitch_data)):
         t, f = pitch_data[i]
         nota_actual = frecuencia_a_nota(f)
-        if nota_actual != prev_nota or i == len(pitch_data) - 1:
+
+        if nota_actual != prev_nota:
             duracion = t - inicio
-            negra_duracion = 60 / tempo
-            if duracion < negra_duracion * 0.75:
-                figura = "corchea"
-            elif duracion < negra_duracion * 1.5:
-                figura = "negra"
-            elif duracion < negra_duracion * 2.5:
-                figura = "blanca"
-            else:
-                figura = "redonda"
-            compas = int(inicio / (60 / tempo * 4)) + 1
-            notas_json.append({
-                "nota": prev_nota,
-                "inicio": round(inicio, 3),
-                "duracion": round(duracion, 3),
-                "compas": compas,
-                "figura": figura,
-                "tempo": int(tempo)
-            })
-            prev_nota = nota_actual
+            if duracion > 0.02:  # descartar eventos muy breves
+                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                notas_json.append({
+                    "nota": prev_nota,
+                    "inicio": round(inicio, 3),
+                    "duracion": round(duracion, 3),
+                    "compas": compas,
+                    "figura": figura,
+                    "tempo": int(tempo)
+                })
             inicio = t
+            prev_nota = nota_actual
+
+    # Agregar la última nota que se estaba tocando al final del audio
+    duracion = pitch_data[-1][0] - inicio
+    if duracion > 0.02:
+        figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+        notas_json.append({
+            "nota": prev_nota,
+            "inicio": round(inicio, 3),
+            "duracion": round(duracion, 3),
+            "compas": compas,
+            "figura": figura,
+            "tempo": int(tempo)
+        })
 
 with open("notas_detectadas.json", "w") as f:
     json.dump(notas_json, f, indent=2)
@@ -223,15 +247,15 @@ sf.write("reconstruccion.wav", audio_total, sr)
 print("Archivo 'reconstruccion.wav' generado correctamente.")
 
 #Chequeo con el usuario
-abrir_wav("reconstruccion.wav")
-confirm = input("¿La reconstrucción suena similar al archivo original? (s/n): ").strip().lower()
-if confirm == 's':
-    with open("notas_detectadas.json", "w") as f:
-        json.dump(notas_json, f, indent=2)
-    print("✅ Archivo JSON exportado correctamente.")
-else:
-    print("❌ Proceso detenido. La reconstrucción no fue satisfactoria.")
-    exit()
+# abrir_wav("reconstruccion.wav")
+# confirm = input("¿La reconstrucción suena similar al archivo original? (s/n): ").strip().lower()
+# if confirm == 's':
+#     with open("notas_detectadas.json", "w") as f:
+#         json.dump(notas_json, f, indent=2)
+#     print("✅ Archivo JSON exportado correctamente.")
+# else:
+#     print("❌ Proceso detenido. La reconstrucción no fue satisfactoria.")
+#     exit()
 
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
