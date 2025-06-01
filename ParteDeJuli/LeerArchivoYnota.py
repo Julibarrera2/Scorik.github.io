@@ -174,22 +174,42 @@ def calcular_figura_y_compas(duracion, tempo, inicio):
     compas = int(inicio / (negra_duracion * 4)) + 1
     return figura, compas
 
+MIN_DURACION_NOTA = 0.05
+NOTA_UMBRAL_VARIACION = 0.25  # en semitonos
+
+def semitonos(f1, f2):
+    return abs(12 * np.log2(f1 / f2))
+
 notas_json = []
 if pitch_data:
-    prev_nota = frecuencia_a_nota(pitch_data[0][1])
     inicio = pitch_data[0][0]
+    nota_actual = frecuencia_a_nota(pitch_data[0][1])
+    freq_actual = pitch_data[0][1]
+
 
     for i in range(1, len(pitch_data)):
         t, f = pitch_data[i]
-        if not (30 < f < 1200):  # descartar frecuencias fuera del rango
-            continue
-        nota_actual = frecuencia_a_nota(f)
+        if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
+            duracion = t - inicio
+            if duracion >= MIN_DURACION_NOTA:
+                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                notas_json.append({
+                    "nota": nota_actual,
+                    "inicio": round(inicio, 3),
+                    "duracion": round(duracion, 3),
+                    "compas": compas,
+                    "figura": figura,
+                    "tempo": int(tempo)
+                })
+            inicio = t
+            nota_actual = frecuencia_a_nota(f)
+            freq_actual = f
+
 
         # Si hay silencio significativo, se agrega pausa
         if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
             print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
 
-        if nota_actual != prev_nota and abs(pitch_data[i][0] - inicio) > 0.03:
             if abs(t - inicio) > 2.0:
                 print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
             duracion = max(t - inicio, 0)
@@ -210,7 +230,7 @@ if pitch_data:
 
     # Agregar la última nota que se estaba tocando al final del audio
     duracion = pitch_data[-1][0] - inicio
-    if duracion > 0.02:
+    if 0.02 < duracion < 5:  # límite máximo de duración razonable
         figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
         notas_json.append({
             "nota": prev_nota,
@@ -219,7 +239,9 @@ if pitch_data:
             "compas": compas,
             "figura": figura,
             "tempo": int(tempo)
-        })
+            })
+    else:
+        print(f"⚠️ Nota final descartada por duración anormal: {duracion:.2f}s")
 
 with open("notas_detectadas.json", "w") as f:
     json.dump(notas_json, f, indent=2)
@@ -257,6 +279,10 @@ for nota in notas:
         silencio = np.zeros(int(sr * (inicio - tiempo_actual)))
         audio_total = np.concatenate((audio_total, silencio))
         tiempo_actual = inicio
+        # Limitar silencios enormes por errores de segmentación
+        max_silencio = 3.0  # segundos
+        silencio_duracion = min(inicio - tiempo_actual, max_silencio)
+        silencio = np.zeros(int(sr * silencio_duracion))
 
     if freq:
         onda = generar_onda(freq, duracion, sr)
@@ -265,15 +291,25 @@ for nota in notas:
             tiempo_actual += duracion
 
 # Asegurarse que la duración final coincida con el input original
-expected_duration = librosa.get_duration(y=y, sr=sr)  # y es el audio original cargado
+expected_duration = librosa.get_duration(y=y, sr=sr)  # y = original
 actual_duration = librosa.get_duration(y=audio_total, sr=sr)
 
-if actual_duration < expected_duration:
+if actual_duration > expected_duration:
+    print(f"⚠️ Duración excedida por {actual_duration - expected_duration:.2f}s, recortando.")
+    audio_total = audio_total[:int(expected_duration * sr)]
+elif actual_duration < expected_duration:
     padding = np.zeros(int((expected_duration - actual_duration) * sr))
     audio_total = np.concatenate((audio_total, padding))
 
-# Normalizar para evitar clipping
-audio_total = audio_total / np.max(np.abs(audio_total))
+# Normalizar para evitar clipping y controlar el volumen
+rms = np.sqrt(np.mean(audio_total**2))
+if rms > 0.5:
+    print(f"⚠️ RMS alto ({rms:.2f}), bajando volumen.")
+    audio_total *= 0.7  # reducir volumen general si está muy fuerte
+# Normalizar (re-asegurar que el valor máximo sea 1.0 o menos)
+if np.max(np.abs(audio_total)) > 0:
+    audio_total = audio_total / np.max(np.abs(audio_total))
+
 
 # Guardar en un archivo WAV
 sf.write("reconstruccion.wav", audio_total, sr)
