@@ -23,7 +23,7 @@ col.className = 'col-md-4';
 col.innerHTML = `
     <div class="card text-center">
     <h4>Sheet #${sheetCount}</h4>
-    <button onclick="alert('Editando Sheet #${sheetCount}')">Edit</button>
+    <button onclick="window.location.href='editor.html'">Edit</button>
     </div>
 `;
 library.appendChild(col);
