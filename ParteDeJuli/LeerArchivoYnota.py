@@ -8,20 +8,36 @@ import crepe
 # Utilidades numéricas y científicas
 import numpy as np
 import scipy
-# Visualización (opcional, útil para debugging)
+# Visualización 
 import matplotlib.pyplot as plt
 import os
 from pydub import AudioSegment
 from pydub.utils import which
-
+import pygame
 import json
+np.float = float
+
+#Links de PC
+# ruta video: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3
+# ruta ffmpeg: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
+# ruta ffprobe: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
+
+#Links ruta Notebook personal
+# ruta video: c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\piano-lento.mp3
+# ruta ffmpeg: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
+# ruta ffprobe: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
+
+#Links ruta Notebook ORT
+# ruta video: NOSE
+# ruta ffmpeg: NOSE
+# ruta ffprobe: NOSE
 
 #Los directorios de ffmpeg del .exe para que funciones
-AudioSegment.converter = which("ffmpeg") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = which("ffprobe") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
 #Ruta del archivo
-ruta = r"c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
+ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
 
 #verificás si el archivo .mp3 realmente está en esa ruta.
 if not os.path.exists(ruta):
@@ -53,16 +69,24 @@ y, sr, filepath= cargar_audio(ruta)
 
 #Confirmacion con el usuario si el archivo esta bien
 # Luego de cargar_audio(...)
-abrir_wav(filepath)
-confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
-if confirm != 's':
-    print("Proceso detenido. Revisá el archivo original.")
-    exit()
+# def abrir_wav(path):
+    # print(f"Reproduciendo {path}...")
+    # pygame.init()
+    # pygame.mixer.init()
+    # pygame.mixer.music.load(path)
+    # pygame.mixer.music.play()
+    # while pygame.mixer.music.get_busy():
+    #     continue   
+# abrir_wav(filepath)
+# confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
+# if confirm != 's':
+#     print("Proceso detenido. Revisá el archivo original.")
+#     exit()
 
 
 
 #DETECTAR PITCH
-def detectar_pitch(y, sr, step_size_ms=10, threshold=0.8):
+def detectar_pitch(y, sr, step_size_ms=10, threshold=0.9):
     #Usa CREPE para detectar el pitch en una señal de audio.
     #Parámetros:
     # - y: señal de audio    
@@ -92,7 +116,7 @@ def detectar_pitch(y, sr, step_size_ms=10, threshold=0.8):
     #Filtro de confianza: descartamos predicciones dudosas (ej: menos de 0.8 de confianza).
     pitches_filtradas = [] 
     for t, f, c in zip(time, frequency, confidence):
-        if c >= threshold:
+        if c >= threshold and 30 < f < 1200:
             pitches_filtradas.append((t, f))  # tiempo y frecuencia
     
     #printeamois la informacion
@@ -131,37 +155,71 @@ if len(y.shape) == 1:
     y = np.expand_dims(y, axis=1)
 
 time, frequency, confidence, _ = crepe.predict(y, sr, step_size=10, viterbi=True)
-pitch_data = [(t, f) for t, f, c in zip(time, frequency, confidence) if c > 0.8]
+pitch_data = [
+    (t, f) for t, f, c in zip(time, frequency, confidence)
+    if c > 0.9 and 30 < f < 1200
+]
+
+
+def calcular_figura_y_compas(duracion, tempo, inicio):
+    negra_duracion = 60 / tempo
+    if duracion < negra_duracion * 0.6:
+        figura = "corchea"
+    elif duracion < negra_duracion * 1.2:
+        figura = "negra"
+    elif duracion < negra_duracion * 2.2:
+        figura = "blanca"
+    else:
+        figura = "redonda"
+    compas = int(inicio / (negra_duracion * 4)) + 1
+    return figura, compas
 
 notas_json = []
 if pitch_data:
     prev_nota = frecuencia_a_nota(pitch_data[0][1])
     inicio = pitch_data[0][0]
+
     for i in range(1, len(pitch_data)):
         t, f = pitch_data[i]
+        if not (30 < f < 1200):  # descartar frecuencias fuera del rango
+            continue
         nota_actual = frecuencia_a_nota(f)
-        if nota_actual != prev_nota or i == len(pitch_data) - 1:
-            duracion = t - inicio
-            negra_duracion = 60 / tempo
-            if duracion < negra_duracion * 0.75:
-                figura = "corchea"
-            elif duracion < negra_duracion * 1.5:
-                figura = "negra"
-            elif duracion < negra_duracion * 2.5:
-                figura = "blanca"
-            else:
-                figura = "redonda"
-            compas = int(inicio / (60 / tempo * 4)) + 1
-            notas_json.append({
-                "nota": prev_nota,
-                "inicio": round(inicio, 3),
-                "duracion": round(duracion, 3),
-                "compas": compas,
-                "figura": figura,
-                "tempo": int(tempo)
-            })
-            prev_nota = nota_actual
+
+        # Si hay silencio significativo, se agrega pausa
+        if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
+            print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
+
+        if nota_actual != prev_nota and abs(pitch_data[i][0] - inicio) > 0.03:
+            if abs(t - inicio) > 2.0:
+                print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+            duracion = max(t - inicio, 0)
+            if duracion == 0:
+                continue
+            if duracion > 0.02:  # descartar eventos muy breves
+                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                notas_json.append({
+                    "nota": prev_nota,
+                    "inicio": round(inicio, 3),
+                    "duracion": round(duracion, 3),
+                    "compas": compas,
+                    "figura": figura,
+                    "tempo": int(tempo)
+                })
             inicio = t
+            prev_nota = nota_actual
+
+    # Agregar la última nota que se estaba tocando al final del audio
+    duracion = pitch_data[-1][0] - inicio
+    if duracion > 0.02:
+        figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+        notas_json.append({
+            "nota": prev_nota,
+            "inicio": round(inicio, 3),
+            "duracion": round(duracion, 3),
+            "compas": compas,
+            "figura": figura,
+            "tempo": int(tempo)
+        })
 
 with open("notas_detectadas.json", "w") as f:
     json.dump(notas_json, f, indent=2)
@@ -181,16 +239,38 @@ def generar_onda(freq, duracion, sr=16000):
     t = np.linspace(0, duracion, int(sr * duracion), False)
     onda = 0.5 * np.sin(2 * np.pi * freq * t)
     return onda
+
 # Crear la pista de audio completa
+# Ajustar duración del output al input si es necesario
+# Ajustar duración del output al input si es necesario
 audio_total = np.array([], dtype=np.float32)
+tiempo_actual = 0.0
 
 for nota in notas:
     nombre = nota["nota"]
+    inicio = nota["inicio"]
     duracion = nota["duracion"]
     freq = notas_dict.get(nombre, None)
+
+    # Insertar silencio si hace falta
+    if inicio > tiempo_actual:
+        silencio = np.zeros(int(sr * (inicio - tiempo_actual)))
+        audio_total = np.concatenate((audio_total, silencio))
+        tiempo_actual = inicio
+
     if freq:
         onda = generar_onda(freq, duracion, sr)
         audio_total = np.concatenate((audio_total, onda))
+        if duracion > 0.02:
+            tiempo_actual += duracion
+
+# Asegurarse que la duración final coincida con el input original
+expected_duration = librosa.get_duration(y=y, sr=sr)  # y es el audio original cargado
+actual_duration = librosa.get_duration(y=audio_total, sr=sr)
+
+if actual_duration < expected_duration:
+    padding = np.zeros(int((expected_duration - actual_duration) * sr))
+    audio_total = np.concatenate((audio_total, padding))
 
 # Normalizar para evitar clipping
 audio_total = audio_total / np.max(np.abs(audio_total))
@@ -200,15 +280,15 @@ sf.write("reconstruccion.wav", audio_total, sr)
 print("Archivo 'reconstruccion.wav' generado correctamente.")
 
 #Chequeo con el usuario
-abrir_wav("reconstruccion.wav")
-confirm = input("¿La reconstrucción se parece al archivo original? (s/n): ").strip().lower()
-if confirm != 's':
-    print("Proceso detenido. Intentá mejorar la detección de notas.")
-    exit()
-else:
-    with open("notas_detectadas.json", "w") as f:
-        json.dump(notas_json, f, indent=2)
-    print("Archivo JSON exportado correctamente.")
+# abrir_wav("reconstruccion.wav")
+# confirm = input("¿La reconstrucción suena similar al archivo original? (s/n): ").strip().lower()
+# if confirm == 's':
+#     with open("notas_detectadas.json", "w") as f:
+#         json.dump(notas_json, f, indent=2)
+#     print("✅ Archivo JSON exportado correctamente.")
+# else:
+#     print("❌ Proceso detenido. La reconstrucción no fue satisfactoria.")
+#     exit()
 
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
@@ -217,5 +297,5 @@ def exportar_json_si_confirmado(notas_json):
             json.dump(notas_json, f, indent=2)
         print("Archivo JSON guardado.")
     else:
-        print("No se guardó el archivo JSON.")
+        print("No se guardó el archivo JSON.")  
 
