@@ -147,7 +147,7 @@ def frecuencia_a_nota(freq):
     return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
 
 # Ruta al .wav convertido
-ruta_wav = "piano-lento.wav"
+ruta_wav = filepath 
 y, sr = librosa.load(ruta_wav, sr=16000)
 
 tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
@@ -174,62 +174,119 @@ def calcular_figura_y_compas(duracion, tempo, inicio):
     compas = int(inicio / (negra_duracion * 4)) + 1
     return figura, compas
 
+MIN_DURACION_NOTA = 0.05
+NOTA_UMBRAL_VARIACION = 0.25  # en semitonos
+
+def semitonos(f1, f2):
+    return abs(12 * np.log2(f1 / f2))
+
+#Un for dentro de un for que analiza cada tramo de 10 segundos 
 notas_json = []
 if pitch_data:
-    prev_nota = frecuencia_a_nota(pitch_data[0][1])
-    inicio = pitch_data[0][0]
+    segmento_duracion = 10.0  # segundos
+    total_tiempo = pitch_data[-1][0]
+    num_segmentos = int(np.ceil(total_tiempo / segmento_duracion))
 
-    for i in range(1, len(pitch_data)):
-        t, f = pitch_data[i]
-        if not (30 < f < 1200):  # descartar frecuencias fuera del rango
-            continue
-        nota_actual = frecuencia_a_nota(f)
+for s in range(num_segmentos):
+    inicio_seg = s * segmento_duracion
+    fin_seg = (s + 1) * segmento_duracion
+    print(f"\n🔍 Analizando tramo {s+1}/{num_segmentos} ({inicio_seg:.2f}s - {fin_seg:.2f}s)")
 
-        # Si hay silencio significativo, se agrega pausa
-        if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
-            print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
+    segmento = [p for p in pitch_data if inicio_seg <= p[0] < fin_seg]
+    if not segmento:
+        print("  ⚠️ Sin datos en este tramo.")
+        continue
 
-        if nota_actual != prev_nota and abs(pitch_data[i][0] - inicio) > 0.03:
-            if abs(t - inicio) > 2.0:
-                print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
-            duracion = max(t - inicio, 0)
-            if duracion == 0:
-                continue
-            if duracion > 0.02:  # descartar eventos muy breves
+    inicio = segmento[0][0]
+    nota_actual = frecuencia_a_nota(segmento[0][1])
+    freq_actual = segmento[0][1]
+
+    for i in range(1, len(segmento)):
+        t, f = segmento[i]
+        if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
+            duracion = t - inicio
+            if duracion >= MIN_DURACION_NOTA:
                 figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
                 notas_json.append({
-                    "nota": prev_nota,
+                    "nota": nota_actual,
                     "inicio": round(inicio, 3),
-                    "duracion": round(duracion, 3),
+                    "duracion": round(max(duracion, 0.03), 3),
                     "compas": compas,
                     "figura": figura,
                     "tempo": int(tempo)
                 })
             inicio = t
-            prev_nota = nota_actual
+            nota_actual = frecuencia_a_nota(f)
+            freq_actual = f
 
-    # Agregar la última nota que se estaba tocando al final del audio
-    duracion = pitch_data[-1][0] - inicio
-    if duracion > 0.02:
+        if abs(t - inicio) > 2.0:
+            print(f"  ⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+
+    # Final del tramo
+    duracion = segmento[-1][0] - inicio
+    if MIN_DURACION_NOTA <= duracion < 6.0:
         figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
         notas_json.append({
-            "nota": prev_nota,
+            "nota": nota_actual,
             "inicio": round(inicio, 3),
-            "duracion": round(duracion, 3),
+            "duracion": round(max(duracion, 0.03), 3),
             "compas": compas,
             "figura": figura,
             "tempo": int(tempo)
         })
 
+
+        # Si hay silencio significativo, se agrega pausa
+        if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
+            print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
+
+        if abs(pitch_data[i][0] - inicio) > 0.03:   
+            if abs(t - inicio) > 2.0:
+                print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+            duracion = max(t - inicio, 0)
+            if duracion == 0:
+                continue
+            if duracion > 6.0:
+                print(f"⚠️ Nota descartada por duración demasiado larga: {duracion:.2f}s")
+                continue
+            if duracion > 0.02:  # descartar eventos muy breves
+                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                notas_json.append({
+                    "nota": nota_actual,
+                    "inicio": round(inicio, 3),
+                    "duracion": round(max(duracion, 0.03), 3),
+                    "compas": compas,
+                    "figura": figura,
+                    "tempo": int(tempo)
+                })
+            inicio = t
+
+    # Agregar la última nota que se estaba tocando al final del audio
+    duracion = pitch_data[-1][0] - inicio
+    if 0.02 < duracion < 5:  # límite máximo de duración razonable
+        figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+        notas_json.append({
+            "nota": nota_actual,
+            "inicio": round(inicio, 3),
+            "duracion": round(max(duracion, 0.03), 3),
+            "compas": compas,
+            "figura": figura,
+            "tempo": int(tempo)
+            })
+    if notas_json and notas_json[-1]["duracion"] < 0.05:
+        print(f"⚠️ Nota final descartada por ser demasiado corta: {notas_json[-1]['duracion']}s")
+        notas_json = notas_json[:-1]
+
 with open("notas_detectadas.json", "w") as f:
     json.dump(notas_json, f, indent=2)
-
-
 
 #Testeo con una devolucion de un archivo .wav
 # Cargar notas desde el JSON
 with open("notas_detectadas.json", "r") as f:
     notas = json.load(f)
+if not notas:
+    print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
+    exit()
 
 # Frecuencia de muestreo para el audio de salida
 sr = 16000
@@ -246,17 +303,29 @@ def generar_onda(freq, duracion, sr=16000):
 audio_total = np.array([], dtype=np.float32)
 tiempo_actual = 0.0
 
+# Calcular RMS del audio original por ventanas
+rms = librosa.feature.rms(y=y, frame_length=2048, hop_length=512)[0]
+rms_times = librosa.frames_to_time(np.arange(len(rms)), sr=sr)
+
 for nota in notas:
     nombre = nota["nota"]
     inicio = nota["inicio"]
     duracion = nota["duracion"]
     freq = notas_dict.get(nombre, None)
+    # Verificamos si hay energía en la región (para evitar sonidos en silencio real)
+    rms_t = next((r for t, r in zip(rms_times, rms) if abs(t - inicio) < 0.05), None)
+    if rms_t is not None and rms_t < 0.01:
+        continue  # saltar nota si está en zona muda
 
     # Insertar silencio si hace falta
     if inicio > tiempo_actual:
         silencio = np.zeros(int(sr * (inicio - tiempo_actual)))
         audio_total = np.concatenate((audio_total, silencio))
         tiempo_actual = inicio
+        # Limitar silencios enormes por errores de segmentación
+        max_silencio = 3.0  # segundos
+        silencio_duracion = min(inicio - tiempo_actual, max_silencio)
+        silencio = np.zeros(int(sr * silencio_duracion))
 
     if freq:
         onda = generar_onda(freq, duracion, sr)
@@ -265,15 +334,29 @@ for nota in notas:
             tiempo_actual += duracion
 
 # Asegurarse que la duración final coincida con el input original
-expected_duration = librosa.get_duration(y=y, sr=sr)  # y es el audio original cargado
+# Calcular duración real del archivo WAV original (antes del resampleo estéreo)
+expected_duration = librosa.get_duration(filename=filepath)
 actual_duration = librosa.get_duration(y=audio_total, sr=sr)
 
-if actual_duration < expected_duration:
+if actual_duration > expected_duration:
+    print(f"⚠️ Duración excedida por {actual_duration - expected_duration:.2f}s, recortando.")
+    audio_total = audio_total[:int(expected_duration * sr)]
+elif actual_duration < expected_duration:
     padding = np.zeros(int((expected_duration - actual_duration) * sr))
     audio_total = np.concatenate((audio_total, padding))
 
-# Normalizar para evitar clipping
-audio_total = audio_total / np.max(np.abs(audio_total))
+# Normalizar para evitar clipping y controlar el volumen
+rms = np.sqrt(np.mean(audio_total**2))
+if rms > 0.5:
+    print(f"⚠️ RMS alto ({rms:.2f}), bajando volumen.")
+    audio_total *= 0.7  # reducir volumen general si está muy fuerte
+# Normalizar (re-asegurar que el valor máximo sea 1.0 o menos)
+if np.max(np.abs(audio_total)) > 0:
+    if len(audio_total) < 10 or np.all(audio_total == 0):
+        print("⚠️ Error: El audio generado está vacío o contiene solo silencio.")
+        exit()
+    audio_total = audio_total / np.max(np.abs(audio_total))
+
 
 # Guardar en un archivo WAV
 sf.write("reconstruccion.wav", audio_total, sr)
@@ -293,9 +376,19 @@ print("Archivo 'reconstruccion.wav' generado correctamente.")
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
     if confirmar == 's':
-        with open("notas_detectadas.json", "w") as f:
-            json.dump(notas_json, f, indent=2)
-        print("Archivo JSON guardado.")
-    else:
-        print("No se guardó el archivo JSON.")  
+        # Paso extra: eliminar notas muy cortas dentro del último medio segundo del audio original
+        umbral_tiempo_final = expected_duration - 0.5  # últimos 0.5 segundos
+
+        notas_json_filtradas = []
+        for n in notas_json:
+            if n["inicio"] > umbral_tiempo_final and n["duracion"] < 0.05:
+                print(f"⚠️ Nota descartada cerca del final: {n['nota']} en t={n['inicio']}s dur={n['duracion']}s")
+                continue
+                notas_json_filtradas.append(n)
+                notas_json = notas_json_filtradas
+                with open("notas_detectadas.json", "w") as f:
+                    json.dump(notas_json, f, indent=2)
+                print("Archivo JSON guardado.")
+            else:
+                print("No se guardó el archivo JSON.")  
 
