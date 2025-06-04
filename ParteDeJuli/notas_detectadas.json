@@ -1,0 +1,474 @@
+[
+  {
+    "nota": "C4",
+    "inicio": 0.19,
+    "duracion": 0.39,
+    "compas": 1,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C3",
+    "inicio": 0.58,
+    "duracion": 3.11,
+    "compas": 1,
+    "figura": "redonda",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 3.69,
+    "duracion": 1.14,
+    "compas": 2,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 4.86,
+    "duracion": 0.07,
+    "compas": 2,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G5",
+    "inicio": 4.93,
+    "duracion": 0.62,
+    "compas": 2,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 5.55,
+    "duracion": 0.75,
+    "compas": 2,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 6.34,
+    "duracion": 0.74,
+    "compas": 2,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "F5",
+    "inicio": 7.08,
+    "duracion": 0.77,
+    "compas": 3,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "G5",
+    "inicio": 7.85,
+    "duracion": 0.71,
+    "compas": 3,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A5",
+    "inicio": 8.56,
+    "duracion": 0.8,
+    "compas": 3,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "B3",
+    "inicio": 10.44,
+    "duracion": 0.37,
+    "compas": 4,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "F5",
+    "inicio": 10.81,
+    "duracion": 1.31,
+    "compas": 4,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 12.12,
+    "duracion": 1.34,
+    "compas": 4,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 13.46,
+    "duracion": 1.42,
+    "compas": 5,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 14.88,
+    "duracion": 1.32,
+    "compas": 5,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 16.29,
+    "duracion": 0.57,
+    "compas": 5,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A3",
+    "inicio": 16.86,
+    "duracion": 0.88,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "F#4",
+    "inicio": 17.77,
+    "duracion": 0.05,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 17.82,
+    "duracion": 0.99,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 18.81,
+    "duracion": 0.92,
+    "compas": 6,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 19.73,
+    "duracion": 0.26,
+    "compas": 6,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 20.0,
+    "duracion": 0.89,
+    "compas": 7,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "F5",
+    "inicio": 20.89,
+    "duracion": 1.01,
+    "compas": 7,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 21.9,
+    "duracion": 1.02,
+    "compas": 7,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "G3",
+    "inicio": 22.92,
+    "duracion": 0.23,
+    "compas": 7,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 23.15,
+    "duracion": 1.35,
+    "compas": 7,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 24.5,
+    "duracion": 1.24,
+    "compas": 8,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 25.74,
+    "duracion": 1.47,
+    "compas": 8,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 27.21,
+    "duracion": 1.03,
+    "compas": 9,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "F3",
+    "inicio": 28.24,
+    "duracion": 0.36,
+    "compas": 9,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 28.6,
+    "duracion": 1.39,
+    "compas": 9,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A4",
+    "inicio": 30.0,
+    "duracion": 0.91,
+    "compas": 10,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 30.91,
+    "duracion": 1.63,
+    "compas": 10,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "A5",
+    "inicio": 32.54,
+    "duracion": 1.61,
+    "compas": 10,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 34.21,
+    "duracion": 1.86,
+    "compas": 11,
+    "figura": "redonda",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 36.11,
+    "duracion": 0.99,
+    "compas": 11,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 37.1,
+    "duracion": 0.57,
+    "compas": 12,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 37.67,
+    "duracion": 0.8,
+    "compas": 12,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 38.47,
+    "duracion": 1.04,
+    "compas": 12,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 39.51,
+    "duracion": 0.48,
+    "compas": 12,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 40.0,
+    "duracion": 0.49,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#4",
+    "inicio": 40.52,
+    "duracion": 0.06,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "E5",
+    "inicio": 40.58,
+    "duracion": 1.05,
+    "compas": 13,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 41.63,
+    "duracion": 0.92,
+    "compas": 13,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "D4",
+    "inicio": 42.55,
+    "duracion": 0.15,
+    "compas": 13,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 42.75,
+    "duracion": 1.11,
+    "compas": 13,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "D5",
+    "inicio": 43.86,
+    "duracion": 0.35,
+    "compas": 14,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G3",
+    "inicio": 44.21,
+    "duracion": 1.46,
+    "compas": 14,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "C5",
+    "inicio": 45.76,
+    "duracion": 1.76,
+    "compas": 14,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 47.52,
+    "duracion": 0.07,
+    "compas": 15,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "B4",
+    "inicio": 47.62,
+    "duracion": 1.09,
+    "compas": 15,
+    "figura": "blanca",
+    "tempo": 72
+  },
+  {
+    "nota": "G#3",
+    "inicio": 48.71,
+    "duracion": 0.45,
+    "compas": 15,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "G#3",
+    "inicio": 50.95,
+    "duracion": 0.61,
+    "compas": 16,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A#2",
+    "inicio": 51.56,
+    "duracion": 0.52,
+    "compas": 16,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A#3",
+    "inicio": 52.08,
+    "duracion": 0.36,
+    "compas": 16,
+    "figura": "corchea",
+    "tempo": 72
+  },
+  {
+    "nota": "A#2",
+    "inicio": 52.44,
+    "duracion": 0.75,
+    "compas": 16,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "A#3",
+    "inicio": 53.19,
+    "duracion": 0.93,
+    "compas": 16,
+    "figura": "negra",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 54.12,
+    "duracion": 5.86,
+    "compas": 17,
+    "figura": "redonda",
+    "tempo": 72
+  },
+  {
+    "nota": "C4",
+    "inicio": 60.04,
+    "duracion": 0.11,
+    "compas": 19,
+    "figura": "corchea",
+    "tempo": 72
+  }
+]

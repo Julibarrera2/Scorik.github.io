@@ -180,49 +180,34 @@ NOTA_UMBRAL_VARIACION = 0.3
 def semitonos(f1, f2):
     return abs(12 * np.log2(f1 / f2))
 
-#Un for dentro de un for que analiza cada tramo de 10 segundos 
+# Un for que analiza cada tramo de 10 segundos
 notas_json = []
 if pitch_data:
-    segmento_duracion = 10.0  # segundos
+    segmento_duracion = 10.0  # duración de cada tramo en segundos
     total_tiempo = pitch_data[-1][0]
     num_segmentos = int(np.ceil(total_tiempo / segmento_duracion))
-
 for s in range(num_segmentos):
     inicio_seg = s * segmento_duracion
     fin_seg = (s + 1) * segmento_duracion
     print(f"\n🔍 Analizando tramo {s+1}/{num_segmentos} ({inicio_seg:.2f}s - {fin_seg:.2f}s)")
-
+    # Filtramos solo los pitches de este tramo
     segmento = [p for p in pitch_data if inicio_seg <= p[0] < fin_seg]
     if not segmento:
         print("  ⚠️ Sin datos en este tramo.")
         continue
-    # Solo suavizamos el último tramo
-    if s == num_segmentos - 1:
+    # Si es el último tramo, suavizamos frecuencias con media móvil (ventana 3)
+    if s == num_segmentos - 1 and len(segmento) >= 3:
         tiempos_seg = [p[0] for p in segmento]
         freqs_seg = [p[1] for p in segmento]
-        ventana = 3  # media móvil suave
-        freqs_suavizadas = np.convolve(freqs_seg, np.ones(ventana)/ventana, mode='same')
+        freqs_suavizadas = np.convolve(freqs_seg, np.ones(3)/3, mode='same')
         segmento = list(zip(tiempos_seg, freqs_suavizadas))
-
-# 🔧 Suavizado de frecuencias (media móvil de ventana 5)
-    if len(segmento) >= 5:
-        tiempos_seg = [p[0] for p in segmento]
-        freqs_seg = [p[1] for p in segmento]
-
-    # Aplicar media móvil
-    freqs_suavizadas = freqs_seg  # sin suavizado global
-
-    # Reensamblar el segmento con las frecuencias suavizadas
-    segmento = [p for p in pitch_data if inicio_seg <= p[0] < fin_seg]
+    # Inicializamos variables de agrupamiento
     inicio = segmento[0][0]
-    nota_actual = frecuencia_a_nota(segmento[0][1])
     freq_actual = segmento[0][1]
-
+    nota_actual = frecuencia_a_nota(freq_actual)
     for i in range(1, len(segmento)):
-        if s == num_segmentos - 1 and i > len(segmento) - 30:
-            if semitonos(f, freq_actual) < 1.0:
-                continue  # ignorar microvariaciones en el final
         t, f = segmento[i]
+        # Si la nota nueva es diferente (por semitonos), se cierra la nota anterior
         if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
             duracion = t - inicio
             if duracion >= MIN_DURACION_NOTA:
@@ -230,31 +215,33 @@ for s in range(num_segmentos):
                 notas_json.append({
                     "nota": nota_actual,
                     "inicio": round(inicio, 3),
-                    "duracion": round(max(duracion, 0.03), 3),
+                    "duracion": round(duracion, 3),
                     "compas": compas,
                     "figura": figura,
                     "tempo": int(tempo)
                 })
+            # Se actualiza a la nueva nota
             inicio = t
-            nota_actual = frecuencia_a_nota(f)
             freq_actual = f
-
-        if abs(t - inicio) > 2.0:
-            if s == num_segmentos - 1:  # solo advertencias en el último tramo
-                print(f"  ⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
-
-    # Final del tramo
+            nota_actual = frecuencia_a_nota(f)
+        # Advertencia si hay separación anormal (solo en último tramo)
+        if s == num_segmentos - 1 and abs(t - inicio) > 2.0:
+            print(f"  ⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+    # Cierre de la última nota del tramo
     duracion = segmento[-1][0] - inicio
     if MIN_DURACION_NOTA <= duracion < 6.0:
         figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
         notas_json.append({
             "nota": nota_actual,
             "inicio": round(inicio, 3),
-            "duracion": round(max(duracion, 0.03), 3),
+            "duracion": round(duracion, 3),
             "compas": compas,
             "figura": figura,
             "tempo": int(tempo)
         })
+    # Verificación extra de duración excesiva (último tramo)
+    if s == num_segmentos - 1 and duracion > 6.0:
+        print(f"⚠️ Nota descartada por duración excesiva: {duracion:.2f}s")
 
 
         # Si hay silencio significativo, se agrega pausa
@@ -427,10 +414,11 @@ def exportar_json_si_confirmado(notas_json):
             if n["inicio"] > umbral_tiempo_final and n["duracion"] < 0.05:
                 print(f"⚠️ Nota descartada cerca del final: {n['nota']} en t={n['inicio']}s dur={n['duracion']}s")
                 continue
-                notas_json_filtradas.append(n)
-                notas_json = notas_json_filtradas
-                    with open("notas_detectadas.json", "w") as f:
-                json.dump(notas_json, f, indent=2)
-                print("Archivo JSON guardado.")
-        else:
-            print("No se guardó el archivo JSON.")  
+            notas_json_filtradas.append(n)
+
+        # Guardamos el nuevo JSON limpio
+        with open("notas_detectadas.json", "w") as f:
+            json.dump(notas_json_filtradas, f, indent=2)
+        print("✅ Archivo JSON guardado.")
+    else:
+        print("❌ No se guardó el archivo JSON.")
