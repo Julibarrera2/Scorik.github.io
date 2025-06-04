@@ -24,37 +24,6 @@
     </div>
 </header>
 
-<main class="container my-5 text-center">
-    <h2 class="fw-bold mb-1">audio to music sheets</h2>
-    <p class="text-muted mb-4">mp3 to music sheet</p>
-
-    <div class="row justify-content-center mb-3">
-    <div class="col-md-4 mb-2">
-        <label class="form-label fw-semibold">select instrument</label>
-        <select class="form-select" id="instrumentSelect">
-        <option value="">Selecciona un instrumento</option>
-        <option value="piano">Piano</option>
-        <option value="guitarra">Guitarra</option>
-        <option value="violín">Violín</option>
-        </select>
-    </div>
-    <div class="col-md-4 mb-2">
-        <label class="form-label fw-semibold">select mp3</label>
-        <input class="form-control" type="file" id="fileInput" accept=".mp3" />
-    </div>
-    </div>
-
-    <button class="btn btn-primary px-4" id="processBtn">Processing...</button>
-    <p class="text-danger mt-3 fw-semibold" id="warning" style="display:none;">
-    Please first choose what instrument do you play and then select your audio.
-    </p>
-
-    <section class="mt-5">
-    <h3 class="fw-bold mb-3">Library</h3>
-    <div class="row g-3 justify-content-center" id="libraryCards"></div>
-    </section>
-</main>
-
 <script src="app.js"></script>
 </body>
 </html>
