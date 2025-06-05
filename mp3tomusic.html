@@ -1,14 +1,104 @@
 <!DOCTYPE html>
-<html lang="en" x-data="loginApp()">
+<html lang="en" x-data="{ sidebarOpen: false }" x-init="checkAuth()">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Scorik</title>
+<title>Dashboard</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<style>
+    body {
+    background-color: #65d6c7;
+    }
+    .sidebar {
+    position: fixed;
+    top: 0;
+    left:0;
+    width: 250px;
+    height: 100%;
+    background-color: #6b2bd97c;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    }
+    .sidebar.open {
+    transform: translateX(0);
+    }
+    .sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    }
+    .sidebar li {
+    padding: 15px 20px;
+    color: rgb(18, 18, 18);
+    cursor: pointer;
+    }
+    .sidebar li:hover {
+    background-color: #5521b5e6;
+    }
+    .menu-btn {
+    margin: 20px;
+    }
+    .logout-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    }
+
+    .menu-btn{
+        position: fixed;
+        display: column;
+        top: 20px;
+        left: 20px;
+    }
+</style>
 </head>
-<body class="d-flex justify-content-center align-items-center min-vh-100" style="background-color: #65d6c7;">
-    
+<body>
+
+<!-- Menu Button -->
+<div class="container text-center mt-5">
+<button class="btn btn-primary menu-btn" @click="sidebarOpen = !sidebarOpen">☰ Open Menu</button>
+</div>
+
+<!-- Logout Button -->
+<button class="btn btn-danger logout-btn" @click="logout">Logout</button>
+
+<!-- Sidebar -->
+<div :class="{ 'sidebar': true, 'open': sidebarOpen }">
+
+<div class="menu">
+    <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+    <button class="menu-button" onclick="location.href='library.html'">Library</button>
+    <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
+    <button class="menu-button" onclick="location.href='create.html'">Create</button>
+</div>
+<div class="bottom-icon" @click="sidebarOpen = false">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+</div>
+</div>
+
+<script>
+function checkAuth() {
+if (!localStorage.getItem('currentUser')) {
+    window.location.href = 'login.html';
+}
+}
+
+function logout() {
+localStorage.removeItem('currentUser');
+window.location.href = 'login.html';
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+
+
+
+
     <main class="container my-5 text-center">
     <h2 class="fw-bold mb-1">audio to music sheets</h2>
     <p class="text-muted mb-4">mp3 to music sheet</p>
@@ -38,4 +128,9 @@
     <h3 class="fw-bold mb-3">Library</h3>
     <div class="row g-3 justify-content-center" id="libraryCards"></div>
     </section>
-</main>
+
+    </main>
+    
+
+
+</html>
