@@ -16,7 +16,7 @@
     left: 0;
     width: 250px;
     height: 100%;
-    background-color: #6c2bd9;
+    background-color: #6b2bd97c;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     }
@@ -30,11 +30,11 @@
     }
     .sidebar li {
     padding: 15px 20px;
-    color: white;
+    color: rgb(18, 18, 18);
     cursor: pointer;
     }
     .sidebar li:hover {
-    background-color: #5521b5;
+    background-color: #5521b5e6;
     }
     .menu-btn {
     margin: 20px;
@@ -43,6 +43,11 @@
     position: fixed;
     top: 20px;
     right: 20px;
+    }
+
+    .menu-btn{
+        position: fixed;
+        display: column;
     }
 </style>
 </head>
@@ -58,15 +63,18 @@
 
 <!-- Sidebar -->
 <div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-<ul class="mt-5">
-    <button class="bottonmp3" onclick="window.location.href='mp3tomusic.html'">
-        <i class="fas fa-user-plus me-1"></i>MP3 to Music Sheet
-    </button>
-    <li>Library</li>
-    <button class="bottonmp3" onclick="window.location.href='editor.html'">
-        <i class="fas fa-user-plus me-1"></i>Editor
-    <li>Create</li>
-</ul>
+
+<div class="menu">
+    <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+    <button class="menu-button" onclick="location.href='library.html'">Library</button>
+    <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
+    <button class="menu-button" onclick="location.href='create.html'">Create</button>
+</div>
+<div class="bottom-icon" @click="sidebarOpen = false">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+</div>
 </div>
 
 <script>
