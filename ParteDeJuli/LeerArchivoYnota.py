@@ -18,12 +18,12 @@ import json
 np.float = float
 
 #Links de PC
-# ruta video: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3
+# ruta video: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
 
 #Links ruta Notebook personal
-# ruta video: c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\piano-lento.mp3
+# ruta video: c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
 
@@ -37,7 +37,7 @@ AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\f
 AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
 #Ruta del archivo
-ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\piano-lento.mp3"
+ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
 
 #verificás si el archivo .mp3 realmente está en esa ruta.
 if not os.path.exists(ruta):
@@ -174,8 +174,8 @@ def calcular_figura_y_compas(duracion, tempo, inicio):
     compas = int(inicio / (negra_duracion * 4)) + 1
     return figura, compas
 
-MIN_DURACION_NOTA = 0.05
-NOTA_UMBRAL_VARIACION = 0.3
+MIN_DURACION_NOTA = 0.03
+NOTA_UMBRAL_VARIACION = 0.25
 
 def semitonos(f1, f2):
     return abs(12 * np.log2(f1 / f2))
@@ -308,53 +308,43 @@ def generar_onda(freq, duracion, sr=16000, volumen=1.0):
 # Crear la pista de audio completa
 # Ajustar duración del output al input si es necesario
 # Ajustar duración del output al input si es necesario
-audio_total = np.array([], dtype=np.float32)
-tiempo_actual = 0.0
-
 # Calcular RMS del audio original por ventanas
 rms = librosa.feature.rms(y=y, frame_length=2048, hop_length=512)[0]
 rms_times = librosa.frames_to_time(np.arange(len(rms)), sr=sr)
+
+audio_total = np.array([], dtype=np.float32)
+tiempo_actual = 0.0
 
 for nota in notas:
     nombre = nota["nota"]
     inicio = nota["inicio"]
     duracion = nota["duracion"]
     freq = notas_dict.get(nombre, None)
-    # Buscar el RMS local del original cerca del inicio
+
+    if freq is None:
+        continue
+
+    # Evitar notas excesivamente largas por error
+    if duracion > 5.0:
+        continue
+
+    # Calcular energía (RMS) local para ajustar volumen
     rms_local = next((r for t_, r in zip(rms_times, rms) if abs(t_ - inicio) < 0.05), 0.03)
-    # Convertir RMS a volumen con límites para evitar silencios o saturación
     volumen = np.clip(rms_local * 3, 0.05, 1.0)
-    # Verificamos si hay energía suficiente en la región
+
     if rms_local < 0.01:
-        continue  # saltar nota si está en zona muda
-    # Insertar silencio si hace falta
+        continue  # evitar sonidos en zonas silenciosas
+
+    # Insertar silencio si la nota no arranca justo después de la anterior
     if inicio > tiempo_actual:
         silencio = np.zeros(int(sr * (inicio - tiempo_actual)))
         audio_total = np.concatenate((audio_total, silencio))
         tiempo_actual = inicio
-    if freq:
-        onda = generar_onda(freq, duracion, sr, volumen)
-        audio_total = np.concatenate((audio_total, onda))
-        tiempo_actual += duracion
 
-
-    # Insertar silencio si hace falta
-    if inicio > tiempo_actual:
-        silencio_duracion = min(inicio - tiempo_actual, 3.0)
-        if silencio_duracion > 0.01:
-            silencio = np.zeros(int(sr * silencio_duracion))
-            audio_total = np.concatenate((audio_total, silencio))
-            tiempo_actual += silencio_duracion
-        # Limitar silencios enormes por errores de segmentación
-        max_silencio = 3.0  # segundos
-        silencio_duracion = min(inicio - tiempo_actual, max_silencio)
-        silencio = np.zeros(int(sr * silencio_duracion))
-
-    if freq:
-        onda = generar_onda(freq, duracion, sr)
-        audio_total = np.concatenate((audio_total, onda))
-        if duracion > 0.02:
-            tiempo_actual += duracion
+    # Generar onda y sumarla al audio
+    onda = generar_onda(freq, duracion, sr, volumen)
+    audio_total = np.concatenate((audio_total, onda))
+    tiempo_actual += duracion
 
 # Asegurarse que la duración final coincida con el input original
 # Calcular duración real del archivo WAV original (antes del resampleo estéreo)
