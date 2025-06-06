@@ -18,19 +18,28 @@ import json
 np.float = float
 
 #Links de PC
-# ruta video: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
+# ruta video piano: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
+# ruta video violin 1: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-1.mp3
+# ruta video violin 2: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-2.mp3
+# ruta video violin 3: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-3.mp3
 
 #Links ruta Notebook personal
 # ruta video: c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
+# ruta video violin 1: 
+# ruta video violin 2:
+# ruta video violin 3:
 
 #Links ruta Notebook ORT
 # ruta video: NOSE
 # ruta ffmpeg: NOSE
 # ruta ffprobe: NOSE
+# ruta video violin 1: 
+# ruta video violin 2:
+# ruta video violin 3: 
 
 #Los directorios de ffmpeg del .exe para que funciones
 AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
@@ -242,7 +251,7 @@ if pitch_data:
             # Si la nota nueva es suficientemente distinta, cerramos la nota anterior
             if diferencia_en_semitonos > NOTA_UMBRAL_VARIACION:
                 duracion = t - inicio
-                print(f"    → Duración calculada: {duracion:.3f}s")
+                #print(f"    → Duración calculada: {duracion:.3f}s")
                 if duracion >= MIN_DURACION_NOTA:
                     figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
                     notas_json.append({
