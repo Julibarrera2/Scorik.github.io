@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <style>
     body {
-    background-color: #65d6c7;
+    background-color: #5AE9DD;
     }
     .sidebar {
     position: fixed;
@@ -50,6 +50,32 @@
         display: column;
         top: 20px;
         left: 20px;
+    }
+
+    .menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+    }
+
+    .menu-button {
+        background-color: #ffffff;
+        color: #8300F6;
+        font-weight: bold;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 20px;
+        margin: 15px 0;
+        width: 150px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .menu-button:hover {
+        background-color: #e0d7f8;
+        transform: scale(1.05);
     }
 </style>
 </head>
