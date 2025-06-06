@@ -33,11 +33,11 @@ np.float = float
 # ruta ffprobe: NOSE
 
 #Los directorios de ffmpeg del .exe para que funciones
-AudioSegment.converter = which("ffmpeg") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = which("ffprobe") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
 #Ruta del archivo
-ruta = r"c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
+ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
 
 #verificás si el archivo .mp3 realmente está en esa ruta.
 if not os.path.exists(ruta):
@@ -83,34 +83,44 @@ y, sr, filepath= cargar_audio(ruta)
 #     print("Proceso detenido. Revisá el archivo original.")
 #     exit()
 
+# ---------------------------------------------------------
+# 1) RECORTAR SILENCIOS DEL FINAL (librosa.effects.trim):
+# ---------------------------------------------------------
+# Esto elimina automáticamente las porciones del principio y final donde el nivel
+# de audio esté por debajo de un umbral de decibeles (top_db).
+# Devolvemos y_trimmed (señal sin silencios) y unos índices (start, end) que indican
+# dónde quedó “lo útil” en la grabación original.
+y_trim, index_trim = librosa.effects.trim(y, top_db=20)
+y = y_trim
+# (sr permanece igual; sr sigue siendo la misma frecuencia de muestreo que ya tenías)
 
 
 #DETECTAR PITCH
-def detectar_pitch(y, sr, step_size_ms=10, threshold=0.9):
+def detectar_pitch(y_local, sr_local, step_size_ms=10, threshold=0.9):
     #Usa CREPE para detectar el pitch en una señal de audio.
     #Parámetros:
-    # - y: señal de audio    
-    # - sr: sample rate (frecuencia de muestreo)
-    #- step_size_ms: resolución temporal en milisegundos
-    #- threshold: umbral de confianza mínima (0 a 1)
-    #  Devuelve:
-    #- pitches_filtradas: lista de notas detectadas con tiempo y frecuencia
+    # y: señal de audio   
+    # sr: sample rate (frecuencia de muestreo)
+    #step_size_ms: resolución temporal en milisegundos
+    #threshold: umbral de confianza mínima (0 a 1)
+    # Devuelve:
+    #pitches_filtradas: lista de notas detectadas con tiempo y frecuencia
     print("Detectando pitch con CREPE...")
 
     # CREPE necesita un sample rate de 16000
     #Resampleo a 16000 Hz: CREPE solo funciona con 16000 Hz, por lo tanto si cargamos a 22050 Hz lo transformamos.
-    if sr != 16000:
-        y = librosa.resample(y, orig_sr=sr, target_sr=16000)
-        sr = 16000
+    if sr_local != 16000:
+        y_local = librosa.resample(y_local, orig_sr=sr_local, target_sr=16000)
+        sr_local = 16000
     
     # CREPE requiere una señal estéreo
     #Reformateo del audio: CREPE espera entrada estéreo (matriz Nx1).
-    if len(y.shape) == 1:
-        y = np.expand_dims(y, axis=1)
+    if len(y_local.shape) == 1:
+        y_local = np.expand_dims(y_local, axis=1)
     
     # Ejecutamos CREPE
     #crepe.predict(...): Devuelve arrays de tiempo, frecuencia, confianza y activación
-    time, frequency, confidence, _ = crepe.predict(y, sr, step_size=step_size_ms, viterbi=True)
+    time, frequency, confidence, _ = crepe.predict(y_local, sr_local, step_size=step_size_ms,viterbi=True)
 
     # Filtrar por confianza
     #Filtro de confianza: descartamos predicciones dudosas (ej: menos de 0.8 de confianza).
@@ -122,11 +132,9 @@ def detectar_pitch(y, sr, step_size_ms=10, threshold=0.9):
     #printeamois la informacion
     print(f"Se detectaron {len(pitches_filtradas)} pitches con confianza > {threshold}.")
     return pitches_filtradas
-
-#Ejecutar la funcion completita
-y, sr, ruta_wav = cargar_audio(ruta)
-pitches = detectar_pitch(y, sr)
-print("Primeros 10 pitches:", pitches[:10])  # Mostrar algunos resultados
+# Ahora usamos y_trim para la detección
+pitches = detectar_pitch(y_trim, sr)
+print("Primeros 10 pitches:", pitches[:10])
 
 #Pasar de pitch a nota
 # Diccionario de notas
@@ -147,8 +155,18 @@ def frecuencia_a_nota(freq):
     return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
 
 # Ruta al .wav convertido
+#Carga el WAV A 16000 Hz y recórtalo también con librosa.trim
 ruta_wav = filepath 
-y, sr = librosa.load(ruta_wav, sr=16000)
+y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
+
+# Otra vez recortamos silencio (para beat-track y CREPE “manual”)
+y_trim2, idx_trim2 = librosa.effects.trim(y_full2, top_db=20)
+dur_trim2 = librosa.get_duration(y=y_trim2, sr=sr_full2)
+print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
+
+# Usamos y_trim para todo lo siguiente:
+y = y_trim2
+sr = sr_full2  # en este bloque sr siempre será 16000
 
 tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
 if len(y.shape) == 1:
@@ -159,7 +177,14 @@ pitch_data = [
     (t, f) for t, f, c in zip(time, frequency, confidence)
     if c > 0.9 and 30 < f < 1200
 ]
+print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
 
+#Eliminar los últimos 2 segundos de pitch_data para evitar detecciones erróneas
+duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
+#pitch_data = [p for p in pitch_data if p[0] < duracion_audio_trim - 2.0]
+
+print("→ Cantidad de frames en pitch_data:", len(pitch_data))
+print("→ Primeros 10 frames:", pitch_data[:10])
 
 def calcular_figura_y_compas(duracion, tempo, inicio):
     negra_duracion = 60 / tempo
@@ -174,7 +199,7 @@ def calcular_figura_y_compas(duracion, tempo, inicio):
     compas = int(inicio / (negra_duracion * 4)) + 1
     return figura, compas
 
-MIN_DURACION_NOTA = 0.03
+MIN_DURACION_NOTA = 0.01
 NOTA_UMBRAL_VARIACION = 0.25
 
 def semitonos(f1, f2):
@@ -186,104 +211,129 @@ if pitch_data:
     segmento_duracion = 10.0  # duración de cada tramo en segundos
     total_tiempo = pitch_data[-1][0]
     num_segmentos = int(np.ceil(total_tiempo / segmento_duracion))
-for s in range(num_segmentos):
-    inicio_seg = s * segmento_duracion
-    fin_seg = (s + 1) * segmento_duracion
-    print(f"\n🔍 Analizando tramo {s+1}/{num_segmentos} ({inicio_seg:.2f}s - {fin_seg:.2f}s)")
-    # Filtramos solo los pitches de este tramo
-    segmento = [p for p in pitch_data if inicio_seg <= p[0] < fin_seg]
-    if not segmento:
-        print("  ⚠️ Sin datos en este tramo.")
-        continue
-    # Si es el último tramo, suavizamos frecuencias con media móvil (ventana 3)
-    if s == num_segmentos - 1 and len(segmento) >= 3:
-        tiempos_seg = [p[0] for p in segmento]
-        freqs_seg = [p[1] for p in segmento]
-        freqs_suavizadas = np.convolve(freqs_seg, np.ones(3)/3, mode='same')
-        segmento = list(zip(tiempos_seg, freqs_suavizadas))
-    # Inicializamos variables de agrupamiento
-    inicio = segmento[0][0]
-    freq_actual = segmento[0][1]
-    nota_actual = frecuencia_a_nota(freq_actual)
-    for i in range(1, len(segmento)):
-        t, f = segmento[i]
-        # Si la nota nueva es diferente (por semitonos), se cierra la nota anterior
-        if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
-            duracion = t - inicio
-            if duracion >= MIN_DURACION_NOTA:
-                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
-                notas_json.append({
-                    "nota": nota_actual,
-                    "inicio": round(inicio, 3),
-                    "duracion": round(duracion, 3),
-                    "compas": compas,
-                    "figura": figura,
-                    "tempo": int(tempo)
-                })
-            # Se actualiza a la nueva nota
-            inicio = t
-            freq_actual = f
-            nota_actual = frecuencia_a_nota(f)
-        # Advertencia si hay separación anormal (solo en último tramo)
-        if s == num_segmentos - 1 and abs(t - inicio) > 2.0:
-            print(f"  ⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
-    # Cierre de la última nota del tramo
-    duracion = segmento[-1][0] - inicio
-    if MIN_DURACION_NOTA <= duracion < 6.0:
-        figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
-        notas_json.append({
-            "nota": nota_actual,
-            "inicio": round(inicio, 3),
-            "duracion": round(duracion, 3),
-            "compas": compas,
-            "figura": figura,
-            "tempo": int(tempo)
-        })
-    # Verificación extra de duración excesiva (último tramo)
-    if s == num_segmentos - 1 and duracion > 6.0:
-        print(f"⚠️ Nota descartada por duración excesiva: {duracion:.2f}s")
-
-
-        # Si hay silencio significativo, se agrega pausa
-        if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
-            print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
-
-        if abs(pitch_data[i][0] - inicio) > 0.03:   
-            if abs(t - inicio) > 2.0:
-                print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
-            duracion = max(t - inicio, 0)
-            if duracion == 0:
-                continue
-            if duracion > 6.0:
-                print(f"⚠️ Nota descartada por duración demasiado larga: {duracion:.2f}s")
-                continue
-            if duracion > 0.02:  # descartar eventos muy breves
-                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
-                notas_json.append({
-                    "nota": nota_actual,
-                    "inicio": round(inicio, 3),
-                    "duracion": round(max(duracion, 0.03), 3),
-                    "compas": compas,
-                    "figura": figura,
-                    "tempo": int(tempo)
-                })
-            inicio = t
-
-    # Agregar la última nota que se estaba tocando al final del audio
-    duracion = pitch_data[-1][0] - inicio
-    if 0.02 < duracion < 5:  # límite máximo de duración razonable
-        figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
-        notas_json.append({
-            "nota": nota_actual,
-            "inicio": round(inicio, 3),
-            "duracion": round(max(duracion, 0.03), 3),
-            "compas": compas,
-            "figura": figura,
-            "tempo": int(tempo)
+    print("Total tiempo del audio recortado:", duracion_audio_trim, "segundos")
+    print("Segmento duración:", segmento_duracion)
+    print("Número de segmentos:", num_segmentos)
+    for s in range(num_segmentos):
+        inicio_seg = s * segmento_duracion
+        fin_seg = (s + 1) * segmento_duracion
+        print(f"\n🔍 Analizando tramo {s+1}/{num_segmentos} ({inicio_seg:.2f}s - {fin_seg:.2f}s)")
+        # Filtramos solo los pitches de este tramo
+        segmento = [p for p in pitch_data if inicio_seg <= p[0] < fin_seg]
+        if not segmento:
+            print("  ⚠️ Sin datos en este tramo.")
+            continue
+        # Si es el último tramo, suavizamos frecuencias con media móvil (ventana 3)
+        if s == num_segmentos - 1 and len(segmento) >= 3:
+            tiempos_seg = [p[0] for p in segmento]
+            freqs_seg = [p[1] for p in segmento]
+            freqs_suavizadas = np.convolve(freqs_seg, np.ones(3)/3, mode='same')
+            segmento = list(zip(tiempos_seg, freqs_suavizadas))
+        # Inicializamos variables de agrupamiento
+        inicio = segmento[0][0]
+        freq_actual = segmento[0][1]
+        nota_actual = frecuencia_a_nota(freq_actual)
+        for i in range(1, len(segmento)):
+            t, f = segmento[i]
+            #Antes de la condición, mostramos la diferencia en semitonos
+            diferencia_en_semitonos = semitonos(f, freq_actual)
+            print(f"comparando freq_actual={freq_actual:.1f}Hz y f={f:.1f}Hz ⇒ Δ={diferencia_en_semitonos:.3f} semitonos")
+            # Si la nota nueva es diferente (por semitonos), se cierra la nota anterior
+            # Si la nota nueva es suficientemente distinta, cerramos la nota anterior
+            if diferencia_en_semitonos > NOTA_UMBRAL_VARIACION:
+                duracion = t - inicio
+                print(f"    → Duración calculada: {duracion:.3f}s")
+                if duracion >= MIN_DURACION_NOTA:
+                    figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                    notas_json.append({
+                        "nota": nota_actual,
+                        "inicio": round(inicio, 3),
+                        "duracion": round(duracion, 3),
+                        "compas": compas,
+                        "figura": figura,
+                        "tempo": int(tempo)
+                    })
+                # Se actualiza a la nueva nota
+                inicio = t
+                freq_actual = f
+                nota_actual = frecuencia_a_nota(f)
+            # Advertencia si hay separación anormal (solo en último tramo)
+            if s == num_segmentos - 1 and abs(t - inicio) > 2.0:
+                print(f"  ⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+        # Cierre de la última nota del tramo
+        duracion = segmento[-1][0] - inicio
+        if MIN_DURACION_NOTA <= duracion < 6.0:
+            figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+            notas_json.append({
+                "nota": nota_actual,
+                "inicio": round(inicio, 3),
+                "duracion": round(duracion, 3),
+                "compas": compas,
+                "figura": figura,
+                "tempo": int(tempo)
             })
-    if notas_json and notas_json[-1]["duracion"] < 0.05:
-        print(f"⚠️ Nota final descartada por ser demasiado corta: {notas_json[-1]['duracion']}s")
-        notas_json = notas_json[:-1]
+        # Verificación extra de duración excesiva (último tramo)
+        if s == num_segmentos - 1 and duracion > 6.0:
+            print(f"⚠️ Nota descartada por duración excesiva: {duracion:.2f}s")
+
+            # Si hay silencio significativo, se agrega pausa
+            if t - inicio > 1.5:  # más de 1.5 segundos sin notas válidas
+                print(f"Silencio detectado entre {inicio:.2f}s y {t:.2f}s")
+
+            if abs(pitch_data[i][0] - inicio) > 0.03:   
+                if abs(t - inicio) > 2.0:
+                    print(f"⚠️ Agrupamiento raro detectado entre {inicio:.2f}s y {t:.2f}s")
+                duracion = max(t - inicio, 0)
+                if duracion == 0:
+                    continue
+                if duracion > 6.0:
+                    print(f"⚠️ Nota descartada por duración demasiado larga: {duracion:.2f}s")
+                    continue
+                if duracion > 0.02:  # descartar eventos muy breves
+                    figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                    notas_json.append({
+                        "nota": nota_actual,
+                        "inicio": round(inicio, 3),
+                        "duracion": round(max(duracion, 0.03), 3),
+                        "compas": compas,
+                        "figura": figura,
+                        "tempo": int(tempo)
+                    })
+                inicio = t
+
+        # Agregar la última nota que se estaba tocando al final del audio
+        duracion = pitch_data[-1][0] - inicio
+        if 0.02 < duracion < 5:  # límite máximo de duración razonable
+            figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+            notas_json.append({
+                "nota": nota_actual,
+                "inicio": round(inicio, 3),
+                "duracion": round(max(duracion, 0.03), 3),
+                "compas": compas,
+                "figura": figura,
+                "tempo": int(tempo)
+                })
+        if notas_json and notas_json[-1]["duracion"] < 0.05:
+            print(f"⚠️ Nota final descartada por ser demasiado corta: {notas_json[-1]['duracion']}s")
+            notas_json = notas_json[:-1]
+
+# 3) Ahora imprimimos antes y después de filtrar los últimos 2s
+print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
+for n in notas_json:
+    print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
+
+duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
+
+#Filtrar notas muy tardías (últimos 2s) que pueden ser errores de pitch
+# Usamos duracion_audio_trim en lugar de pitch_data[-1][0]:
+#notas_json = [
+#    n for n in notas_json
+#    if n["inicio"] < duracion_audio_trim - 2.0 or n["duracion"] >= 0.1
+#]
+
+print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
+for n in notas_json:
+    print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
 
 with open("notas_detectadas.json", "w") as f:
     json.dump(notas_json, f, indent=2)
