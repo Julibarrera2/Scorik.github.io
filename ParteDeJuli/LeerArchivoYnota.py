@@ -1,19 +1,15 @@
 #Importo librerias
 # Procesamiento de audio
 import librosa
-import librosa.display
 import soundfile as sf
 # Detección de pitch
 import crepe
 # Utilidades numéricas y científicas
 import numpy as np
-import scipy
 # Visualización 
-import matplotlib.pyplot as plt
 import os
 from pydub import AudioSegment
 from pydub.utils import which
-import pygame
 import json
 np.float = float
 
@@ -40,6 +36,30 @@ np.float = float
 # ruta video violin 1: 
 # ruta video violin 2:
 # ruta video violin 3: 
+
+# Utilidades extra para filtrar silencios y notas con poca energía
+def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-40):
+    """Descarta estimaciones de pitch en zonas con poca energía."""
+    hop = int(sr_signal * 0.01)  # 10 ms, coincide con step_size_ms
+    rms = librosa.feature.rms(y=y_signal, hop_length=hop)[0]
+    times = librosa.frames_to_time(np.arange(len(rms)), sr=sr_signal, hop_length=hop)
+    filtrados = []
+    for t, f in pitch_list:
+        idx = np.argmin(np.abs(times - t))
+        if librosa.amplitude_to_db([rms[idx]], ref=np.max)[0] > threshold_db:
+            filtrados.append((t, f))
+    return filtrados
+
+def recortar_final_por_energia(y_signal, sr_signal, threshold_db=-40):
+    """Recorta el final del audio cuando la energía cae por debajo del umbral."""
+    rms = librosa.feature.rms(y=y_signal)[0]
+    db = librosa.amplitude_to_db(rms, ref=np.max)
+    times = librosa.frames_to_time(np.arange(len(rms)), sr=sr_signal)
+    valid = np.where(db > threshold_db)[0]
+    if valid.size == 0:
+        return y_signal
+    end_sample = int(times[valid[-1]] * sr_signal)
+    return y_signal[:end_sample]
 
 #Los directorios de ffmpeg del .exe para que funciones
 AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
@@ -99,7 +119,10 @@ y, sr, filepath= cargar_audio(ruta)
 # de audio esté por debajo de un umbral de decibeles (top_db).
 # Devolvemos y_trimmed (señal sin silencios) y unos índices (start, end) que indican
 # dónde quedó “lo útil” en la grabación original.
+#Recorte inicial de silencio
 y_trim, index_trim = librosa.effects.trim(y, top_db=20)
+# Recorte extra por energía para evitar ruidos finales
+y_trim = recortar_final_por_energia(y_trim, sr)
 y = y_trim
 # (sr permanece igual; sr sigue siendo la misma frecuencia de muestreo que ya tenías)
 
@@ -143,6 +166,11 @@ def detectar_pitch(y_local, sr_local, step_size_ms=10, threshold=0.9):
     return pitches_filtradas
 # Ahora usamos y_trim para la detección
 pitches = detectar_pitch(y_trim, sr)
+# Filtrado adicional de ruido por energía
+pitches = filtrar_pitch_por_energia(pitches, y_trim, sr)
+# Eliminar últimos dos segundos para evitar falsas detecciones
+dur_trim = librosa.get_duration(y=y_trim, sr=sr)
+pitches = [p for p in pitches if p[0] < dur_trim - 2.0]
 print("Primeros 10 pitches:", pitches[:10])
 
 #Pasar de pitch a nota
@@ -170,6 +198,7 @@ y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
 
 # Otra vez recortamos silencio (para beat-track y CREPE “manual”)
 y_trim2, idx_trim2 = librosa.effects.trim(y_full2, top_db=20)
+y_trim2 = recortar_final_por_energia(y_trim2, sr_full2)
 dur_trim2 = librosa.get_duration(y=y_trim2, sr=sr_full2)
 print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
 
@@ -186,11 +215,10 @@ pitch_data = [
     (t, f) for t, f, c in zip(time, frequency, confidence)
     if c > 0.9 and 30 < f < 1200
 ]
-print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
-
-#Eliminar los últimos 2 segundos de pitch_data para evitar detecciones erróneas
+pitch_data = filtrar_pitch_por_energia(pitch_data, y[:,0] if y.ndim > 1 else y, sr)
 duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
 #pitch_data = [p for p in pitch_data if p[0] < duracion_audio_trim - 2.0]
+print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
 
 print("→ Cantidad de frames en pitch_data:", len(pitch_data))
 print("→ Primeros 10 frames:", pitch_data[:10])
@@ -360,8 +388,34 @@ sr = 16000
 
 # Función para generar una onda senoidal por nota
 def generar_onda(freq, duracion, sr=16000, volumen=1.0):
+    # t: vector temporal
     t = np.linspace(0, duracion, int(sr * duracion), False)
-    onda = volumen * np.sin(2 * np.pi * freq * t)
+
+    # --- Construimos una envolvente ADSR muy simple ---
+    env = np.ones_like(t)
+    ataque_sec = 0.01   # 10 ms de ataque
+    decay_sec  = 0.1    # 100 ms de decay
+    sustain_lv = 0.8    # nivel de sustain
+
+    # convertir a muestras
+    n_ataque = int(sr * ataque_sec)
+    n_decay  = int(sr * decay_sec)
+
+    # ataque (ramp up)
+    if n_ataque < len(env):
+        env[:n_ataque] = np.linspace(0, 1, n_ataque)
+
+    # decay (ramp down a sustain_lv)
+    inicio_decay = n_ataque
+    fin_decay    = n_ataque + n_decay
+    if fin_decay < len(env):
+        env[inicio_decay:fin_decay] = np.linspace(1, sustain_lv, n_decay)
+        env[fin_decay:] = sustain_lv
+    else:
+        env[inicio_decay:] = np.linspace(1, sustain_lv, len(env) - inicio_decay)
+
+    # --- finalmente la senoide por nota con la envolvente aplicada ---
+    onda = volumen * env * np.sin(2 * np.pi * freq * t)
     return onda.astype(np.float32)
 
 # Crear la pista de audio completa
@@ -371,7 +425,26 @@ def generar_onda(freq, duracion, sr=16000, volumen=1.0):
 rms = librosa.feature.rms(y=y, frame_length=2048, hop_length=512)[0]
 rms_times = librosa.frames_to_time(np.arange(len(rms)), sr=sr)
 
-audio_total = np.array([], dtype=np.float32)
+# 1) Volvemos a leer el JSON (para asegurarnos de la ruta actual)
+with open("notas_detectadas.json", "r") as f:
+    notas = json.load(f)
+if not notas:
+    print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
+    exit()
+
+# 2) Leemos el WAV original para medir su duración real
+audio_original, sr_original = sf.read(filepath)  # filepath viene de tu cargar_audio(...)
+dur_audio = len(audio_original) / sr_original
+
+# 3) Calculamos la última nota del JSON
+dur_json = max(n["inicio"] + n["duracion"] for n in notas)
+
+# 4) Escogemos la duración máxima
+dur_max = max(dur_audio, dur_json)
+
+# 5) Precreamos un buffer lleno de ceros de la longitud necesaria
+total_samples = int(np.ceil(dur_max * sr_original))
+audio_total = np.zeros(total_samples, dtype=np.float32)
 tiempo_actual = 0.0
 
 for nota in notas:
