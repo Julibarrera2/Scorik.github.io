@@ -96,22 +96,6 @@ def cargar_audio(filepath, sr=22050):
 #Carga el audio a la ruta
 y, sr, filepath= cargar_audio(ruta)
 
-#Confirmacion con el usuario si el archivo esta bien
-# Luego de cargar_audio(...)
-# def abrir_wav(path):
-    # print(f"Reproduciendo {path}...")
-    # pygame.init()
-    # pygame.mixer.init()
-    # pygame.mixer.music.load(path)
-    # pygame.mixer.music.play()
-    # while pygame.mixer.music.get_busy():
-    #     continue   
-# abrir_wav(filepath)
-# confirm = input("¿Querés continuar con este archivo .wav? (s/n): ").strip().lower()
-# if confirm != 's':
-#     print("Proceso detenido. Revisá el archivo original.")
-#     exit()
-
 # ---------------------------------------------------------
 # 1) RECORTAR SILENCIOS DEL FINAL (librosa.effects.trim):
 # ---------------------------------------------------------
@@ -361,13 +345,6 @@ for n in notas_json:
 
 duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
 
-#Filtrar notas muy tardías (últimos 2s) que pueden ser errores de pitch
-# Usamos duracion_audio_trim en lugar de pitch_data[-1][0]:
-#notas_json = [
-#    n for n in notas_json
-#    if n["inicio"] < duracion_audio_trim - 2.0 or n["duracion"] >= 0.1
-#]
-
 print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
 for n in notas_json:
     print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
@@ -383,147 +360,63 @@ if not notas:
     print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
     exit()
 
-# Frecuencia de muestreo para el audio de salida
-sr = 16000
-
-# Función para generar una onda senoidal por nota
-def generar_onda(freq, duracion, sr=16000, volumen=1.0):
-    # t: vector temporal
-    t = np.linspace(0, duracion, int(sr * duracion), False)
-
-    # --- Construimos una envolvente ADSR muy simple ---
-    env = np.ones_like(t)
-    ataque_sec = 0.01   # 10 ms de ataque
-    decay_sec  = 0.1    # 100 ms de decay
-    sustain_lv = 0.8    # nivel de sustain
-
-    # convertir a muestras
-    n_ataque = int(sr * ataque_sec)
-    n_decay  = int(sr * decay_sec)
-
-    # ataque (ramp up)
-    if n_ataque < len(env):
-        env[:n_ataque] = np.linspace(0, 1, n_ataque)
-
-    # decay (ramp down a sustain_lv)
-    inicio_decay = n_ataque
-    fin_decay    = n_ataque + n_decay
-    if fin_decay < len(env):
-        env[inicio_decay:fin_decay] = np.linspace(1, sustain_lv, n_decay)
-        env[fin_decay:] = sustain_lv
-    else:
-        env[inicio_decay:] = np.linspace(1, sustain_lv, len(env) - inicio_decay)
-
-    # --- finalmente la senoide por nota con la envolvente aplicada ---
-    onda = volumen * env * np.sin(2 * np.pi * freq * t)
-    return onda.astype(np.float32)
-
-# Crear la pista de audio completa
-# Ajustar duración del output al input si es necesario
-# Ajustar duración del output al input si es necesario
-# Calcular RMS del audio original por ventanas
-rms = librosa.feature.rms(y=y, frame_length=2048, hop_length=512)[0]
-rms_times = librosa.frames_to_time(np.arange(len(rms)), sr=sr)
-
-# 1) Volvemos a leer el JSON (para asegurarnos de la ruta actual)
+# 1) Cargo notas y compruebo que existan
 with open("notas_detectadas.json", "r") as f:
     notas = json.load(f)
 if not notas:
-    print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
+    print("⚠️ No hay notas para reconstruir. Abortando.")
     exit()
 
-# 2) Leemos el WAV original para medir su duración real
-audio_original, sr_original = sf.read(filepath)  # filepath viene de tu cargar_audio(...)
-dur_audio = len(audio_original) / sr_original
+# 2) Cargo WAV original para sample rate y duración
+audio_original, sr_original = sf.read(filepath)
+expected_duration = len(audio_original) / sr_original
 
-# 3) Calculamos la última nota del JSON
-dur_json = max(n["inicio"] + n["duracion"] for n in notas)
-
-# 4) Escogemos la duración máxima
-dur_max = max(dur_audio, dur_json)
-
-# 5) Precreamos un buffer lleno de ceros de la longitud necesaria
-total_samples = int(np.ceil(dur_max * sr_original))
+# 3) Preparo buffer de salida alineado al input
+sr_out = sr_original
+total_samples = int(np.ceil(expected_duration * sr_out))
 audio_total = np.zeros(total_samples, dtype=np.float32)
-tiempo_actual = 0.0
 
-for nota in notas:
-    nombre = nota["nota"]
-    inicio = nota["inicio"]
-    duracion = nota["duracion"]
-    freq = notas_dict.get(nombre, None)
+# 4) Función ADSR para generar onda por nota
+def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
+    t = np.linspace(0, duracion, int(sr * duracion), False)
+    env = np.ones_like(t)
+    n_ataque = int(sr * 0.01)
+    n_decay = int(sr * 0.1)
+    # Ataque
+    env[:n_ataque] = np.linspace(0, 1, n_ataque)
+    # Decay → sustain
+    if n_ataque + n_decay < len(env):
+        env[n_ataque:n_ataque+n_decay] = np.linspace(1, 0.8, n_decay)
+        env[n_ataque+n_decay:] = 0.8
+    else:
+        env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
+    return (volumen * env * np.sin(2*np.pi*freq*t)).astype(np.float32)
 
-    if freq is None:
+# 5) Inserto cada nota en su posición exacta
+for n in notas:
+    freq = notas_dict.get(n["nota"])
+    if freq is None or n["duracion"] <= 0 or n["duracion"] > 5.0:
         continue
+    start = int(n["inicio"] * sr_out)
+    wave = generar_onda(freq, n["duracion"], sr_out, volumen=1.0)
+    end = start + len(wave)
+    if start < total_samples:
+        audio_total[start:min(end, total_samples)] += wave[:max(0, total_samples-start)]
 
-    # Evitar notas excesivamente largas por error
-    if duracion > 5.0:
-        continue
+# 6) Aplico un fade-out suave en los últimos 10 segundos
+fade_dur = min(10.0, expected_duration)
+fs = int(fade_dur * sr_out)
+fade_env = np.linspace(1.0, 0.0, fs)
+audio_total[-fs:] *= fade_env
 
-    # Calcular energía (RMS) local para ajustar volumen
-    rms_local = next((r for t_, r in zip(rms_times, rms) if abs(t_ - inicio) < 0.05), 0.03)
-    volumen = np.clip(rms_local * 3, 0.05, 1.0)
+# 7) Normalizo para éviter clipping
+peak = np.max(np.abs(audio_total))
+if peak > 0:
+    audio_total /= peak
 
-    if rms_local < 0.01:
-        continue  # evitar sonidos en zonas silenciosas
-
-    # Insertar silencio si la nota no arranca justo después de la anterior
-    if inicio > tiempo_actual:
-        silencio = np.zeros(int(sr * (inicio - tiempo_actual)))
-        audio_total = np.concatenate((audio_total, silencio))
-        tiempo_actual = inicio
-
-    # Generar onda y sumarla al audio
-    onda = generar_onda(freq, duracion, sr, volumen)
-    audio_total = np.concatenate((audio_total, onda))
-    tiempo_actual += duracion
-
-# Asegurarse que la duración final coincida con el input original
-# Calcular duración real del archivo WAV original (antes del resampleo estéreo)
-expected_duration = librosa.get_duration(path=filepath)
-actual_duration = librosa.get_duration(y=audio_total, sr=sr)
-
-if actual_duration > expected_duration:
-    print(f"⚠️ Duración excedida por {actual_duration - expected_duration:.2f}s, recortando.")
-    audio_total = audio_total[:int(expected_duration * sr)]
-elif actual_duration < expected_duration:
-    padding = np.zeros(int((expected_duration - actual_duration) * sr))
-    audio_total = np.concatenate((audio_total, padding))
-
-# Normalizar para evitar clipping y controlar el volumen
-rms = np.sqrt(np.mean(audio_total**2))
-if rms > 0.5:
-    print(f"⚠️ RMS alto ({rms:.2f}), bajando volumen.")
-    audio_total *= 0.7  # reducir volumen general si está muy fuerte
-# Normalizar (re-asegurar que el valor máximo sea 1.0 o menos)
-if np.max(np.abs(audio_total)) > 0:
-    if len(audio_total) < 10 or np.all(audio_total == 0):
-        print("⚠️ Error: El audio generado está vacío o contiene solo silencio.")
-        exit()
-    audio_total = audio_total / np.max(np.abs(audio_total))
-
-
-# Guardar en un archivo WAV
-sf.write("reconstruccion.wav", audio_total, sr)
-print("Archivo 'reconstruccion.wav' generado correctamente.")
-
-# Solución: revisar si el final está vacío y forzar un fade out si es necesario
-if np.max(np.abs(audio_total[-sr * 2:])) < 0.01:  # Últimos 2 segundos muy silenciosos
-    print("⚠️ El final del audio reconstruido está silencioso. Se aplicará fade-out o corrección.")
-    duracion_restante = expected_duration - librosa.get_duration(y=audio_total, sr=sr)
-    if duracion_restante > 0:
-        padding = np.zeros(int(sr * duracion_restante))
-        audio_total = np.concatenate((audio_total, padding))
-#Chequeo con el usuario
-# abrir_wav("reconstruccion.wav")
-# confirm = input("¿La reconstrucción suena similar al archivo original? (s/n): ").strip().lower()
-# if confirm == 's':
-#     with open("notas_detectadas.json", "w") as f:
-#         json.dump(notas_json, f, indent=2)
-#     print("✅ Archivo JSON exportado correctamente.")
-# else:
-#     print("❌ Proceso detenido. La reconstrucción no fue satisfactoria.")
-#     exit()
+# 8) Guardo el WAV reconstruido
+sf.write("reconstruccion.wav", audio_total, sr_out)
+print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
 
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
