@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>  
 <html lang="en" x-data="{ sidebarOpen: false, activeSection: 'library' }" x-init="checkAuth()">
 <head>
 <meta charset="UTF-8">
@@ -10,30 +10,39 @@
     html, body {
         height: 100%;
         margin: 0;
-        background-color: #5AE9DD;
+        background-color: #fefefe;
         overflow: hidden;
         font-family: Arial, sans-serif;
     }
 
-    /* Sidebar estilo primer versión */
+    /* Sidebar */
     .sidebar {
         position: fixed;
         top: 0;
         left: 0;
         width: 250px;
         height: 100%;
-        background-color: #6b2bd97c; /* Semitransparente */
+        background-color: #814ac495; /* Morado claro */
         transform: translateX(-100%);
         transition: transform 0.3s ease;
         z-index: 1000;
         display: flex;
         flex-direction: column;
-        padding-top: 100px;
         align-items: center;
+        padding-top: 80px;
+        box-sizing: border-box;
     }
     .sidebar.open {
         transform: translateX(0);
     }
+
+    .menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-grow: 1;
+    }
+
     .menu-button {
         background-color: #ffffff;
         color: #8300F6;
@@ -42,28 +51,53 @@
         border-radius: 20px;
         padding: 10px 20px;
         margin: 15px 0;
-        width: 150px;
+        width: 170px;
         cursor: pointer;
-        transition: background-color 0.3s;
+        font-size: 16px;
+        text-align: center;
     }
     .menu-button:hover {
         background-color: #e0d7f8;
     }
+
+    .logout-btn {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        margin-bottom: 20px;
+        width: 100px;
+        cursor: pointer;
+        font-size: 16px;
+        text-align: center;
+    }
+    .logout-btn:hover {
+        background-color: #c82333;
+    }
+
+    .bottom-area {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
     .bottom-icon {
-        position: absolute;
-        bottom: 20px;
+        margin-bottom: 20px;
         cursor: pointer;
     }
 
     /* Top bar */
     .top-bar {
-        height: 70px;
+        height: 100px;
+        width: 100%;
         background-color: #5AE9DD;
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0 20px;
-        border-bottom: 5px solid #6b00d6;
+        box-sizing: border-box;
     }
     .menu-btn {
         background: none;
@@ -91,7 +125,7 @@
 
     /* Main Container */
     .content {
-        height: calc(100% - 70px);
+        height: calc(100% - 100px);
         overflow: auto;
     }
 
@@ -172,22 +206,6 @@
         font-size: 20px;
         margin-left: 10px;
     }
-
-    /* Botón volver a biblioteca en search */
-    .back-button {
-        margin-top: 40px;
-        background-color: #8300F6;
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 10px 30px;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-    .back-button:hover {
-        background-color: #6700c4;
-    }
 </style>
 </head>
 <body>
@@ -195,20 +213,25 @@
 <!-- Top bar -->
 <div class="top-bar">
     <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">≡</button>
-    <div class="top-title"@click="activeSection = 'library'">biblioteca</div>
+    <div class="top-title" @click="activeSection = 'library'">biblioteca</div>
     <button class="search-btn" @click="activeSection = 'search'">🔍</button>
 </div>
 
 <!-- Sidebar -->
 <div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">mp3 to music sheet</button>
-    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">Library</button>
-    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">Editor</button>
-    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">Create</button>
-    <div class="bottom-icon" @click="sidebarOpen = false">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+    <div class="menu">
+        <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+        <button class="menu-button" onclick="location.href='library.html'">Library</button>
+        <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
+        <button class="menu-button" onclick="location.href='create.html'">Create</button>
+    </div>
+    <div class="bottom-area">
+        <button class="logout-btn" @click="logout">Logout</button>
+        <div class="bottom-icon" @click="sidebarOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+                <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
     </div>
 </div>
 
@@ -235,6 +258,8 @@
             <div class="search-box">
                 <input type="text" placeholder="Search...">
                 <div class="search-icon">🔍</div>
+            </div>
+        </div>
     </div>
 </div>
 

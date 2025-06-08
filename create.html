@@ -1,66 +1,39 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ sidebarOpen: false }" x-init="checkAuth()">
+<html lang="en" x-data="{ sidebarOpen: false, grid: Array(24).fill(false) }" x-init="checkAuth()">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard</title>
+<title>Editor de Partitura</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <style>
-    body {
-        background-color: #5AE9DD;
-    }
-    .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 250px;
-    height: 100%;
-    background-color: #6b2bd97c;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    }
-    .sidebar.open {
-    transform: translateX(0);
-    }
-    .sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    }
-    .sidebar li {
-    padding: 15px 20px;
-    color: rgb(18, 18, 18);
-    cursor: pointer;
-    }
-    .sidebar li:hover {
-    background-color: #5521b5e6;
-    }
-    .menu-btn {
-        position: fixed;
-        display: column;
-        top: 20px;
-        left: 20px;
-    }
-    .logout-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
+    html, body {
+        height: 100%;
+        margin: 0;
+        background-color: white;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
     }
 
-    .menu-btn{
+    /* Sidebar */
+    .sidebar {
         position: fixed;
-        display: column;
-        top: 20px;
-        left: 20px;
-    }
-    .menu {
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #6b2bd97c;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding-top: 20px;
+        padding-top: 100px;
     }
-
+    .sidebar.open {
+        transform: translateX(0);
+    }
     .menu-button {
         background-color: #ffffff;
         color: #8300f6cf;
@@ -70,50 +43,136 @@
         padding: 10px 20px;
         margin: 15px 0;
         width: 150px;
+        cursor: pointer;
     }
-
     .menu-button:hover {
         background-color: #e0d7f8;
         transform: scale(1.05);
+    }
+    .bottom-icon {
+        position: absolute;
+        bottom: 20px;
+        cursor: pointer;
+    }
+
+    /* Top bar */
+    .top-bar {
+        height: 100px;
+        width: 100%;
+        background-color:#5AE9DD;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        box-sizing: border-box;
+    }
+
+    .menu-btn {
+        background: none;
+        border: none;
+        font-size: 32px;
+        cursor: pointer;
+        color: #6b00d6;
+    }
+
+    /* create content */
+    .create-container {
+        height: calc(100% - 70px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: start;
+        padding: 20px;
+    }
+    .create-title {
+        color: #6b00d6;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    .sheet {
+        width: 120px;
+        height: 180px;
+        background-color: lime;
+        margin-bottom: 30px;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-rows: repeat(4, 40px);
+        gap: 5px;
+        background-color: #9B00F6;
+        padding: 10px;
+        border-radius: 20px;
+        width: 300px;
+        height: auto;
+        margin-bottom: 30px;
+    }
+    .grid div {
+        background-color: #c18cff;
+        border: 2px solid #6b00d6;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .grid div.active {
+        background-color: #6b00d6;
+    }
+    .save-btn {
+        background-color: #5AE9DD;
+        color: #6b00d6;
+        font-weight: bold;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 30px;
+        cursor: pointer;
+    }
+    .save-btn:hover {
+        background-color: #3cd8ca;
     }
 </style>
 </head>
 <body>
 
-<!-- Menu Button -->
-<div class="container text-center mt-5">
-<button class="btn btn-primary menu-btn" @click="sidebarOpen = !sidebarOpen">☰ Open Menu</button>
+<!-- Top bar -->
+<div class="top-bar">
+    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">≡</button>
 </div>
-
-<!-- Logout Button -->
-<button class="btn btn-danger logout-btn" @click="logout">Logout</button>
 
 <!-- Sidebar -->
 <div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-
-<div class="menu">
     <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
     <button class="menu-button" onclick="location.href='library.html'">Library</button>
     <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
     <button class="menu-button" onclick="location.href='create.html'">Create</button>
+    <button class="btn btn-danger logout-btn" @click="logout">Logout</button>
+    <div class="bottom-icon" @click="sidebarOpen = false">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
 </div>
-<div class="bottom-icon" @click="sidebarOpen = false">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-</div>
+
+<!-- Main content -->
+<div class="create-container">
+    <div class="create-title">Create</div>
+    <div class="sheet"></div>
+    <div class="grid">
+        <template x-for="(active, index) in grid" :key="index">
+            <div :class="{ 'active': active }" @click="grid[index] = !grid[index]"></div>
+        </template>
+    </div>
+    <button class="save-btn">save</button>
 </div>
 
 <script>
 function checkAuth() {
-if (!localStorage.getItem('currentUser')) {
-    window.location.href = 'login.html';
+    if (!localStorage.getItem('currentUser')) {
+        window.location.href = 'login.html';
+    }
 }
-}
-
 function logout() {
-localStorage.removeItem('currentUser');
-window.location.href = 'index.html';
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
 }
 </script>
 
