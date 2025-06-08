@@ -1,60 +1,39 @@
-<!DOCTYPE html>
-<html lang="en" x-data="{ sidebarOpen: false }" x-init="checkAuth()">
+<!DOCTYPE html> 
+<html lang="en" x-data="{ sidebarOpen: false, activeSection: 'library' }" x-init="checkAuth()">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard</title>
+<title>Biblioteca & Shearch</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <style>
-    body {
+    html, body {
+        height: 100%;
+        margin: 0;
         background-color: #5AE9DD;
-    }
-    .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 250px;
-    height: 100%;
-    background-color: #6b2bd97c;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    }
-    .sidebar.open {
-    transform: translateX(0);
-    }
-    .sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    }
-    .sidebar li {
-    padding: 15px 20px;
-    color: rgb(18, 18, 18);
-    cursor: pointer;
-    }
-    .sidebar li:hover {
-    background-color: #5521b5e6;
-    }
-    .menu-btn {
-        position: fixed;
-        display: column;
-        top: 20px;
-        left: 20px;
-    }
-    .logout-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    }
-    
-    .menu {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 20px;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
     }
 
+    /* Sidebar estilo primer versión */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #6b2bd97c; /* Semitransparente */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        padding-top: 100px;
+        align-items: center;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
     .menu-button {
         background-color: #ffffff;
         color: #8300F6;
@@ -64,54 +43,211 @@
         padding: 10px 20px;
         margin: 15px 0;
         width: 150px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         cursor: pointer;
-        transition: background-color 0.3s, transform 0.2s;
+        transition: background-color 0.3s;
     }
-
     .menu-button:hover {
         background-color: #e0d7f8;
-        transform: scale(1.05);
+    }
+    .bottom-icon {
+        position: absolute;
+        bottom: 20px;
+        cursor: pointer;
     }
 
+    /* Top bar */
+    .top-bar {
+        height: 70px;
+        background-color: #5AE9DD;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        border-bottom: 5px solid #6b00d6;
+    }
+    .menu-btn {
+        background: none;
+        border: none;
+        font-size: 32px;
+        cursor: pointer;
+        color: #6b00d6;
+    }
+    .top-title {
+        background-color: #9B00F6;
+        color: white;
+        border-radius: 25px;
+        padding: 8px 40px;
+        font-weight: bold;
+        font-size: 20px;
+        text-align: center;
+    }
+    .search-btn {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: #6b00d6;
+    }
+
+    /* Main Container */
+    .content {
+        height: calc(100% - 70px);
+        overflow: auto;
+    }
+
+    /* Library Section */
+    .library {
+        padding: 20px;
+        text-align: center;
+    }
+    .library h3 {
+        color: #6b00d6;
+        margin-bottom: 20px;
+        font-weight: bold;
+        text-decoration: underline;
+    }
+    .cards {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .card {
+        width: 100px;
+        height: 140px;
+        background-color: lime;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        border-radius: 10px;
+        font-weight: bold;
+        color: #6b00d6;
+    }
+    .card img {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 10px;
+    }
+
+    /* Search Section */
+    .search-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 100px;
+    }
+    .search-title {
+        background-color: #9B00F6;
+        color: white;
+        border-radius: 25px;
+        padding: 10px 40px;
+        font-weight: bold;
+        font-size: 20px;
+        margin-bottom: 40px;
+    }
+    .search-box {
+        background-color: white;
+        border: 5px solid #9B00F6;
+        border-bottom-width: 15px;
+        border-radius: 30px 30px 20px 20px;
+        padding: 10px 20px;
+        width: 350px;
+        display: flex;
+        align-items: center;
+    }
+    .search-box input {
+        border: none;
+        outline: none;
+        flex: 1;
+        font-size: 18px;
+        padding: 5px 10px;
+    }
+    .search-icon {
+        background-color: #9B00F6;
+        color: white;
+        padding: 10px 12px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 20px;
+        margin-left: 10px;
+    }
+
+    /* Botón volver a biblioteca en search */
+    .back-button {
+        margin-top: 40px;
+        background-color: #8300F6;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 10px 30px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .back-button:hover {
+        background-color: #6700c4;
+    }
 </style>
 </head>
 <body>
 
-<!-- Menu Button -->
-<div class="container text-center mt-5">
-<button class="btn btn-primary menu-btn" @click="sidebarOpen = !sidebarOpen">☰ Open Menu</button>
+<!-- Top bar -->
+<div class="top-bar">
+    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">≡</button>
+    <div class="top-title"@click="activeSection = 'library'">biblioteca</div>
+    <button class="search-btn" @click="activeSection = 'search'">🔍</button>
 </div>
-
-<!-- Logout Button -->
-<button class="btn btn-danger logout-btn" @click="logout">Logout</button>
 
 <!-- Sidebar -->
 <div :class="{ 'sidebar': true, 'open': sidebarOpen }">
+    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">mp3 to music sheet</button>
+    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">Library</button>
+    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">Editor</button>
+    <button class="menu-button" @click="activeSection = 'library'; sidebarOpen = false;">Create</button>
+    <div class="bottom-icon" @click="sidebarOpen = false">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+</div>
 
-<div class="menu">
-    <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-    <button class="menu-button" onclick="location.href='library.html'">Library</button>
-    <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
-    <button class="menu-button" onclick="location.href='create.html'">Create</button>
-</div>
-<div class="bottom-icon" @click="sidebarOpen = false">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-</div>
+<!-- Main content -->
+<div class="content">
+    <div x-show="activeSection === 'library'" x-transition.opacity.duration.500ms>
+        <div class="library">
+            <h3>recientes</h3>
+            <div class="cards">
+                <div class="card">
+                    <img src="https://img.icons8.com/ios/50/plus.png" alt="plus">
+                </div>
+                <div class="card">Sheet #1</div>
+                <div class="card">Sheet #1</div>
+                <div class="card">Sheet #1</div>
+                <div class="card">Sheet #1</div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="activeSection === 'search'" x-transition.opacity.duration.500ms>
+        <div class="search-section">
+            <div class="search-title">shearch</div>
+            <div class="search-box">
+                <input type="text" placeholder="Search...">
+                <div class="search-icon">🔍</div>
+    </div>
 </div>
 
 <script>
 function checkAuth() {
-if (!localStorage.getItem('currentUser')) {
-    window.location.href = 'login.html';
-}
+    if (!localStorage.getItem('currentUser')) {
+        window.location.href = 'login.html';
+    }
 }
 
 function logout() {
-localStorage.removeItem('currentUser');
-window.location.href = 'index.html';
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
 }
 </script>
 

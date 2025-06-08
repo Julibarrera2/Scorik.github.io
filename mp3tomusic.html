@@ -1,5 +1,5 @@
-<!DOCTYPE html>
-<html lang="en" x-data="{ sidebarOpen: false }" x-init="checkAuth()">
+<!DOCTYPE html> 
+<html lang="en" x-data="{ sidebarOpen: false, activeTab: 'mp3' }" x-init="checkAuth()">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,57 +8,54 @@
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <style>
     body {
-    background-color: #5AE9DD;
+        background-color: #ffffff;
+        margin: 0;
+        padding: 0;
     }
     .sidebar {
-    position: fixed;
-    top: 0;
-    left:0;
-    width: 250px;
-    height: 100%;
-    background-color: #6b2bd97c;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #6b2bd97c;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
     }
     .sidebar.open {
-    transform: translateX(0);
+        transform: translateX(0);
     }
     .sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+        list-style: none;
+        padding: 0;
+        margin: 0;
     }
     .sidebar li {
-    padding: 15px 20px;
-    color: rgb(18, 18, 18);
-    cursor: pointer;
+        padding: 15px 20px;
+        color: rgb(18, 18, 18);
+        cursor: pointer;
     }
     .sidebar li:hover {
-    background-color: #5521b5e6;
+        background-color: #5521b5e6;
     }
     .menu-btn {
-    margin: 20px;
-    }
-    .logout-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    }
-
-    .menu-btn{
-        position: fixed;
-        display: column;
+        position: absolute;
         top: 20px;
         left: 20px;
+        background: transparent;
+        border: none;
+        font-size: 30px;
+        color: #6b00d6;
+        cursor: pointer;
+        z-index: 1001;
     }
-
     .menu {
         display: flex;
         flex-direction: column;
         align-items: center;
         padding-top: 20px;
     }
-
     .menu-button {
         background-color: #ffffff;
         color: #8300F6;
@@ -72,91 +69,126 @@
         cursor: pointer;
         transition: background-color 0.3s, transform 0.2s;
     }
-
     .menu-button:hover {
         background-color: #e0d7f8;
         transform: scale(1.05);
+    }
+    .barra-menu {
+        background-color: #5AE9DD;
+        width: 100%;
+        height: 70px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .tab-buttons {
+        display: flex;
+        gap: 20px;
+    }
+    .tab-buttons button {
+        background-color: #9B00F6;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 10px 30px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+    }
+    .tab-buttons button.active {
+        background-color: #3e0076;
+    }
+    main {
+        background-color: white;
+        border-radius: 10px;
+        padding: 30px;
+        margin: 50px auto;
+        width: 90%;
+        max-width: 600px;
+        text-align: center;
+    }
+    .custom-btn {
+        background-color: #8300F6;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 15px 30px;
+        margin: 20px 0;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 250px;
+    }
+    .custom-btn:hover {
+        background-color: #6700c4;
+    }
+    p {
+        color: #6b00d6;
+        font-weight: normal;
+        margin-bottom: 30px;
     }
 </style>
 </head>
 <body>
 
-<!-- Menu Button -->
-<div class="container text-center mt-5">
-<button class="btn btn-primary menu-btn" @click="sidebarOpen = !sidebarOpen">☰ Open Menu</button>
+<!-- Barra superior con botón menú y tabs -->
+<div class="barra-menu">
+    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">☰</button>
+    <div class="tab-buttons">
+        <button :class="{ 'active': activeTab === 'mp3' }" @click="activeTab = 'mp3'">mp3</button>
+        <button :class="{ 'active': activeTab === 'sheet' }" @click="activeTab = 'sheet'">music sheet</button>
+    </div>
 </div>
-
-<!-- Logout Button -->
-<button class="btn btn-danger logout-btn" @click="logout">Logout</button>
 
 <!-- Sidebar -->
 <div :class="{ 'sidebar': true, 'open': sidebarOpen }">
+    <div class="menu">
+        <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+        <button class="menu-button" onclick="location.href='library.html'">Library</button>
+        <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
+        <button class="menu-button" onclick="location.href='create.html'">Create</button>
+    </div>
+    <div class="bottom-icon" @click="sidebarOpen = false">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+</div>
 
-<div class="menu">
-    <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-    <button class="menu-button" onclick="location.href='library.html'">Library</button>
-    <button class="menu-button" onclick="location.href='editor.html'">Editor</button>
-    <button class="menu-button" onclick="location.href='create.html'">Create</button>
-</div>
-<div class="bottom-icon" @click="sidebarOpen = false">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-</div>
-</div>
+<!-- Main content -->
+<main>
+    <template x-if="activeTab === 'mp3'">
+        <div>
+            <p>Please first chose what instrument do you play and then select you audio.</p>
+            <button class="custom-btn">select instrument</button><br>
+            <button class="custom-btn">select mp3</button>
+        </div>
+    </template>
+
+    <template x-if="activeTab === 'sheet'">
+        <div>
+            <p>Upload or create your music sheet.</p>
+            <button class="custom-btn">upload sheet</button><br>
+            <button class="custom-btn">create new sheet</button>
+        </div>
+    </template>
+</main>
 
 <script>
 function checkAuth() {
-if (!localStorage.getItem('currentUser')) {
-    window.location.href = 'login.html';
-}
+    if (!localStorage.getItem('currentUser')) {
+        window.location.href = 'login.html';
+    }
 }
 
 function logout() {
-localStorage.removeItem('currentUser');
-window.location.href = 'index.html';
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
 }
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
-
-
-
-
-    <main class="container my-5 text-center">
-    <h2 class="fw-bold mb-1">audio to music sheets</h2>
-    <p class="text-muted mb-4">mp3 to music sheet</p>
-
-    <div class="row justify-content-center mb-3">
-    <div class="col-md-4 mb-2">
-        <label class="form-label fw-semibold">select instrument</label>
-        <select class="form-select" id="instrumentSelect">
-        <option value="">Selecciona un instrumento</option>
-        <option value="piano">Piano</option>
-        <option value="guitarra">Guitarra</option>
-        <option value="violín">Violín</option>
-        </select>
-    </div>
-    <div class="col-md-4 mb-2">
-        <label class="form-label fw-semibold">select mp3</label>
-        <input class="form-control" type="file" id="fileInput" accept=".mp3" />
-    </div>
-    </div>
-
-    <button class="btn btn-primary px-4" id="processBtn">Processing...</button>
-    <p class="text-danger mt-3 fw-semibold" id="warning" style="display:none;">
-    Please first choose what instrument do you play and then select your audio.
-    </p>
-
-    <section class="mt-5">
-    <h3 class="fw-bold mb-3">Library</h3>
-    <div class="row g-3 justify-content-center" id="libraryCards"></div>
-    </section>
-
-    </main>
-    
-
-
 </html>
