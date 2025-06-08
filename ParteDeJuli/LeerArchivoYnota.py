@@ -166,9 +166,13 @@ def frecuencia_a_nota(freq):
 # Ruta al .wav convertido
 #Carga el WAV A 16000 Hz y recórtalo también con librosa.trim
 ruta_wav = filepath 
+# señal original en mono
+y_mono = y_trim.copy()  
+# para CREPE, crea un arreglo (N,1)
+y_crepe = y_mono[:, np.newaxis]
 y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
 y_trim2=y_full2
-dur_trim2 = librosa.get_duration(y=y, sr=sr)
+dur_trim2 = len(y[:,0] if y.ndim>1 else y) / sr
 print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
 
 # Usamos y_trim para todo lo siguiente:
@@ -179,7 +183,7 @@ tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
 if len(y.shape) == 1:
     y = np.expand_dims(y, axis=1)
 
-time, frequency, confidence, _ = crepe.predict(y, sr, step_size=10, viterbi=True)
+time, frequency, confidence, _ = crepe.predict(y_mono, sr, step_size=10, viterbi=True)
 pitch_data = [
     (t, f) for t, f, c in zip(time, frequency, confidence)
     if c > 0.9 and 30 < f < 1200
@@ -283,13 +287,13 @@ if not notas:
     exit()
 
 # 2) Cargo WAV original para sample rate y duración
-audio_original, sr_out = sf.read(filepath)
+audio_original, sr_out = sf.read (filepath)
 total_samples = audio_original.shape[0]       # número real de muestras
 audio_total   = np.zeros(total_samples, dtype=np.float32)
 
 
 # 3) Preparo buffer de salida alineado al input
-dur_trim2 = librosa.get_duration(y=y, sr=sr) 
+dur_trim2 = librosa.get_duration(y=y_mono, sr=sr)
 total_samples = int(np.ceil(dur_trim2 * sr_out))
 audio_total = np.zeros(total_samples, dtype=np.float32)
 
