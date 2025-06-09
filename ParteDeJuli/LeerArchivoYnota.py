@@ -172,7 +172,7 @@ y_mono = y_trim.copy()
 y_crepe = y_mono[:, np.newaxis]
 y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
 y_trim2=y_full2
-dur_trim2 = len(y[:,0] if y.ndim>1 else y) / sr
+dur_trim2 = len(y_full2) / sr_full2
 print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
 
 # Usamos y_trim para todo lo siguiente:
@@ -288,14 +288,20 @@ if not notas:
 
 # 2) Cargo WAV original para sample rate y duración
 audio_original, sr_out = sf.read (filepath)
-total_samples = audio_original.shape[0]       # número real de muestras
-audio_total   = np.zeros(total_samples, dtype=np.float32)
-
+# Si es estéreo, mantenemos los 2 canales; si no, mono:
+if audio_original.ndim > 1:
+    n_chan = audio_original.shape[1]
+    # Preparo buffer con misma forma que el original
+    audio_total = np.zeros_like(audio_original, dtype=np.float32)
+else:
+    n_chan = 1
+    audio_total = np.zeros_like(audio_original, dtype=np.float32)
+total_samples = audio_total.shape[0]
 
 # 3) Preparo buffer de salida alineado al input
-dur_trim2 = librosa.get_duration(y=y_mono, sr=sr)
+dur_trim2    = len(y_full2) / sr_full2
 total_samples = int(np.ceil(dur_trim2 * sr_out))
-audio_total = np.zeros(total_samples, dtype=np.float32)
+audio_total   = np.zeros(total_samples, dtype=np.float32)
 
 # 4) Función ADSR para generar onda por nota
 def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
@@ -318,11 +324,47 @@ for n in notas:
     freq = notas_dict.get(n["nota"])
     if freq is None or n["duracion"] <= 0 or n["duracion"] > 5.0:
         continue
+    # 5) Inserto cada nota en su posición exacta, con normalización local y chequeo de solapamientos
     start = int(n["inicio"] * sr_out)
     wave = generar_onda(freq, n["duracion"], sr_out, volumen=1.0)
     end = start + len(wave)
-    if start < total_samples:
+# — 2A) Normalización local: igualo el RMS de 'wave' al RMS del segmento original en [start:end]
+# extraigo segmento mono del original para comparar RMS
+    if audio_original.ndim > 1:
+        orig_seg = audio_original[start:end].mean(axis=1)
+    else:
+        orig_seg = audio_original[start:end]
+    rms_orig = np.sqrt(np.mean(orig_seg**2)) + 1e-8
+    rms_wave = np.sqrt(np.mean(wave**2)) + 1e-8
+    wave *= (rms_orig / rms_wave)
+# — 2B) Detección de overlaps (“clipping potencial”) —
+# comprobamos si al sumar wave + ya existente se supera ±1.0
+    if audio_total.ndim == 1:
+        existing = audio_total[start:end]
+        if np.any(np.abs(existing + wave) > 1.0):
+            print(f"⚠️ Clipping potencial en nota {n['nota']} inicio {n['inicio']:.3f}s")
+        # inserción mono
         audio_total[start:min(end, total_samples)] += wave[:max(0, total_samples-start)]
+    else:
+        # para estéreo, comprobamos sobre la mezcla y luego duplicamos wave a 2 canales
+        existing = audio_total[start:end].mean(axis=1)
+        if np.any(np.abs(existing + wave) > 1.0):
+            print(f"⚠️ Clipping potencial en nota {n['nota']} inicio {n['inicio']:.3f}s")
+    # duplico wave en ambos canales (ajusta si tu paneo es distinto)
+    stereo_wave = np.column_stack([wave]*audio_total.shape[1])
+    audio_total[start:min(end, total_samples), :] += stereo_wave[:max(0, total_samples-start), :]
+
+
+# — Recortar silencios residuales al final —
+if n_chan > 1:
+    # work sobre mezcla para encontrar el punto de corte
+    mix = audio_total.mean(axis=1)
+    cut = len(recortar_final_por_energia(mix, sr_out))
+    audio_total = audio_total[:cut, :]
+else:
+    audio_total = recortar_final_por_energia(audio_total, sr_out)
+# Y actualizo total_samples por si cambió
+total_samples = audio_total.shape[0]
 
 # 6) Aplico un fade-out suave en los últimos 10 segundos
 expected_duration = total_samples / sr_out
