@@ -30,9 +30,9 @@ np.float = float
 # ruta video violin 3: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-3.mp3
 
 #Links ruta Notebook ORT
-# ruta video: NOSE
-# ruta ffmpeg: NOSE
-# ruta ffprobe: NOSE
+# ruta video: 
+# ruta ffmpeg: 
+# ruta ffprobe: 
 # ruta video violin 1: 
 # ruta video violin 2:
 # ruta video violin 3: 
