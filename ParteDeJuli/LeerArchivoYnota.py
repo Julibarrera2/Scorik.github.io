@@ -344,21 +344,23 @@ for n in notas:
 
     # Cortar al buffer real
     slice_end = min(end, total_samples)
-    existing   = audio_total[start: slice_end]
-    wave_part  = wave[: len(existing)]   # ← ¡Clave! ahora ambos tienen la misma longitud
+    existing   = audio_total[start: slice_end]      # shape = (M,) o (M,2)
+    wave_part  = wave[: len(existing)]              # shape = (M,)
+
+    # --- aquí está el cambio clave ---
+    if existing.ndim == 1:
+        # Mono
+        mix = existing + wave_part                 # (M,) + (M,)  OK
+    else:
+        # Estéreo: convierto wave_part en (M,1) para que se repita en ambos canales
+        mix = existing + wave_part[:, np.newaxis]  # (M,2) + (M,1) → (M,2)
 
     # Compruebo clipping potencial
-    mix = existing + wave_part
     if np.any(np.abs(mix) > 1.0):
         print(f"⚠️ Clipping potencial en nota {n['nota']} @ {n['inicio']:.3f}s")
+    # Asigno de vuelta al buffer
+    audio_total[start: slice_end] = mix
 
-    # Sumo al buffer (mono o estéreo)
-    if audio_total.ndim == 1:
-        audio_total[start: slice_end] = mix
-    else:
-        # replicamos la onda a cada canal
-        stereo_wave = np.column_stack([wave_part] * audio_total.shape[1])
-        audio_total[start: slice_end, :] = audio_total[start: slice_end, :] + stereo_wave
 
 # — Recortar silencios residuales al final —
 if n_chan > 1:
