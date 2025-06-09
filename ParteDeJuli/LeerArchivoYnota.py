@@ -333,29 +333,32 @@ for n in notas:
     wave  = generar_onda(freq, n["duracion"], sr_out, volumen=1.0)
     end   = start + len(wave)
 
-    # --- Normalización local por RMS ---
+    # Normalización local por RMS (igualar volumen local al original)
     if audio_original.ndim > 1:
-        orig_seg = audio_original[start:end].mean(axis=1)
+        orig_seg = audio_original[start: min(end, total_samples)].mean(axis=1)
     else:
-        orig_seg = audio_original[start:end]
+        orig_seg = audio_original[start: min(end, total_samples)]
     rms_orig = np.sqrt(np.mean(orig_seg**2)) + 1e-8
     rms_wave = np.sqrt(np.mean(wave**2))     + 1e-8
     wave *= (rms_orig / rms_wave)
 
+    # Cortar al buffer real
+    slice_end = min(end, total_samples)
+    existing   = audio_total[start: slice_end]
+    wave_part  = wave[: len(existing)]   # ← ¡Clave! ahora ambos tienen la misma longitud
+
+    # Compruebo clipping potencial
+    mix = existing + wave_part
+    if np.any(np.abs(mix) > 1.0):
+        print(f"⚠️ Clipping potencial en nota {n['nota']} @ {n['inicio']:.3f}s")
+
+    # Sumo al buffer (mono o estéreo)
     if audio_total.ndim == 1:
-        # Mono
-        existing = audio_total[start:end]
-        if np.any(np.abs(existing + wave) > 1.0):
-            print(f"⚠️ Clipping potencial en nota {n['nota']} @ {n['inicio']:.3f}s")
-        audio_total[start:min(end, total_samples)] += wave[:max(0, total_samples-start)]
+        audio_total[start: slice_end] = mix
     else:
-        # Estéreo
-        existing = audio_total[start:end].mean(axis=1)
-        if np.any(np.abs(existing + wave) > 1.0):
-            print(f"⚠️ Clipping potencial en nota {n['nota']} @ {n['inicio']:.3f}s")
-        # replicamos la onda a ambos canales
-        stereo_wave = np.column_stack([wave] * audio_total.shape[1])
-        audio_total[start:min(end, total_samples), :] += stereo_wave[:max(0, total_samples-start), :]
+        # replicamos la onda a cada canal
+        stereo_wave = np.column_stack([wave_part] * audio_total.shape[1])
+        audio_total[start: slice_end, :] = audio_total[start: slice_end, :] + stereo_wave
 
 # — Recortar silencios residuales al final —
 if n_chan > 1:
