@@ -22,12 +22,12 @@ np.float = float
 # ruta video violin 3: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-3.mp3
 
 #Links ruta Notebook personal
-# ruta video: c:\Users\fb050\OneDrive\Desktop\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
+# ruta video: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
-# ruta video violin 1: 
-# ruta video violin 2:
-# ruta video violin 3:
+# ruta video violin 1: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-1.mp3
+# ruta video violin 2: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-2.mp3
+# ruta video violin 3: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-3.mp3
 
 #Links ruta Notebook ORT
 # ruta video: NOSE
@@ -62,11 +62,11 @@ def recortar_final_por_energia(y_signal, sr_signal, threshold_db=-60):
     return y_signal[:end_sample]
 
 #Los directorios de ffmpeg del .exe para que funciones
-AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+AudioSegment.converter = which("ffmpeg") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+AudioSegment.ffprobe = which("ffprobe") or r"c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
 #Ruta del archivo
-ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
+ruta = r"c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
 
 #verificás si el archivo .mp3 realmente está en esa ruta.
 if not os.path.exists(ruta):
@@ -298,10 +298,14 @@ else:
     audio_total = np.zeros_like(audio_original, dtype=np.float32)
 total_samples = audio_total.shape[0]
 
-# 3) Preparo buffer de salida alineado al input
-dur_trim2    = len(y_full2) / sr_full2
-total_samples = int(np.ceil(dur_trim2 * sr_out))
-audio_total   = np.zeros(total_samples, dtype=np.float32)
+# 3) Preparo buffer de salida alineado al input (mantiene canales)
+if audio_original.ndim > 1:
+    # Si viene con canales (>1), creamos un buffer (samples, canales)
+    n_channels = audio_original.shape[1]
+    audio_total = np.zeros((total_samples, n_channels), dtype=np.float32)
+else:
+    # Mono
+    audio_total = np.zeros(total_samples, dtype=np.float32)
 
 # 4) Función ADSR para generar onda por nota
 def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
@@ -324,36 +328,34 @@ for n in notas:
     freq = notas_dict.get(n["nota"])
     if freq is None or n["duracion"] <= 0 or n["duracion"] > 5.0:
         continue
-    # 5) Inserto cada nota en su posición exacta, con normalización local y chequeo de solapamientos
+
     start = int(n["inicio"] * sr_out)
-    wave = generar_onda(freq, n["duracion"], sr_out, volumen=1.0)
-    end = start + len(wave)
-# — 2A) Normalización local: igualo el RMS de 'wave' al RMS del segmento original en [start:end]
-# extraigo segmento mono del original para comparar RMS
+    wave  = generar_onda(freq, n["duracion"], sr_out, volumen=1.0)
+    end   = start + len(wave)
+
+    # --- Normalización local por RMS ---
     if audio_original.ndim > 1:
         orig_seg = audio_original[start:end].mean(axis=1)
     else:
         orig_seg = audio_original[start:end]
     rms_orig = np.sqrt(np.mean(orig_seg**2)) + 1e-8
-    rms_wave = np.sqrt(np.mean(wave**2)) + 1e-8
+    rms_wave = np.sqrt(np.mean(wave**2))     + 1e-8
     wave *= (rms_orig / rms_wave)
-# — 2B) Detección de overlaps (“clipping potencial”) —
-# comprobamos si al sumar wave + ya existente se supera ±1.0
+
     if audio_total.ndim == 1:
+        # Mono
         existing = audio_total[start:end]
         if np.any(np.abs(existing + wave) > 1.0):
-            print(f"⚠️ Clipping potencial en nota {n['nota']} inicio {n['inicio']:.3f}s")
-        # inserción mono
+            print(f"⚠️ Clipping potencial en nota {n['nota']} @ {n['inicio']:.3f}s")
         audio_total[start:min(end, total_samples)] += wave[:max(0, total_samples-start)]
     else:
-        # para estéreo, comprobamos sobre la mezcla y luego duplicamos wave a 2 canales
+        # Estéreo
         existing = audio_total[start:end].mean(axis=1)
         if np.any(np.abs(existing + wave) > 1.0):
-            print(f"⚠️ Clipping potencial en nota {n['nota']} inicio {n['inicio']:.3f}s")
-    # duplico wave en ambos canales (ajusta si tu paneo es distinto)
-    stereo_wave = np.column_stack([wave]*audio_total.shape[1])
-    audio_total[start:min(end, total_samples), :] += stereo_wave[:max(0, total_samples-start), :]
-
+            print(f"⚠️ Clipping potencial en nota {n['nota']} @ {n['inicio']:.3f}s")
+        # replicamos la onda a ambos canales
+        stereo_wave = np.column_stack([wave] * audio_total.shape[1])
+        audio_total[start:min(end, total_samples), :] += stereo_wave[:max(0, total_samples-start), :]
 
 # — Recortar silencios residuales al final —
 if n_chan > 1:
