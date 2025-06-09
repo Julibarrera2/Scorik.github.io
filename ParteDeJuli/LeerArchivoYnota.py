@@ -31,8 +31,8 @@ np.float = float
 
 #Links ruta Notebook ORT
 # ruta video: 
-# ruta ffmpeg: 
-# ruta ffprobe: 
+# ruta ffmpeg: C:\Users\48592310\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
+# ruta ffprobe: C:\Users\48592310\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
 # ruta video violin 1: 
 # ruta video violin 2:
 # ruta video violin 3: 
