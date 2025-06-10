@@ -148,7 +148,7 @@ pitches = detect_pitch(y_trim, sr)
 pitches = filtrar_pitch_por_energia(pitches, y_trim, sr)
 # Eliminar últimos dos segundos para evitar falsas detecciones
 dur_trim = librosa.get_duration(y=y_trim, sr=sr)
-pitches = [p for p in pitches if p[0] < dur_trim - 2.0]
+pitches = [p for p in pitches if p[0] < dur_trim - 0.2 or p[1] > 100]
 print("Primeros 10 pitches:", pitches[:10])
 
 #Pasar de pitch a nota
@@ -295,11 +295,7 @@ else:
 
 def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
     t = np.linspace(0, dur, int(sr * dur), endpoint=False)
-    wave = (
-        np.sin(2*np.pi*freq*t) + 
-        0.5*np.sin(2*np.pi*2*freq*t) + 
-        0.3*np.sin(2*np.pi*3*freq*t)
-    )
+    wave = np.sin(2 * np.pi * freq * t)
     env = np.ones_like(t)
     n_ataque = int(sr * 0.01)
     n_decay = int(sr * 0.1)
@@ -381,12 +377,12 @@ else:
 # Genero el env de fade (1D)
 fade_env = np.linspace(1.0, 0.0, fs)
 
-if audio_total.ndim == 1:
+#f audio_total.ndim == 1:
     # Mono: multiplico directamente
-    audio_total[-fs:] *= fade_env
-else:
+#   audio_total[-fs:] *= fade_env
+#else:
     # Estéreo: extiendo fade_env a (fs,1) para aplicarlo a ambas columnas
-    audio_total[-fs:, :] *= fade_env[:, np.newaxis]
+#   audio_total[-fs:, :] *= fade_env[:, np.newaxis]
 
 # 7) Normalizo para éviter clipping
 peak = np.max(np.abs(audio_total))
