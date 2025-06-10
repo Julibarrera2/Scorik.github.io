@@ -270,6 +270,13 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
 tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
 notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
 
+def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
+    with open("notas_detectadas.json", "w") as f:
+        json.dump(notas_json, f, indent=2)
+
+write_notes_to_json(notas_json)
+print("✅ Archivo 'notas_detectadas.json' generado correctamente.")
+
 # 3) Ahora imprimimos antes y después de filtrar los últimos 2s
 print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
 for n in notas_json:
@@ -280,10 +287,6 @@ duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
 print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
 for n in notas_json:
     print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
-
-def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
-    with open("notas_detectadas.json", "w") as f:
-        json.dump(notas_json, f, indent=2)
 
 #Testeo con una devolucion de un archivo .wav
 # Cargar notas desde el JSON
@@ -320,21 +323,19 @@ else:
     audio_total = np.zeros(audio_total.shape, dtype=np.float32)
 
 def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
-    # 4) Función ADSR para generar onda por nota
-    def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
-        t = np.linspace(0, duracion, int(sr * duracion), False)
-        env = np.ones_like(t)
-        n_ataque = int(sr * 0.01)
-        n_decay = int(sr * 0.1)
-        # Ataque
-        env[:n_ataque] = np.linspace(0, 1, n_ataque)
-        # Decay → sustain
-        if n_ataque + n_decay < len(env):
-            env[n_ataque:n_ataque+n_decay] = np.linspace(1, 0.8, n_decay)
-            env[n_ataque+n_decay:] = 0.8
-        else:
-            env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
-        return (volumen * env * np.sin(2*np.pi*freq*t)).astype(np.float32)
+    t = np.linspace(0, dur, int(sr * dur), False)
+    env = np.ones_like(t)
+    n_ataque = int(sr * 0.01)
+    n_decay = int(sr * 0.1)
+    # Ataque
+    env[:n_ataque] = np.linspace(0, 1, n_ataque)
+    # Decay → sustain
+    if n_ataque + n_decay < len(env):
+        env[n_ataque:n_ataque+n_decay] = np.linspace(1, 0.8, n_decay)
+        env[n_ataque+n_decay:] = 0.8
+    else:
+        env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
+    return (volume * env * np.sin(2*np.pi*freq*t)).astype(np.float32)
 
 # 5) Inserto cada nota en su posición exacta
 for n in notas:
