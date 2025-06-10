@@ -288,20 +288,22 @@ if not notas:
 # 1) Cargo notas y compruebo que existan
 with open("notas_detectadas.json", "r") as f:
     notas = json.load(f)
-if not notas:
-    print("⚠️ No hay notas para reconstruir. Abortando.")
-    exit()
 
 # 2) Cargo WAV original para sample rate y duración
 audio_original, sr_original = sf.read (filepath)
 expected_duration = len(audio_original) / sr_original
 sr_out=sr_original
 
-# 3) Preparo buffer de salida con la misma longitud exacta
+# 3) FILTRAR NOTAS QUE SALEN DEL RANGO DEL AUDIO
+expected_duration = len(audio_original) / sr_original
+notas = [
+    n for n in notas
+    if n["inicio"] + n["duracion"] <= expected_duration
+]
+
+# 3 bis) Preparo buffer de salida alineado al input (mantiene canales)
 total_samples = int(np.ceil(expected_duration * sr_original))
 audio_total = np.zeros((total_samples, ) + (() if audio_original.ndim == 1 else (audio_original.shape[1],)), dtype=np.float32)
-
-# 3) Preparo buffer de salida alineado al input (mantiene canales)
 if audio_original.ndim > 1:
     n_channels = audio_original.shape[1]
     audio_total = np.zeros((audio_original.shape[0], n_channels), dtype=np.float32)
@@ -327,11 +329,12 @@ def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
 
 # 5) Inserto cada nota en su posición exacta
 for n in notas:
+    freq = notas_dict[n["nota"]]
     start = int(n["inicio"] * sr_out)
     end   = start + int(n["duracion"] * sr_out)
 
     # extraigo el audio ORIGINAL (mono o estéreo)
-    wave = audio_original[start:end].copy()
+    wave = generar_onda(freq, n["duracion"], sr=sr_out, volumen=1.0)
 
     # opcional: un pequeño cross-fade para evitar clicks de borde
     fade_ms = int(0.005 * sr_out)
@@ -379,16 +382,6 @@ mix = existing + wave_part                      # suma elemento a elemento
 # Clip para evitar valores fuera de [-1,1]
 audio_total[start: slice_end] = np.clip(mix, -1.0, 1.0)
 
-
-# — Recortar silencios residuales al final —
-if audio_total.ndim == 1:
-    audio_total = recortar_final_por_energia(audio_total, sr_out)
-else:
-    # trabajo sobre la mezcla promedio
-    mix = audio_total.mean(axis=1)
-    cut = len(recortar_final_por_energia(mix, sr_out))
-    audio_total = audio_total[:cut,:]
-
 # 6) Aplico un fade-out suave en los últimos 10 segundos
 fade_dur = min(10.0, expected_duration)
 fs = int(fade_dur * sr_original)
@@ -414,7 +407,6 @@ if peak > 0:
     audio_total /= peak
 
 # 8) Guardo el WAV reconstruido
-audio_total = recortar_final_por_energia(audio_total, sr_out)
 sf.write("reconstruccion.wav", audio_total, sr_out)
 print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
 
