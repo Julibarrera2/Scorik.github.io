@@ -10,6 +10,7 @@ import numpy as np
 import os
 from pydub import AudioSegment
 from pydub.utils import which
+from typing import List, Tuple, Dict
 import json
 import warnings
 np.float = float
@@ -70,39 +71,39 @@ AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ff
 #Ruta del archivo
 ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
 
-#verificás si el archivo .mp3 realmente está en esa ruta.
-if not os.path.exists(ruta):
-    raise FileNotFoundError(f"Archivo no encontrado: {ruta}")
 
-def cargar_audio(filepath, sr=22050):
+def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarray, int, str]:
     #Carga un archivo de audio. Si es .mp3 lo convierte a .wav automáticamente.
     # Parámetros:- filepath: Ruta al archivo de audio - sr: Frecuencia de muestreo deseada (por defecto 22050 Hz)
     # Devuelve:- y: señal de audio como array numpy - sr: frecuencia de muestreo
     # Verificar extensión del archivo
+    
+    #verificás si el archivo .mp3 realmente está en esa ruta.
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
+    
     filename, ext = os.path.splitext(filepath)
-
     # Si es .mp3, convertir a .wav
     if ext.lower() == ".mp3":
         print("Convirtiendo .mp3 a .wav...")
         audio_mp3 = AudioSegment.from_mp3(filepath)
         filepath_wav = filename + ".wav"
         audio_mp3.export(filepath_wav, format="wav")
-        filepath = filepath_wav  # Actualiza la ruta para usar el nuevo .wav
-
+        filepath = filepath_wav
     # Cargar el archivo .wav
-    print(f"Cargando archivo: {filepath}")
+    sr = int(sr)
     y, sr = librosa.load(filepath, sr=sr)
     print("Audio cargado correctamente.")
     return y, sr, filepath
 
 #Carga el audio a la ruta
-y, sr, filepath= cargar_audio(ruta)
+y, sr, filepath = load_and_preprocess_audio(ruta)
 
 # dejamos y_trim apuntando a toda la señal original:
 y_trim = y
 
 #DETECTAR PITCH
-def detectar_pitch(y_local, sr_local, step_size_ms=10, threshold=0.9):
+def detect_pitch(y: np.ndarray, sr: int, threshold=0.9) -> List[Tuple[float, float]]:
     #Usa CREPE para detectar el pitch en una señal de audio.
     #Parámetros:
     # y: señal de audio   
@@ -111,22 +112,24 @@ def detectar_pitch(y_local, sr_local, step_size_ms=10, threshold=0.9):
     #threshold: umbral de confianza mínima (0 a 1)
     # Devuelve:
     #pitches_filtradas: lista de notas detectadas con tiempo y frecuencia
+    step_size_ms=10
+    threshold=0.9
     print("Detectando pitch con CREPE...")
 
     # CREPE necesita un sample rate de 16000
     #Resampleo a 16000 Hz: CREPE solo funciona con 16000 Hz, por lo tanto si cargamos a 22050 Hz lo transformamos.
-    if sr_local != 16000:
-        y_local = librosa.resample(y_local, orig_sr=sr_local, target_sr=16000)
-        sr_local = 16000
+    if sr != 16000:
+        y = librosa.resample(y, orig_sr=sr, target_sr=16000)
+        sr = 16000
     
     # CREPE requiere una señal estéreo
     #Reformateo del audio: CREPE espera entrada estéreo (matriz Nx1).
-    if len(y_local.shape) == 1:
-        y_local = np.expand_dims(y_local, axis=1)
+    if len(y.shape) == 1:
+        y = np.expand_dims(y, axis=1)
     
     # Ejecutamos CREPE
     #crepe.predict(...): Devuelve arrays de tiempo, frecuencia, confianza y activación
-    time, frequency, confidence, _ = crepe.predict(y_local, sr_local, step_size=step_size_ms,viterbi=True)
+    time, frequency, confidence, _ = crepe.predict(y, sr, step_size=step_size_ms,viterbi=True)
 
     # Filtrar por confianza
     #Filtro de confianza: descartamos predicciones dudosas (ej: menos de 0.8 de confianza).
@@ -135,11 +138,12 @@ def detectar_pitch(y_local, sr_local, step_size_ms=10, threshold=0.9):
         if c >= threshold and 30 < f < 1200:
             pitches_filtradas.append((t, f))  # tiempo y frecuencia
     
-    #printeamois la informacion
+        #printeamois la informacion
     print(f"Se detectaron {len(pitches_filtradas)} pitches con confianza > {threshold}.")
     return pitches_filtradas
+
 # Ahora usamos y_trim para la detección
-pitches = detectar_pitch(y_trim, sr)
+pitches = detect_pitch(y_trim, sr)
 # Filtrado adicional de ruido por energía
 pitches = filtrar_pitch_por_energia(pitches, y_trim, sr)
 # Eliminar últimos dos segundos para evitar falsas detecciones
@@ -162,106 +166,109 @@ notas_dict = {
     'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77, 'C6': 1046.50, 'C#6': 1108.73
 }
 
-def frecuencia_a_nota(freq):
-    return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
+def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, notas_dict: Dict[str, float]) -> List[Dict]:
+    def frecuencia_a_nota(freq):
+        return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
+    # Ruta al .wav convertido
+    #Carga el WAV A 16000 Hz y recórtalo también con librosa.trim
+    ruta_wav = filepath 
+    # señal original en mono
+    y_mono = y_trim.copy()  
+    # para CREPE, crea un arreglo (N,1)
+    y_crepe = y_mono[:, np.newaxis]
+    audio_original, sr_out = sf.read(filepath)
+    # Mantener duración completa:
+    total_samples = audio_original.shape[0]
+    audio_total = np.zeros_like(audio_original, dtype=np.float32)
+    y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
+    dur_trim2 = len(y_full2) / sr_full2
+    print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
 
-# Ruta al .wav convertido
-#Carga el WAV A 16000 Hz y recórtalo también con librosa.trim
-ruta_wav = filepath 
-# señal original en mono
-y_mono = y_trim.copy()  
-# para CREPE, crea un arreglo (N,1)
-y_crepe = y_mono[:, np.newaxis]
-audio_original, sr_out = sf.read(filepath)
-# Mantener duración completa:
-total_samples = audio_original.shape[0]
-audio_total = np.zeros_like(audio_original, dtype=np.float32)
-y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
-dur_trim2 = len(y_full2) / sr_full2
-print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
+    # Usamos y_trim para todo lo siguiente:
+    y_trim2 = y_full2
+    y = y_trim2
+    sr = sr_full2  # en este bloque sr siempre será 16000
 
-# Usamos y_trim para todo lo siguiente:
-y_trim2 = y_full2
-y = y_trim2
-sr = sr_full2  # en este bloque sr siempre será 16000
+    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+    if len(y.shape) == 1:
+        y = np.expand_dims(y, axis=1)
 
-tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-if len(y.shape) == 1:
-    y = np.expand_dims(y, axis=1)
+    time, frequency, confidence, _ = crepe.predict(y_mono, sr, step_size=10, viterbi=True)
+    pitch_data = [
+        (t, f) for t, f, c in zip(time, frequency, confidence)
+        if c > 0.9 and 30 < f < 1200
+    ]
+    pitch_data = filtrar_pitch_por_energia(pitch_data, y[:,0] if y.ndim > 1 else y, sr)
+    duracion_audio_trim = float(librosa.get_duration(y=y, sr=sr))
+    print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
 
-time, frequency, confidence, _ = crepe.predict(y_mono, sr, step_size=10, viterbi=True)
-pitch_data = [
-    (t, f) for t, f, c in zip(time, frequency, confidence)
-    if c > 0.9 and 30 < f < 1200
-]
-pitch_data = filtrar_pitch_por_energia(pitch_data, y[:,0] if y.ndim > 1 else y, sr)
-duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
-print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
+    print("→ Cantidad de frames en pitch_data:", len(pitch_data))
+    print("→ Primeros 10 frames:", pitch_data[:10])
 
-print("→ Cantidad de frames en pitch_data:", len(pitch_data))
-print("→ Primeros 10 frames:", pitch_data[:10])
-
-def calcular_figura_y_compas(duracion, tempo, inicio):
-    negra_duracion = 60 / tempo
-    if duracion < negra_duracion * 0.6:
-        figura = "corchea"
-    elif duracion < negra_duracion * 1.2:
-        figura = "negra"
-    elif duracion < negra_duracion * 2.2:
-        figura = "blanca"
-    else:
-        figura = "redonda"
-    compas = int(inicio / (negra_duracion * 4)) + 1
-    return figura, compas
-
-MIN_DURACION_NOTA = 0.01
-NOTA_UMBRAL_VARIACION = 0.25
-
-def semitonos(f1, f2):
-    return abs(12 * np.log2(f1 / f2))
-
-# — AGRUPAR NOTAS EN TODO EL AUDIO SIN SEGMENTACIÓN —
-notas_json = []
-if pitch_data:
-    # Inicializo con la primera detección
-    inicio = pitch_data[0][0]
-    freq_actual = pitch_data[0][1]
-    nota_actual = frecuencia_a_nota(freq_actual)
-
-    for t, f in pitch_data[1:]:
-        # Si cambia de nota (umbral en semitonos)
-        if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
-            duracion = t - inicio
-            if duracion >= MIN_DURACION_NOTA:
-                figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
-                notas_json.append({
-                    "nota": nota_actual,
-                    "inicio": round(inicio, 3),
-                    "duracion": round(duracion, 3),
-                    "compas": compas,
-                    "figura": figura,
-                    "tempo": int(tempo)
-                })
-            # Actualizo para la siguiente nota
-            inicio = t
-            freq_actual = f
-            nota_actual = frecuencia_a_nota(f)
+    def calcular_figura_y_compas(duracion, tempo, inicio):
+        negra_duracion = 60 / tempo
+        if duracion < negra_duracion * 0.6:
+            figura = "corchea"
+        elif duracion < negra_duracion * 1.2:
+            figura = "negra"
+        elif duracion < negra_duracion * 2.2:
+            figura = "blanca"
         else:
-            # Suavizo pequeñas variaciones dentro de la misma nota
-            freq_actual = (freq_actual + f) / 2
+            figura = "redonda"
+        compas = int(inicio / (negra_duracion * 4)) + 1
+        return figura, compas
 
-    # Cierro la última nota al final del audio
-    duracion = pitch_data[-1][0] - inicio
-    if duracion >= MIN_DURACION_NOTA:
-        figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
-        notas_json.append({
-            "nota": nota_actual,
-            "inicio": round(inicio, 3),
-            "duracion": round(duracion, 3),
-            "compas": compas,
-            "figura": figura,
-            "tempo": int(tempo)
-        })
+    MIN_DURACION_NOTA = 0.01
+    NOTA_UMBRAL_VARIACION = 0.25
+
+    def semitonos(f1, f2):
+        return abs(12 * np.log2(f1 / f2))
+
+    # — AGRUPAR NOTAS EN TODO EL AUDIO SIN SEGMENTACIÓN —
+    notas_json = []
+    if pitch_data:
+        # Inicializo con la primera detección
+        inicio = pitch_data[0][0]
+        freq_actual = pitch_data[0][1]
+        nota_actual = frecuencia_a_nota(freq_actual)
+
+        for t, f in pitch_data[1:]:
+            # Si cambia de nota (umbral en semitonos)
+            if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
+                duracion = t - inicio
+                if duracion >= MIN_DURACION_NOTA:
+                    figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+                    notas_json.append({
+                        "nota": nota_actual,
+                        "inicio": round(inicio, 3),
+                        "duracion": round(duracion, 3),
+                        "compas": compas,
+                        "figura": figura,
+                        "tempo": int(tempo)
+                    })
+                #Actualizo para la siguiente nota
+                inicio = t
+                freq_actual = f
+                nota_actual = frecuencia_a_nota(f)
+            else:
+                # Suavizo pequeñas variaciones dentro de la misma nota
+                freq_actual = (freq_actual + f) / 2
+
+        # Cierro la última nota al final del audio
+        duracion = pitch_data[-1][0] - inicio
+        if duracion >= MIN_DURACION_NOTA:
+            figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
+            notas_json.append({
+                "nota": nota_actual,
+                "inicio": round(inicio, 3),
+                "duracion": round(duracion, 3),
+                "compas": compas,
+                "figura": figura,
+                "tempo": int(tempo)
+            })
+        return notas_json
+tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
+notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
 
 # 3) Ahora imprimimos antes y después de filtrar los últimos 2s
 print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
@@ -274,8 +281,9 @@ print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json
 for n in notas_json:
     print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
 
-with open("notas_detectadas.json", "w") as f:
-    json.dump(notas_json, f, indent=2)
+def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
+    with open("notas_detectadas.json", "w") as f:
+        json.dump(notas_json, f, indent=2)
 
 #Testeo con una devolucion de un archivo .wav
 # Cargar notas desde el JSON
@@ -311,21 +319,22 @@ else:
     # Mono
     audio_total = np.zeros(audio_total.shape, dtype=np.float32)
 
-# 4) Función ADSR para generar onda por nota
-def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
-    t = np.linspace(0, duracion, int(sr * duracion), False)
-    env = np.ones_like(t)
-    n_ataque = int(sr * 0.01)
-    n_decay = int(sr * 0.1)
-    # Ataque
-    env[:n_ataque] = np.linspace(0, 1, n_ataque)
-    # Decay → sustain
-    if n_ataque + n_decay < len(env):
-        env[n_ataque:n_ataque+n_decay] = np.linspace(1, 0.8, n_decay)
-        env[n_ataque+n_decay:] = 0.8
-    else:
-        env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
-    return (volumen * env * np.sin(2*np.pi*freq*t)).astype(np.float32)
+def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
+    # 4) Función ADSR para generar onda por nota
+    def generar_onda(freq, duracion, sr=sr_out, volumen=1.0):
+        t = np.linspace(0, duracion, int(sr * duracion), False)
+        env = np.ones_like(t)
+        n_ataque = int(sr * 0.01)
+        n_decay = int(sr * 0.1)
+        # Ataque
+        env[:n_ataque] = np.linspace(0, 1, n_ataque)
+        # Decay → sustain
+        if n_ataque + n_decay < len(env):
+            env[n_ataque:n_ataque+n_decay] = np.linspace(1, 0.8, n_decay)
+            env[n_ataque+n_decay:] = 0.8
+        else:
+            env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
+        return (volumen * env * np.sin(2*np.pi*freq*t)).astype(np.float32)
 
 # 5) Inserto cada nota en su posición exacta
 for n in notas:
@@ -334,7 +343,7 @@ for n in notas:
     end   = start + int(n["duracion"] * sr_out)
 
     # extraigo el audio ORIGINAL (mono o estéreo)
-    wave = generar_onda(freq, n["duracion"], sr=sr_out, volumen=1.0)
+    wave = generate_note_wave(freq, n["duracion"], sr=sr_out, volume=1.0)
 
     # opcional: un pequeño cross-fade para evitar clicks de borde
     fade_ms = int(0.005 * sr_out)
