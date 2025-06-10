@@ -169,36 +169,7 @@ notas_dict = {
 def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, notas_dict: Dict[str, float]) -> List[Dict]:
     def frecuencia_a_nota(freq):
         return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
-    # Ruta al .wav convertido
-    #Carga el WAV A 16000 Hz y recórtalo también con librosa.trim
-    ruta_wav = filepath 
-    # señal original en mono
-    y_mono = y_trim.copy()  
-    # para CREPE, crea un arreglo (N,1)
-    y_crepe = y_mono[:, np.newaxis]
-    audio_original, sr_out = sf.read(filepath)
-    # Mantener duración completa:
-    total_samples = audio_original.shape[0]
-    audio_total = np.zeros_like(audio_original, dtype=np.float32)
-    y_full2, sr_full2 = librosa.load(ruta_wav, sr=16000)
-    dur_trim2 = len(y_full2) / sr_full2
-    print(f"(Beat-track) Audio recortado a {dur_trim2:.2f}s (antes: {len(y_full2)/sr_full2:.2f}s).")
-
-    # Usamos y_trim para todo lo siguiente:
-    y_trim2 = y_full2
-    y = y_trim2
-    sr = sr_full2  # en este bloque sr siempre será 16000
-
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-    if len(y.shape) == 1:
-        y = np.expand_dims(y, axis=1)
-
-    time, frequency, confidence, _ = crepe.predict(y_mono, sr, step_size=10, viterbi=True)
-    pitch_data = [
-        (t, f) for t, f, c in zip(time, frequency, confidence)
-        if c > 0.9 and 30 < f < 1200
-    ]
-    pitch_data = filtrar_pitch_por_energia(pitch_data, y[:,0] if y.ndim > 1 else y, sr)
+    
     duracion_audio_trim = float(librosa.get_duration(y=y, sr=sr))
     print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
 
@@ -218,7 +189,7 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
         compas = int(inicio / (negra_duracion * 4)) + 1
         return figura, compas
 
-    MIN_DURACION_NOTA = 0.01
+    MIN_DURACION_NOTA = 0.1
     NOTA_UMBRAL_VARIACION = 0.25
 
     def semitonos(f1, f2):
@@ -323,19 +294,22 @@ else:
     audio_total = np.zeros(audio_total.shape, dtype=np.float32)
 
 def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
-    t = np.linspace(0, dur, int(sr * dur), False)
+    t = np.linspace(0, dur, int(sr * dur), endpoint=False)
+    wave = (
+        np.sin(2*np.pi*freq*t) + 
+        0.5*np.sin(2*np.pi*2*freq*t) + 
+        0.3*np.sin(2*np.pi*3*freq*t)
+    )
     env = np.ones_like(t)
     n_ataque = int(sr * 0.01)
     n_decay = int(sr * 0.1)
-    # Ataque
-    env[:n_ataque] = np.linspace(0, 1, n_ataque)
-    # Decay → sustain
     if n_ataque + n_decay < len(env):
+        env[:n_ataque] = np.linspace(0, 1, n_ataque)
         env[n_ataque:n_ataque+n_decay] = np.linspace(1, 0.8, n_decay)
         env[n_ataque+n_decay:] = 0.8
     else:
         env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
-    return (volume * env * np.sin(2*np.pi*freq*t)).astype(np.float32)
+    return (volume * wave * env).astype(np.float32)
 
 # 5) Inserto cada nota en su posición exacta
 for n in notas:
@@ -356,18 +330,21 @@ for n in notas:
         else:
             wave[:fade_ms]  *= ramp[:,None]
             wave[-fade_ms:] *= ramp[::-1][:,None]
-    # Me aseguro de que wave y audio_total tienen la misma dimensión:
-    existing = audio_total[start:end]
+
+    
+    # Cortar al buffer real
+    slice_end = min(end, audio_total.shape[0])
+    # Me aseguro de que wave y audio_total tienen la misma dimensión
+    existing = audio_total[start:slice_end]
+    wave = wave[:len(existing)]
+    # si original es estéreo y wave mono, replico la pista
     if existing.ndim == 2 and wave.ndim == 1:
-        # si original es estéreo y wave mono, replico la pista
-        wave = np.tile(wave[:,None], (1, existing.shape[1]))
+        wave = np.tile(wave[:, None], (1, existing.shape[1]))
     # Mezcla directa
     mix = existing + wave
     # Clip si excede [-1,1]
-    audio_total[start:end] = np.clip(mix, -1.0, 1.0)
+    audio_total[start:slice_end] = np.clip(mix, -1.0, 1.0)
 
-    # Cortar al buffer real
-    slice_end = min(end, audio_total.shape[0])
     # Normalización local por RMS (igualar volumen local al original)
     # nuevo: RMS real por frame (ambos canales juntos)
     seg = audio_original[start: slice_end]
@@ -394,7 +371,7 @@ audio_total[start: slice_end] = np.clip(mix, -1.0, 1.0)
 
 # 6) Aplico un fade-out suave en los últimos 10 segundos
 fade_dur = min(10.0, expected_duration)
-fs = int(fade_dur * sr_original)
+fs = min(int(fade_dur * sr_original), len(audio_total))
 fade_env = np.linspace(1.0, 0.0, fs)
 if audio_total.ndim == 1:
     audio_total[-fs:] *= fade_env
