@@ -89,12 +89,7 @@
         font-weight: bold;
         margin-bottom: 20px;
     }
-    .sheet {
-        width: 120px;
-        height: 180px;
-        background-color: lime;
-        margin-bottom: 30px;
-    }
+
     .grid {
         display: grid;
         grid-template-columns: repeat(6, 1fr);
@@ -153,8 +148,8 @@
 
 <!-- Main content -->
 <div class="create-container">
-    <div class="create-title">Create</div>
-    <div class="sheet"></div>
+    <div class="create-title">Edit</div>
+    <img src="Img/partituras.png" alt="">
     <div class="grid">
         <template x-for="(active, index) in grid" :key="index">
             <div :class="{ 'active': active }" @click="grid[index] = !grid[index]"></div>

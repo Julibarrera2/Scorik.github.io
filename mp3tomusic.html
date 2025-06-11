@@ -120,6 +120,8 @@
         font-weight: bold;
         cursor: pointer;
         width: 250px;
+        
+
     }
     .custom-btn:hover {
         background-color: #6700c4;
@@ -128,6 +130,22 @@
         color: #6b00d6;
         font-weight: normal;
         margin-bottom: 30px;
+        font-size: 30px;
+
+    }
+    .custom-btn-part{
+        background-color: #8300F6;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 15px 30px;
+        margin: 20px 0;
+        font-size: 18px;
+        font-weight: bold;
+        width: 250px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 </style>
 </head>
@@ -169,9 +187,10 @@
 
     <template x-if="activeTab === 'sheet'">
         <div>
-            <p>Upload or create your music sheet.</p>
-            <button class="custom-btn">upload sheet</button><br>
-            <button class="custom-btn">create new sheet</button>
+            <p>partitura n.123</p>
+            <img src="Img/partituras.png" alt="">
+            <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
+            <button class="custom-btn-part">save</button>
         </div>
     </template>
 </main>
