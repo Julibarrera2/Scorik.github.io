@@ -1,5 +1,7 @@
 import pytest
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from LeerArchivoYnota import load_and_preprocess_audio
 
 def test_load_and_preprocess_audio():

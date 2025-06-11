@@ -2,6 +2,8 @@ import os
 import json
 import pytest
 from typing import List, Dict
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from LeerArchivoYnota import write_notes_to_json 
 
 #Nota de ejemplo para testear escritura

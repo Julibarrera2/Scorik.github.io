@@ -1,0 +1,4 @@
+Si estás usando pytest (como venimos haciendo), podés ejecutar todos los scripts de test desde tu carpeta tests/ así:
+
+pytest tests > resultado_tests.txt
+

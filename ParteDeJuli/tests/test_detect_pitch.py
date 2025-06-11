@@ -2,7 +2,9 @@ import pytest
 import numpy as np
 import librosa
 from typing import List, Tuple
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Importamos la función que vamos a testear
 from LeerArchivoYnota import detect_pitch
 
