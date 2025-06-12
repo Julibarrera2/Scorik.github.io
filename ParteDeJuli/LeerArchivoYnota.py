@@ -96,11 +96,155 @@ def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarra
     print("Audio cargado correctamente.")
     return y, sr, filepath
 
-#Carga el audio a la ruta
-y, sr, filepath = load_and_preprocess_audio(ruta)
+def main(filepath: str):
+    #Carga el audio a la ruta
+    y, sr, filepath = load_and_preprocess_audio(ruta)
 
-# dejamos y_trim apuntando a toda la señal original:
-y_trim = y
+    # dejamos y_trim apuntando a toda la señal original:
+    y_trim = y
+    
+    #Debajo de detectar pitch va esto
+    # Ahora usamos y_trim para la detección
+    pitches = detect_pitch(y_trim, sr)
+    # Filtrado adicional de ruido por energía
+    pitches = filtrar_pitch_por_energia(pitches, y_trim, sr)
+    # Eliminar últimos dos segundos para evitar falsas detecciones
+    dur_trim = librosa.get_duration(y=y_trim, sr=sr)
+    pitches = [p for p in pitches if p[0] < dur_trim - 0.2 or p[1] > 100]
+    print("Primeros 10 pitches:", pitches[:10])
+
+    #esto va despues de group_pitches_to_notes
+    tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
+    notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
+    write_notes_to_json(notas_json)
+
+    #Esto va a abajo de lo de arriba de generate_note_wave
+    # 3) Ahora imprimimos antes y después de filtrar los últimos 2s
+    print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
+    for n in notas_json:
+        print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
+
+    duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
+
+    print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
+    for n in notas_json:
+        print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
+
+    #Testeo con una devolucion de un archivo .wav
+    # Cargar notas desde el JSON
+    with open("notas_detectadas.json", "r") as f:
+        notas = json.load(f)
+    if not notas:
+        print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
+        exit()
+
+    # 1) Cargo notas y compruebo que existan
+    with open("notas_detectadas.json", "r") as f:
+        notas = json.load(f)
+
+    # 2) Cargo WAV original para sample rate y duración
+    audio_original, sr_original = sf.read (filepath)
+    expected_duration = len(audio_original) / sr_original
+    sr_out=sr_original
+
+    # 3) FILTRAR NOTAS QUE SALEN DEL RANGO DEL AUDIO
+    expected_duration = len(audio_original) / sr_original
+    notas = [
+        n for n in notas
+        if n["inicio"] + n["duracion"] <= expected_duration
+    ]
+
+    # 3 bis) Preparo buffer de salida alineado al input (mantiene canales)
+    total_samples = int(np.ceil(expected_duration * sr_original))
+    audio_total = np.zeros((total_samples, ) + (() if audio_original.ndim == 1 else (audio_original.shape[1],)), dtype=np.float32)
+    if audio_original.ndim > 1:
+        n_channels = audio_original.shape[1]
+        audio_total = np.zeros((audio_original.shape[0], n_channels), dtype=np.float32)
+    else:
+        # Mono
+        audio_total = np.zeros(audio_total.shape, dtype=np.float32)
+    
+    #Esto va despues de la funcion generate_note_wave hasta exportar_json_si_confirmado
+    # 5) Inserto cada nota en su posición exacta
+    for n in notas:
+        freq = notas_dict[n["nota"]]
+        start = int(n["inicio"] * sr_out)
+        end   = start + int(n["duracion"] * sr_out)
+
+        # extraigo el audio ORIGINAL (mono o estéreo)
+        wave = generate_note_wave(freq, n["duracion"], sr=sr_out, volume=1.0)
+
+        # opcional: un pequeño cross-fade para evitar clicks de borde
+        fade_ms = int(0.005 * sr_out)
+        if wave.shape[0] > fade_ms*2:
+            ramp = np.linspace(0,1,fade_ms)
+            if wave.ndim == 1:
+                wave[:fade_ms]  *= ramp
+                wave[-fade_ms:] *= ramp[::-1]
+            else:
+                wave[:fade_ms]  *= ramp[:,None]
+                wave[-fade_ms:] *= ramp[::-1][:,None]
+
+        # Cortar al buffer real
+        slice_end = min(end, audio_total.shape[0])
+        # Me aseguro de que wave y audio_total tienen la misma dimensión
+        existing = audio_total[start:slice_end]
+        wave = wave[:len(existing)]
+        # si original es estéreo y wave mono, replico la pista
+        if existing.ndim == 2 and wave.ndim == 1:
+            wave = np.tile(wave[:, None], (1, existing.shape[1]))
+        # Mezcla directa
+        mix = existing + wave
+        # Clip si excede [-1,1]
+        audio_total[start:slice_end] = np.clip(mix, -1.0, 1.0)
+
+        # Normalización local por RMS (igualar volumen local al original)
+        # nuevo: RMS real por frame (ambos canales juntos)
+        seg = audio_original[start: slice_end]
+        # si es estéreo, promediamos potencias de ambos canales
+        power = seg**2
+        if seg.ndim>1:
+            power = power.mean(axis=1)
+        orig_rms = np.sqrt(np.mean(power)) + 1e-8
+        wave_rms = np.sqrt(np.mean(wave**2))    + 1e-8
+        wave *= (orig_rms / wave_rms)
+
+        # Cortar al buffer real
+    slice_end = min(end, audio_total.shape[0])
+
+    # Extraer los segmentos a mezclar
+    existing  = audio_total[start: slice_end]       # (M,) o (M,2)
+    wave_part = wave[: len(existing)]               # (M,) o (M,2)
+
+    # Mezcla directa, independientemente de mono/estéreo
+    mix = existing + wave_part                      # suma elemento a elemento
+
+    # Clip para evitar valores fuera de [-1,1]
+    audio_total[start: slice_end] = np.clip(mix, -1.0, 1.0)
+
+    # 6) Aplico un fade-out suave en los últimos 10 segundos
+    fade_dur = min(10.0, expected_duration)
+    fs = min(int(fade_dur * sr_original), len(audio_total))
+    fade_env = np.linspace(1.0, 0.0, fs)
+    if audio_total.ndim == 1:
+        audio_total[-fs:] *= fade_env
+    else:
+        audio_total[-fs:, :] *= fade_env[:, None]
+
+    # Genero el env de fade (1D)
+    fade_env = np.linspace(1.0, 0.0, fs)
+
+    # 7) Normalizo para éviter clipping
+    peak = np.max(np.abs(audio_total))
+    if peak > 0:
+        audio_total /= peak
+
+    # 8) Guardo el WAV reconstruido
+    sf.write("reconstruccion.wav", audio_total, sr_out)
+    print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
+    exportar_json_si_confirmado(notas_json)
+
+
 
 #DETECTAR PITCH
 def detect_pitch(y: np.ndarray, sr: int, threshold=0.9) -> List[Tuple[float, float]]:
@@ -141,15 +285,6 @@ def detect_pitch(y: np.ndarray, sr: int, threshold=0.9) -> List[Tuple[float, flo
         #printeamois la informacion
     print(f"Se detectaron {len(pitches_filtradas)} pitches con confianza > {threshold}.")
     return pitches_filtradas
-
-# Ahora usamos y_trim para la detección
-pitches = detect_pitch(y_trim, sr)
-# Filtrado adicional de ruido por energía
-pitches = filtrar_pitch_por_energia(pitches, y_trim, sr)
-# Eliminar últimos dos segundos para evitar falsas detecciones
-dur_trim = librosa.get_duration(y=y_trim, sr=sr)
-pitches = [p for p in pitches if p[0] < dur_trim - 0.2 or p[1] > 100]
-print("Primeros 10 pitches:", pitches[:10])
 
 #Pasar de pitch a nota
 # Diccionario de notas
@@ -238,60 +373,12 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
                 "tempo": int(tempo)
             })
         return notas_json
-tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
-notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
 
 def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
     with open("notas_detectadas.json", "w") as f:
         json.dump(notas_json, f, indent=2)
 
-write_notes_to_json(notas_json)
 print("✅ Archivo 'notas_detectadas.json' generado correctamente.")
-
-# 3) Ahora imprimimos antes y después de filtrar los últimos 2s
-print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
-for n in notas_json:
-    print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
-
-duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
-
-print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
-for n in notas_json:
-    print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
-
-#Testeo con una devolucion de un archivo .wav
-# Cargar notas desde el JSON
-with open("notas_detectadas.json", "r") as f:
-    notas = json.load(f)
-if not notas:
-    print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
-    exit()
-
-# 1) Cargo notas y compruebo que existan
-with open("notas_detectadas.json", "r") as f:
-    notas = json.load(f)
-
-# 2) Cargo WAV original para sample rate y duración
-audio_original, sr_original = sf.read (filepath)
-expected_duration = len(audio_original) / sr_original
-sr_out=sr_original
-
-# 3) FILTRAR NOTAS QUE SALEN DEL RANGO DEL AUDIO
-expected_duration = len(audio_original) / sr_original
-notas = [
-    n for n in notas
-    if n["inicio"] + n["duracion"] <= expected_duration
-]
-
-# 3 bis) Preparo buffer de salida alineado al input (mantiene canales)
-total_samples = int(np.ceil(expected_duration * sr_original))
-audio_total = np.zeros((total_samples, ) + (() if audio_original.ndim == 1 else (audio_original.shape[1],)), dtype=np.float32)
-if audio_original.ndim > 1:
-    n_channels = audio_original.shape[1]
-    audio_total = np.zeros((audio_original.shape[0], n_channels), dtype=np.float32)
-else:
-    # Mono
-    audio_total = np.zeros(audio_total.shape, dtype=np.float32)
 
 def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
     t = np.linspace(0, dur, int(sr * dur), endpoint=False)
@@ -306,92 +393,6 @@ def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
     else:
         env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
     return (volume * wave * env).astype(np.float32)
-
-# 5) Inserto cada nota en su posición exacta
-for n in notas:
-    freq = notas_dict[n["nota"]]
-    start = int(n["inicio"] * sr_out)
-    end   = start + int(n["duracion"] * sr_out)
-
-    # extraigo el audio ORIGINAL (mono o estéreo)
-    wave = generate_note_wave(freq, n["duracion"], sr=sr_out, volume=1.0)
-
-    # opcional: un pequeño cross-fade para evitar clicks de borde
-    fade_ms = int(0.005 * sr_out)
-    if wave.shape[0] > fade_ms*2:
-        ramp = np.linspace(0,1,fade_ms)
-        if wave.ndim == 1:
-            wave[:fade_ms]  *= ramp
-            wave[-fade_ms:] *= ramp[::-1]
-        else:
-            wave[:fade_ms]  *= ramp[:,None]
-            wave[-fade_ms:] *= ramp[::-1][:,None]
-
-    
-    # Cortar al buffer real
-    slice_end = min(end, audio_total.shape[0])
-    # Me aseguro de que wave y audio_total tienen la misma dimensión
-    existing = audio_total[start:slice_end]
-    wave = wave[:len(existing)]
-    # si original es estéreo y wave mono, replico la pista
-    if existing.ndim == 2 and wave.ndim == 1:
-        wave = np.tile(wave[:, None], (1, existing.shape[1]))
-    # Mezcla directa
-    mix = existing + wave
-    # Clip si excede [-1,1]
-    audio_total[start:slice_end] = np.clip(mix, -1.0, 1.0)
-
-    # Normalización local por RMS (igualar volumen local al original)
-    # nuevo: RMS real por frame (ambos canales juntos)
-    seg = audio_original[start: slice_end]
-    # si es estéreo, promediamos potencias de ambos canales
-    power = seg**2
-    if seg.ndim>1:
-        power = power.mean(axis=1)
-    orig_rms = np.sqrt(np.mean(power)) + 1e-8
-    wave_rms = np.sqrt(np.mean(wave**2))    + 1e-8
-    wave *= (orig_rms / wave_rms)
-
-    # Cortar al buffer real
-slice_end = min(end, audio_total.shape[0])
-
-# Extraer los segmentos a mezclar
-existing  = audio_total[start: slice_end]       # (M,) o (M,2)
-wave_part = wave[: len(existing)]               # (M,) o (M,2)
-
-# Mezcla directa, independientemente de mono/estéreo
-mix = existing + wave_part                      # suma elemento a elemento
-
-# Clip para evitar valores fuera de [-1,1]
-audio_total[start: slice_end] = np.clip(mix, -1.0, 1.0)
-
-# 6) Aplico un fade-out suave en los últimos 10 segundos
-fade_dur = min(10.0, expected_duration)
-fs = min(int(fade_dur * sr_original), len(audio_total))
-fade_env = np.linspace(1.0, 0.0, fs)
-if audio_total.ndim == 1:
-    audio_total[-fs:] *= fade_env
-else:
-    audio_total[-fs:, :] *= fade_env[:, None]
-
-# Genero el env de fade (1D)
-fade_env = np.linspace(1.0, 0.0, fs)
-
-#f audio_total.ndim == 1:
-    # Mono: multiplico directamente
-#   audio_total[-fs:] *= fade_env
-#else:
-    # Estéreo: extiendo fade_env a (fs,1) para aplicarlo a ambas columnas
-#   audio_total[-fs:, :] *= fade_env[:, np.newaxis]
-
-# 7) Normalizo para éviter clipping
-peak = np.max(np.abs(audio_total))
-if peak > 0:
-    audio_total /= peak
-
-# 8) Guardo el WAV reconstruido
-sf.write("reconstruccion.wav", audio_total, sr_out)
-print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
 
 def exportar_json_si_confirmado(notas_json):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
@@ -412,3 +413,6 @@ def exportar_json_si_confirmado(notas_json):
         print("✅ Archivo JSON guardado.")
     else:
         print("❌ No se guardó el archivo JSON.")
+
+if __name__ == '__main__':
+    main(ruta)
