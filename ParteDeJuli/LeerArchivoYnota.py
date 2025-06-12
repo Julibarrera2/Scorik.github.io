@@ -242,7 +242,7 @@ def main(filepath: str):
     # 8) Guardo el WAV reconstruido
     sf.write("reconstruccion.wav", audio_total, sr_out)
     print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
-    exportar_json_si_confirmado(notas_json)
+    exportar_json_si_confirmado(notas_json, duracion_audio_trim)
 
 
 
@@ -394,7 +394,7 @@ def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
         env[n_ataque:] = np.linspace(1, 0.8, len(env)-n_ataque)
     return (volume * wave * env).astype(np.float32)
 
-def exportar_json_si_confirmado(notas_json):
+def exportar_json_si_confirmado(notas_json, duracion_audio_trim):
     confirmar = input("¿Querés exportar las notas a un .json? (s/n): ").strip().lower()
     if confirmar == 's':
         # Paso extra: eliminar notas muy cortas dentro del último medio segundo del audio original
