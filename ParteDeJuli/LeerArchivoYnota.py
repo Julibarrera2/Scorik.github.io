@@ -243,6 +243,7 @@ def main(filepath: str):
     sf.write("reconstruccion.wav", audio_total, sr_out)
     print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
     exportar_json_si_confirmado(notas_json, duracion_audio_trim)
+    verificar_notas_detectadas(filepath, "reconstruccion.wav")
 
 
 
@@ -305,7 +306,6 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
     def frecuencia_a_nota(freq):
         return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
     
-    duracion_audio_trim = float(librosa.get_duration(y=y, sr=sr))
     print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
 
     print("→ Cantidad de frames en pitch_data:", len(pitch_data))
@@ -375,7 +375,7 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
         return notas_json
 
 def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
-    with open("notas_detectadas.json", "w") as f:
+    with open(filename, "w") as f:
         json.dump(notas_json, f, indent=2)
 
 print("✅ Archivo 'notas_detectadas.json' generado correctamente.")
@@ -413,6 +413,57 @@ def exportar_json_si_confirmado(notas_json, duracion_audio_trim):
         print("✅ Archivo JSON guardado.")
     else:
         print("❌ No se guardó el archivo JSON.")
+
+# función automatiza el chequeo final verificando que lo anterior es correcto y si hay errores
+def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_json_path="notas_detectadas.json"):
+    print("\n Iniciando verificación automática de las notas detectadas...")
+
+    # Cargar audio original y reconstruido
+    y_orig, sr = librosa.load(audio_path, sr=None)
+    y_recon, _ = librosa.load(reconstruido_path, sr=sr)
+
+    # Cargar notas
+    with open(notas_json_path, "r") as f:
+        notas = json.load(f)
+
+    errores = []
+
+    # A. Chequeo de energía espectral por nota
+    S = librosa.feature.melspectrogram(y=y_orig, sr=sr, n_fft=2048, hop_length=512)
+    S_db = librosa.power_to_db(S, ref=np.max)
+    times = librosa.frames_to_time(np.arange(S_db.shape[1]), sr=sr, hop_length=512)
+
+    for n in notas:
+        start = n["inicio"]
+        end = n["inicio"] + n["duracion"]
+        mask = (times >= start) & (times <= end)
+        energia = np.mean(S_db[:, mask])
+        if np.isnan(energia) or energia < -35:  # umbral más alto y chequeo de NaN
+            errores.append(f"⚠️ Baja energía detectada en {n['nota']} entre {start:.2f}-{end:.2f}s")
+
+    # B. Comparación con reconstrucción
+    if len(y_recon) > len(y_orig):
+        y_recon = y_recon[:len(y_orig)]
+    elif len(y_orig) > len(y_recon):
+        y_orig = y_orig[:len(y_recon)]
+
+    correlacion = np.corrcoef(y_orig, y_recon)[0,1]
+    print(f"🔗 Correlación entre original y reconstruido: {correlacion:.3f}")
+    if correlacion < 0.85:
+        errores.append(f"⚠️ Baja correlación entre señales: {correlacion:.3f}")
+
+    # Métricas adicionales
+    duraciones = [n["duracion"] for n in notas]
+    promedio_dur = np.mean(duraciones)
+    print(f"📝 Notas detectadas: {len(notas)}, duración promedio: {promedio_dur:.2f}s")
+
+    # Resultado final
+    if not errores:
+        print("✅ Verificación completada sin errores. Las notas detectadas parecen correctas.")
+    else:
+        print("❌ Se detectaron posibles problemas:")
+        for err in errores:
+            print("   →", err)
 
 if __name__ == '__main__':
     main(ruta)
