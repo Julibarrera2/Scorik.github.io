@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Importamos la función a testear
 from LeerArchivoYnota import generate_note_wave
 

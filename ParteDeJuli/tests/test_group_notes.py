@@ -1,6 +1,8 @@
 import pytest
 from typing import List, Dict, Tuple
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Suponemos que la función está definida en el archivo principal
 from LeerArchivoYnota import group_pitches_to_notes
 
