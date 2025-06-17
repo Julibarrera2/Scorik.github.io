@@ -180,8 +180,17 @@
     <template x-if="activeTab === 'mp3'">
         <div>
             <p>Please first chose what instrument do you play and then select you audio.</p>
-            <button class="custom-btn">select instrument</button><br>
-            <button class="custom-btn">select mp3</button>
+            <select class="custom-btn" id="instrumentSelect">
+            <option value="">Selec instrument</option>
+            <option value="piano">Piano</option>
+            <option value="guitarra">Guitarra</option>
+            <option value="violín">Violín</option>
+        </select>
+            </select>
+            <label class="custom-btn">select mp3
+                <input class="form-control" type="file" id="fileInput" accept=".mp3" />
+            </label>
+            
         </div>
     </template>
 
