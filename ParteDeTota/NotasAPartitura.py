@@ -1,5 +1,16 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import json
+import os
+# Asegurarse de que la ruta al archivo JSON es correcta
+# Aquí asumimos que el archivo JSON se encuentra en la carpeta "JsonFiles" dentro de "ParteDeJuli"
+ruta_json = os.path.join(os.path.dirname(__file__), "..", "ParteDeJuli", "JsonFiles", "notas_detectadas.json")
+ruta_json = os.path.abspath(ruta_json)
+
+# Cargar notas desde el archivo generado
+with open(ruta_json, "r") as f:
+    datos = json.load(f)
+notas_detectadas = [n["nota"] for n in datos]
 
 # Lista de notas válidas para el violín (G3 a A7)
 note_order = [
@@ -51,5 +62,7 @@ def dibujar_notas_violin(notas):
     plt.title("Notas para violín (sin plica): " + ", ".join(notas))
     plt.show()
 
+notas_detectadas = [n for n in notas_detectadas if n in note_positions]
 # Ejemplo de uso
-dibujar_notas_violin(["E4", "G4", "A4", "C5", "E5", "G5"])
+dibujar_notas_violin(notas_detectadas)
+
