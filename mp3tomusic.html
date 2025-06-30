@@ -147,6 +147,26 @@
         justify-content: center;
         align-items: center;
     }
+
+    .custom-file-upload {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 16px;
+    background-color: #8E00FF;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    }
+
+    .custom-file-upload:hover {
+    background-color: #6B2BD9;
+    }
+
+    input[type="file"] {
+    display: none;
+    }
+
 </style>
 </head>
 <body>
@@ -187,9 +207,8 @@
             <option value="violín">Violín</option>
         </select>
             </select>
-            <label class="custom-btn">select mp3
-                <input class="form-control" type="file" id="fileInput" accept=".mp3" />
-            </label>
+            <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
+            <input id="mp3-upload" type="file" accept=".mp3" />
             
         </div>
     </template>
