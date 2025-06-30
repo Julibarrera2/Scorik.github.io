@@ -13,6 +13,7 @@ from pydub.utils import which
 from typing import List, Tuple, Dict
 import json
 import warnings
+import subprocess
 np.float = float
 
 #Links de PC
@@ -471,3 +472,7 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_js
 
 if __name__ == '__main__':
     main(ruta)
+
+    print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
+    # Cuando termina tu procesamiento, ejecuta el script de la partitura
+    subprocess.run(["python", "../ParteDeTota/NotasAPartitura.py"])
