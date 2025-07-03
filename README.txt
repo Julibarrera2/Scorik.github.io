@@ -13,12 +13,5 @@ python -m venv .libreriasRaiz
 
 
 4. INSTALAR LAS LIBRERÍAS:
-   pip install -r requirements.txt
-
-5. EJECUTAR EL SCRIPT PRINCIPAL:
-   python LeerArchivoYnota.py
-
-# CUALQUIER CAMBIO EN LIBRERÍAS
-Si se instala algo nuevo, se actualiza el archivo con:
-   pip freeze > requirements.txt
+   pip install -r libRaiz.txt
 
