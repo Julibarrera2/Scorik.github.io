@@ -25,9 +25,9 @@ def upload_file():
         return jsonify({"error": "Archivo vacío"}), 400
 
     UPLOAD_FOLDER = "uploads"
-    file = request.files['file']
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
+    file = request.files.get("file")  # si no mandaste bien el form, esto puede ser None
+    filename = file.filename  # si `file` es None, esto explota
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
 
     # Ejecutar tu script con ese mp3
     subprocess.run(["python", "./ParteDeJuli/LeerArchivoYnota.py", filepath], check=True)

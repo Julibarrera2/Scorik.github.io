@@ -60,6 +60,7 @@ def dibujar_notas_violin(notas):
 
     ax.axis('off')
     plt.title("Notas para violín (sin plica): " + ", ".join(notas))
+    #Esto esta cambiado para que guarde la imagen en la carpeta static
     plt.savefig("static/partitura.jpeg")
     plt.close()
 
