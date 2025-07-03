@@ -60,7 +60,8 @@ def dibujar_notas_violin(notas):
 
     ax.axis('off')
     plt.title("Notas para violín (sin plica): " + ", ".join(notas))
-    plt.show()
+    plt.savefig("static/partitura.jpeg")
+    plt.close()
 
 notas_detectadas = [n for n in notas_detectadas if n in note_positions]
 # Ejemplo de uso
