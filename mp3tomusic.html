@@ -167,6 +167,11 @@
     display: none;
     }
 
+    . {'active': activeTab === 'sheet' }
+    custom-btn-part:hover {
+        background-color: #6700c4;
+    }
+
 </style>
 </head>
 <body>
@@ -210,13 +215,12 @@
             <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
             <input id="mp3-upload" type="file" accept=".mp3" />
             
-            <button class="custom-btn
-" onclick="location.href='mp321'">Convert</button>
+        <button :class=c @click="activeTab = 'sheet'">Convert</button>
         </div>
     
     </template>
 
-    <template class=mp321 x-if="activeTab === 'sheet'">
+    <template x-if="activeTab === 'sheet'">
         <div>
             <p>partitura n.123</p>
             <img src="Img/partituras.png" alt="">
