@@ -13,6 +13,7 @@ from pydub.utils import which
 from typing import List, Tuple, Dict
 import json
 import warnings
+import subprocess
 np.float = float
 
 #Links de PC
@@ -375,7 +376,11 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
         return notas_json
 
 def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
-    with open(filename, "w") as f:
+    carpeta_destino = "JsonFiles"
+    os.makedirs(carpeta_destino, exist_ok=True)
+    ruta_completa = os.path.join(carpeta_destino, filename)
+    
+    with open(ruta_completa, "w") as f:
         json.dump(notas_json, f, indent=2)
 
 print("✅ Archivo 'notas_detectadas.json' generado correctamente.")
@@ -410,7 +415,7 @@ def exportar_json_si_confirmado(notas_json, duracion_audio_trim):
         # Guardamos el nuevo JSON limpio
         with open("notas_detectadas.json", "w") as f:
             json.dump(notas_json_filtradas, f, indent=2)
-        print("✅ Archivo JSON guardado.")
+        print("✅ Archivo JSONx guardado.")
     else:
         print("❌ No se guardó el archivo JSON.")
 
@@ -467,3 +472,7 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_js
 
 if __name__ == '__main__':
     main(ruta)
+
+    print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
+    # Cuando termina tu procesamiento, ejecuta el script de la partitura
+    subprocess.run(["python", "../ParteDeTota/NotasAPartitura.py"])

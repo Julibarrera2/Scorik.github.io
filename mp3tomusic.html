@@ -147,6 +147,31 @@
         justify-content: center;
         align-items: center;
     }
+
+    .custom-file-upload {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 16px;
+    background-color: #8E00FF;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    }
+
+    .custom-file-upload:hover {
+    background-color: #6B2BD9;
+    }
+
+    input[type="file"] {
+    display: none;
+    }
+
+    . {'active': activeTab === 'sheet' }
+    custom-btn-part:hover {
+        background-color: #6700c4;
+    }
+
 </style>
 </head>
 <body>
@@ -187,17 +212,18 @@
             <option value="violín">Violín</option>
         </select>
             </select>
-            <label class="custom-btn">select mp3
-                <input class="form-control" type="file" id="fileInput" accept=".mp3" />
-            </label>
+            <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
+            <input id="mp3-upload" type="file" accept=".mp3" />
             
+        <button :class=c @click="activeTab = 'sheet'">Convert</button>
         </div>
+    
     </template>
 
     <template x-if="activeTab === 'sheet'">
         <div>
             <p>partitura n.123</p>
-            <img src="Img/partituras.png" alt="">
+            <img class="sheet-image" src="" alt="Imagen partitura generada">
             <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
             <button class="custom-btn-part">save</button>
         </div>
@@ -218,5 +244,40 @@ function logout() {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const mp3Input = document.getElementById('mp3-upload');
+    const instrumentSelect = document.getElementById('instrumentSelect');
+    const convertBtn = document.querySelector('button.custom-btn');
+
+    if (convertBtn) {
+        convertBtn.addEventListener('click', async function () {
+            const file = mp3Input.files[0];
+            const instrument = instrumentSelect.value;
+            if (!file || !instrument) {
+                alert("Seleccioná instrumento y archivo mp3");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Subir el archivo al backend
+            const resp = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await resp.json();
+
+            // Mostrar la imagen generada
+            if (data.imagen) {
+                document.querySelector('.sheet-image').src = data.imagen;
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>
