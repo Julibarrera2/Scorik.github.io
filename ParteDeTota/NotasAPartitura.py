@@ -1,55 +1,106 @@
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+from flask import Flask, request, jsonify
+from music21 import stream, note, instrument, environment
+import os
+import subprocess
+import time
+from time import time as timestamp
 
-# Lista de notas válidas para el violín (G3 a A7)
-note_order = [
-    "G3", "A3", "B3", "C4", "D4", "E4", "F4", "G4", "A4", "B4",
-    "C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6",
-    "F6", "G6", "A6", "B6", "C7", "D7", "E7", "F7", "G7", "A7"
-]
-note_positions = {note: i - note_order.index("E4") for i, note in enumerate(note_order)}
+us = environment.UserSettings()
+us['musicxmlPath'] = r'C:\Program Files\MuseScore 3\bin\MuseScore3.exe'
 
-def dibujar_notas_violin(notas):
-    y_notas = []
-    for nota in notas:
-        if nota not in note_positions:
-            raise ValueError(f"Nota fuera del rango del violín o no soportada: {nota}")
-        y_notas.append(note_positions[nota] * 0.5)
+app = Flask(__name__)
 
-    # Ajustar rango del gráfico
-    extra_space = 2
-    y_min = min(-1, int(min(y_notas)) - extra_space)
-    y_max = max(5, int(max(y_notas)) + extra_space)
+figura_a_duracion = {
+    'redonda': 4.0,
+    'blanca': 2.0,
+    'negra': 1.0,
+    'corchea': 0.5,
+    'semicorchea': 0.25,
+    'fusa': 0.125,
+    'semifusa': 0.0625
+}
 
-    fig, ax = plt.subplots(figsize=(max(5, len(notas) * 1), 3))
-    ax.set_xlim(0, len(notas) + 1)
-    ax.set_ylim(y_min, y_max)
+@app.route('/generar_partitura', methods=['POST'])
+def generar_partitura():
+    notas = request.json.get('notas', [])
 
-    # Dibujar pentagrama
-    for i in range(5):
-        y = i
-        ax.plot([0, len(notas) + 1], [y, y], color='black')
+    if not notas:
+        return jsonify({'error': 'No se recibieron notas'}), 400
 
-    # Dibujar solo la cabeza de la nota (sin plica)
-    for i, y_nota in enumerate(y_notas):
-        x = i + 1
-        ax.add_patch(patches.Ellipse((x, y_nota), 0.4, 0.28, color='black'))  # óvalo achatado
+    score = stream.Score()
+    part = stream.Part()
+    part.insert(0, instrument.Violin())
 
-        # Dibujar líneas adicionales si es necesario
-        if y_nota < 0:
-            y = 0
-            while y >= y_nota:
-                ax.plot([x - 0.3, x + 0.3], [y, y], color='black')
-                y -= 0.5
-        elif y_nota > 4:
-            y = 4
-            while y <= y_nota:
-                ax.plot([x - 0.3, x + 0.3], [y, y], color='black')
-                y += 0.5
+    for n in notas:
+        try:
+            nombre_nota = n['nota']
+            figura = n.get('figura', 'negra').lower()
+            duracion = figura_a_duracion.get(figura)
 
-    ax.axis('off')
-    plt.title("Notas para violín (sin plica): " + ", ".join(notas))
-    plt.show()
+            if duracion is None:
+                return jsonify({'error': f'Figura desconocida: {figura}'}), 400
 
-# Ejemplo de uso
-dibujar_notas_violin(["E4", "G4", "A4", "C5", "E5", "G5"])
+            nueva_nota = note.Note(nombre_nota)
+            nueva_nota.quarterLength = duracion
+            part.append(nueva_nota)
+        except Exception as e:
+            return jsonify({'error': f'Error procesando nota: {n}. Detalle: {str(e)}'}), 400
+
+    score.insert(0, part)
+
+    try:
+        if not os.path.exists("static"):
+            os.makedirs("static")
+
+        ts = int(timestamp())
+        base_name = f'partitura_{ts}'
+        xml_path = f'static/{base_name}.musicxml'
+        png_output = f'static/{base_name}.png'
+        musescore_path = r'C:\Program Files\MuseScore 3\bin\MuseScore3.exe'
+
+        score.write('musicxml', fp=xml_path)
+
+        # Borrar versiones previas si existen
+        for f in os.listdir("static"):
+            if f.startswith(base_name) and f.endswith(".png"):
+                os.remove(os.path.join("static", f))
+
+        # Ejecutar MuseScore con nombre de salida especificado
+        result = subprocess.run([
+            musescore_path,
+            xml_path,
+            '-o',
+            png_output
+        ], capture_output=True, text=True)
+
+        print("📤 STDOUT:", result.stdout)
+        print("❌ STDERR:", result.stderr)
+        time.sleep(0.5)
+
+        archivos_static = os.listdir("static")
+        print("📁 Archivos en static/:", archivos_static)
+
+        # Buscar el PNG que coincida con el prefijo
+        imagen_generada = None
+        for f in archivos_static:
+            if f.startswith(base_name) and f.endswith(".png"):
+                imagen_generada = f
+                break
+
+        if result.returncode != 0:
+            raise Exception(f"MuseScore falló: {result.stderr}")
+
+        if not imagen_generada:
+            raise Exception("MuseScore no generó una imagen con el nombre esperado.")
+
+    except Exception as e:
+        print("❌ ERROR al generar imagen:", str(e))
+        return jsonify({'error': f'Error al generar la imagen con MuseScore: {str(e)}'}), 500
+
+    return jsonify({
+        'mensaje': 'Partitura generada correctamente',
+        'img_url': f'/static/{imagen_generada}?ts={ts}'
+    })
+
+if __name__ == '__main__':
+    app.run(debug=True)

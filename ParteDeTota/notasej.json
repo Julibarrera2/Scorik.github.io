@@ -1,0 +1,8 @@
+{
+  "notas": [
+    { "nota": "C5", "figura": "blanca" },
+    { "nota": "E5", "figura": "negra" },
+    { "nota": "G5", "figura": "corchea" },
+    { "nota": "F5", "figura": "semicorchea" }
+  ]
+}
