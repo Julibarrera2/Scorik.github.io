@@ -215,7 +215,7 @@
             <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
             <input id="mp3-upload" type="file" accept=".mp3" />
             
-        <button :class=c @click="activeTab = 'sheet'">Convert</button>
+        <button id="convert-btn" class="custom-btn">Convert</button>
         </div>
     
     <template x-if="activeTab === 'mp3'">

@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Mostrar la imagen generada
             if (data.imagen) {
                 document.querySelector('.sheet-image').src = data.imagen;
+
+                // Cambiar tab a "sheet"
+                if (window.Alpine) Alpine.store('activeTab', 'sheet');
+                else document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
             }
         });
     }
