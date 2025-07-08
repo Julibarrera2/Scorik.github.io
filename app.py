@@ -40,18 +40,22 @@ def upload_file():
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
-    # Ejecutar tu script con ese mp3
+    # Ejecutar el script de notas con path correcto
     subprocess.run(["python", "./ParteDeJuli/LeerArchivoYnota.py", filepath], check=True)
-
-    # Generar la imagen con el script de tu amiga
+    # Ejecutar script de partitura
     subprocess.run(["python", "./ParteDeTota/NotasAPartitura.py"], check=True)
 
-    image_name = "resultado.jpg"  # Cambia esto por el nombre REAL generado por el script
-    image_path = f"/uploads/{image_name}"
-    
+    # Buscar último PNG de partitura en /static
+    static_files = [f for f in os.listdir(STATIC_FOLDER) if f.startswith("partitura_") and f.endswith(".png")]
+    static_files.sort(key=lambda f: os.path.getmtime(os.path.join(STATIC_FOLDER, f)), reverse=True)
+    image_name = static_files[0] if static_files else None
+
+    if not image_name:
+        return jsonify({"error": "No se generó imagen"}), 500
+
     return jsonify({
         "json": f"/json/notas_detectadas.json",
-        "imagen": f"/static/partitura.jpeg"
+        "imagen": f"/static/{image_name}"
     })
 
 @app.route('/json/<path:filename>')
