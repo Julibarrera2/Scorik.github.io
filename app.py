@@ -37,7 +37,7 @@ def upload_file():
         return jsonify({"error": "Archivo vacío"}), 400
 
     filename = file.filename
-    filepath = os.path.join(STATIC_FOLDER, filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
     # Ejecutar tu script con ese mp3
