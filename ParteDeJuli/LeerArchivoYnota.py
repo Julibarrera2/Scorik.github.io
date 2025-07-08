@@ -14,6 +14,7 @@ from typing import List, Tuple, Dict
 import json
 import warnings
 import subprocess
+import sys
 np.float = float
 
 #Links de PC
@@ -99,7 +100,7 @@ def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarra
 
 def main(filepath: str):
     #Carga el audio a la ruta
-    y, sr, filepath = load_and_preprocess_audio(ruta)
+    y, sr, filepath = load_and_preprocess_audio(filepath)
 
     # dejamos y_trim apuntando a toda la señal original:
     y_trim = y
@@ -471,8 +472,11 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_js
             print("   →", err)
 
 if __name__ == '__main__':
-    main(ruta)
+    if len(sys.argv) < 2:
+        print("Uso: python LeerArchivoYnota.py <ruta_mp3>")
+        exit(1)
+    mp3_path = sys.argv[1]
+    main(mp3_path)
 
     print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
-    # Cuando termina tu procesamiento, ejecuta el script de la partitura
     subprocess.run(["python", "../ParteDeTota/NotasAPartitura.py"])
