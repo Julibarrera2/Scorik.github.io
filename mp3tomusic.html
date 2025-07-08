@@ -202,8 +202,8 @@
 
 <!-- Main content -->
 <main>
-    <template x-if="activeTab === 'mp3'">
-        <div>
+
+    <div>
             <p>Please first chose what instrument do you play and then select you audio.</p>
             <select class="custom-btn" id="instrumentSelect">
             <option value="">Selec instrument</option>
@@ -218,6 +218,8 @@
         <button :class=c @click="activeTab = 'sheet'">Convert</button>
         </div>
     
+    <template x-if="activeTab === 'mp3'">
+        
     </template>
 
     <template x-if="activeTab === 'sheet'">
