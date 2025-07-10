@@ -300,6 +300,7 @@ if __name__ == '__main__':
     mp3_path = sys.argv[1]
     main(mp3_path)
     print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
+    # ATENCIÓN: CAMBIO → El script NotasAPartitura.py debe ser el CORREGIDO
     subprocess.run([sys.executable, r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py"])
 
 #Ruta tota PC: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py

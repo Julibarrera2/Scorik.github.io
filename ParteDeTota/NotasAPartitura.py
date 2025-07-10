@@ -1,18 +1,13 @@
-# NotasAPartitura.py - VERSIÓN SIN FLASK
+# NotasAPartitura.py - VERSIÓN TOLERANTE A .musicxml/.xml
 
-from music21 import stream, note, instrument, environment
+from music21 import stream, note, instrument
 import os
 import json
 import subprocess
 from time import time as timestamp
 
-# Poner tu ruta a MuseScore aquí:
 MUSESCORE_PATH = r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe"
-
-# Dónde está el JSON:
 JSON_PATH = os.path.join("JsonFiles", "notas_detectadas.json")
-
-# Dónde guardar los archivos:
 STATIC_FOLDER = "static"
 os.makedirs(STATIC_FOLDER, exist_ok=True)
 
@@ -27,7 +22,6 @@ figura_a_duracion = {
 }
 
 def main():
-    # Leer JSON
     if not os.path.exists(JSON_PATH):
         print("No se encontró el archivo de notas:", JSON_PATH)
         return
@@ -37,7 +31,6 @@ def main():
         print("No se encontraron notas en el JSON.")
         return
 
-    # Crear partitura
     score = stream.Score()
     part = stream.Part()
     part.insert(0, instrument.Violin())
@@ -56,10 +49,20 @@ def main():
     ts = int(timestamp())
     base_name = f'partitura_{ts}'
     xml_path = os.path.join(STATIC_FOLDER, f"{base_name}.musicxml")
+    xml_path_alt = os.path.join(STATIC_FOLDER, f"{base_name}.xml")
     png_output = os.path.join(STATIC_FOLDER, f"{base_name}.png")
 
-    # Guardar MusicXML
+    # Guardar MusicXML (puede terminar siendo .xml)
     score.write('musicxml', fp=xml_path)
+    print(f"XML generado: {xml_path}  | Existe: {os.path.exists(xml_path)}")
+    if not os.path.exists(xml_path):
+        # ¿Lo generó como .xml?
+        if os.path.exists(xml_path_alt):
+            print(f"El archivo se guardó como: {xml_path_alt}")
+            xml_path = xml_path_alt
+        else:
+            print("ERROR: No se generó el archivo MusicXML, aborto.")
+            return
 
     # Llamar MuseScore para generar PNG
     print("Llamando MuseScore...")
@@ -82,4 +85,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# Nota: Este script no usa Flask, es una versión standalone para generar la partitura a partir del JSON.
