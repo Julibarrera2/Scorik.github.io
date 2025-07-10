@@ -21,7 +21,7 @@
     <input type="password" id="password" class="form-control" x-model="password" required>
     </div>
     <template x-if="error">
-    <div class="alert alert-danger" role="alert">
+    <div class="alert alert-danger" role="alert" x-text="errorMsg">
         Incorrect email or password.
     </div>
     </template>
@@ -37,15 +37,22 @@ return {
     email: '',
     password: '',
     error: false,
-    checkLogin() {
-    let users = JSON.parse(localStorage.getItem('users') || '[]');
-    let user = users.find(user => user.email === this.email && user.password === this.password);
-    if (user) {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        window.location.href = 'dashboard.html';
-    } else {
-        this.error = true;
-    }
+    errorMsg: '',
+    async checkLogin() {
+        const resp = await fetch('/api/login', { // <-- ¡Puerto 5001!
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email: this.email, password: this.password })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            this.error = false;
+            localStorage.setItem('currentUser', JSON.stringify({ email: this.email }));
+            window.location.href = 'dashboard.html';
+        } else {
+            this.error = true;
+            this.errorMsg = data.message || 'Incorrect email or password.';
+        }
     }
 }
 }

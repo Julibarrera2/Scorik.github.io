@@ -18,3 +18,4 @@ __pycache__/
 *.pkl
 *.db
 .DS_Store
+usuarios.json

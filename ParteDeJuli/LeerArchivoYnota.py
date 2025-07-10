@@ -71,7 +71,6 @@ AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\f
 AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
 #Ruta del archivo
-ruta = r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3"
 
 
 def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarray, int, str]:
@@ -124,24 +123,25 @@ def main(filepath: str):
     # 3) Ahora imprimimos antes y después de filtrar los últimos 2s
     print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
     for n in notas_json:
-        print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
+        pass
 
     duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
 
     print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
     for n in notas_json:
-        print(f"   → inicio={n['inicio']:.2f}s, dur={n['duracion']:.3f}s")
+        pass
 
     #Testeo con una devolucion de un archivo .wav
     # Cargar notas desde el JSON
-    with open("notas_detectadas.json", "r") as f:
+    ruta_json = os.path.join("JsonFiles", "notas_detectadas.json")
+    with open(ruta_json, "r") as f:
         notas = json.load(f)
     if not notas:
         print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
         exit()
 
     # 1) Cargo notas y compruebo que existan
-    with open("notas_detectadas.json", "r") as f:
+    with open(ruta_json, "r") as f:
         notas = json.load(f)
 
     # 2) Cargo WAV original para sample rate y duración
@@ -414,14 +414,15 @@ def exportar_json_si_confirmado(notas_json, duracion_audio_trim):
             notas_json_filtradas.append(n)
 
         # Guardamos el nuevo JSON limpio
-        with open("notas_detectadas.json", "w") as f:
+        ruta_json = os.path.join("JsonFiles", "notas_detectadas.json")
+        with open(ruta_json, "w") as f:
             json.dump(notas_json_filtradas, f, indent=2)
         print("✅ Archivo JSONx guardado.")
     else:
         print("❌ No se guardó el archivo JSON.")
 
 # función automatiza el chequeo final verificando que lo anterior es correcto y si hay errores
-def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_json_path="notas_detectadas.json"):
+def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, ruta_json= "JsonFiles""notas_detectadas.json"):
     print("\n Iniciando verificación automática de las notas detectadas...")
 
     # Cargar audio original y reconstruido
@@ -429,7 +430,8 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_js
     y_recon, _ = librosa.load(reconstruido_path, sr=sr)
 
     # Cargar notas
-    with open(notas_json_path, "r") as f:
+    ruta_json = os.path.join("JsonFiles", "notas_detectadas.json")
+    with open(ruta_json, "r") as f:
         notas = json.load(f)
 
     errores = []
@@ -461,7 +463,6 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, notas_js
     # Métricas adicionales
     duraciones = [n["duracion"] for n in notas]
     promedio_dur = np.mean(duraciones)
-    print(f"📝 Notas detectadas: {len(notas)}, duración promedio: {promedio_dur:.2f}s")
 
     # Resultado final
     if not errores:

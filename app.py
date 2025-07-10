@@ -1,12 +1,58 @@
 from flask import Flask, request, jsonify, send_from_directory
 import os
 import subprocess
+import json
+import sys
+
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
 STATIC_FOLDER = os.path.join(os.getcwd(), "static")
+USERS_FILE = os.path.join(os.getcwd(), "usuarios.json")
+PYTHON_EXEC = sys.executable
+
+def cargar_usuarios():
+    if not os.path.exists(USERS_FILE):
+        return []
+    with open(USERS_FILE, 'r', encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except Exception:
+            return []
+
+def guardar_usuarios(usuarios):
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(usuarios, f, indent=2)
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    data = request.json
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '').strip()
+    if not email or not password:
+        return jsonify({'success': False, 'message': 'Faltan datos'}), 400
+
+    usuarios = cargar_usuarios()
+    if any(u['email'] == email for u in usuarios):
+        return jsonify({'success': False, 'message': 'Usuario ya existe'}), 400
+
+    usuarios.append({'email': email, 'password': password})
+    guardar_usuarios(usuarios)
+    return jsonify({'success': True, 'message': 'Usuario registrado correctamente'})
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.json
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '').strip()
+    usuarios = cargar_usuarios()
+    user = next((u for u in usuarios if u['email'] == email and u['password'] == password), None)
+    if user:
+        return jsonify({'success': True, 'message': 'Login exitoso'})
+    else:
+        return jsonify({'success': False, 'message': 'Usuario o contraseña incorrectos'}), 401
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(STATIC_FOLDER, exist_ok=True)
@@ -15,18 +61,6 @@ os.makedirs(STATIC_FOLDER, exist_ok=True)
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
-
-# Para servir cualquier archivo .html de la raíz (register.html, login.html, etc)
-@app.route('/<path:filename>')
-def root_files(filename):
-    if os.path.exists(filename):
-        return send_from_directory('.', filename)
-    # Si no existe en raíz, probar en subcarpetas:
-    for folder in ['Img', 'static', 'uploads']:
-        folder_path = os.path.join(folder, filename)
-        if os.path.exists(folder_path):
-            return send_from_directory(folder, filename)
-    return "Archivo no encontrado", 404
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -41,7 +75,7 @@ def upload_file():
     file.save(filepath)
 
     # Ejecutar el script de notas con path correcto
-    subprocess.run(["python", "./ParteDeJuli/LeerArchivoYnota.py", filepath], check=True)
+    subprocess.run([PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath], check=True)
     # Ejecutar script de partitura
     subprocess.run(["python", "./ParteDeTota/NotasAPartitura.py"], check=True)
 
@@ -80,20 +114,17 @@ def serve_js(filename):
 def serve_css(filename):
     return send_from_directory('.', filename + '.css')
 
+# --- ESTA RUTA VA ÚLTIMA ---
+@app.route('/<path:filename>')
+def root_files(filename):
+    if os.path.exists(filename):
+        return send_from_directory('.', filename)
+    # Si no existe en raíz, probar en subcarpetas:
+    for folder in ['Img', 'static', 'uploads']:
+        folder_path = os.path.join(folder, filename)
+        if os.path.exists(folder_path):
+            return send_from_directory(folder, filename)
+    return "Archivo no encontrado", 404
+
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-#¿Qué hace esto?
-# Va a servir tu página HTML (index.html que está en templates)
-# Permite subir un .mp3 vía POST a /upload.
-# Guarda el archivo, corre tu pipeline:
-# LeerArchivoYnota.py genera el JSON en ParteDeJuli/JsonFiles.
-# NotasAPartitura.py genera el .jpeg en static
-# Devuelve un JSON con las rutas:
-# json
-#"json": "/json/notas_detectadas.json",
-#"imagen": "/static/partitura.jpeg"
-# Permite descargar el JSON y ver la imagen desde las rutas especificadas.
-#<img src="/static/partitura.jpeg">
-# <a href="/json/notas_detectadas.json" download>Descargar JSON</a>

@@ -21,7 +21,7 @@
     <input type="password" id="password" class="form-control" x-model="password" required>
     </div>
     <template x-if="error">
-    <div class="alert alert-danger" role="alert">
+    <div class="alert alert-danger" role="alert" x-text="errorMsg">
         User already exists!
     </div>
     </template>
@@ -40,20 +40,25 @@ return {
     email: '',
     password: '',
     error: false,
+    errorMsg: '',
     success: false,
-    register() {
-    let users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.find(user => user.email === this.email)) {
-        this.error = true;
-        this.success = false;
-    } else {
-        users.push({ email: this.email, password: this.password });
-        localStorage.setItem('users', JSON.stringify(users));
-        this.error = false;
-        this.success = true;
-        this.email = '';
-        this.password = '';
-    }
+    async register() {
+        const resp = await fetch('/api/register', { // <-- ¡Puerto 5001!
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email: this.email, password: this.password })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            this.error = false;
+            this.success = true;
+            this.email = '';
+            this.password = '';
+        } else {
+            this.error = true;
+            this.success = false;
+            this.errorMsg = data.message || 'Error';
+        }
     }
 }
 }
