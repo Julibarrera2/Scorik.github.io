@@ -1,4 +1,4 @@
-# NotasAPartitura.py - VERSIÓN TOLERANTE A .musicxml/.xml
+# NotasAPartitura.py - FINAL - 10/07/2025
 
 from music21 import stream, note, instrument
 import os
@@ -49,22 +49,21 @@ def main():
     ts = int(timestamp())
     base_name = f'partitura_{ts}'
     xml_path = os.path.join(STATIC_FOLDER, f"{base_name}.musicxml")
-    xml_path_alt = os.path.join(STATIC_FOLDER, f"{base_name}.xml")
+    xml_path2 = os.path.join(STATIC_FOLDER, f"{base_name}.xml")
     png_output = os.path.join(STATIC_FOLDER, f"{base_name}.png")
 
-    # Guardar MusicXML (puede terminar siendo .xml)
+    # Guardar como musicxml (puede guardar .xml realmente)
     score.write('musicxml', fp=xml_path)
     print(f"XML generado: {xml_path}  | Existe: {os.path.exists(xml_path)}")
     if not os.path.exists(xml_path):
-        # ¿Lo generó como .xml?
-        if os.path.exists(xml_path_alt):
-            print(f"El archivo se guardó como: {xml_path_alt}")
-            xml_path = xml_path_alt
+        # Buscar .xml alternativo
+        if os.path.exists(xml_path2):
+            print(f"El archivo se guardó como: {xml_path2}")
+            xml_path = xml_path2  # Usar este!
         else:
             print("ERROR: No se generó el archivo MusicXML, aborto.")
             return
 
-    # Llamar MuseScore para generar PNG
     print("Llamando MuseScore...")
     result = subprocess.run([
         MUSESCORE_PATH,
