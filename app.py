@@ -76,8 +76,6 @@ def upload_file():
 
     # Ejecutar el script de notas con path correcto
     subprocess.run([PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath], check=True)
-    # Ejecutar script de partitura
-    subprocess.run(["python", "./ParteDeTota/NotasAPartitura.py"], check=True)
 
     # Buscar último PNG de partitura en /static
     static_files = [f for f in os.listdir(STATIC_FOLDER) if f.startswith("partitura_") and f.endswith(".png")]

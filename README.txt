@@ -15,3 +15,7 @@ python -m venv .libreriasRaiz
 4. INSTALAR LAS LIBRERÍAS:
    pip install -r libRaiz.txt
 
+https://ftp.osuosl.org/pub/musescore-nightlies/windows/3x/stable/MuseScore-3.6.2.548021803-x86_64.msi
+
+https://ftp.osuosl.org/pub/musescore-nightlies/windows/3x/stable/
+
