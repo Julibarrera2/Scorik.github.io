@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const mp3Input = document.getElementById('mp3-upload');
     const instrumentSelect = document.getElementById('instrumentSelect');
-    const convertBtn = document.getElementById('convert-btn');
+    const convertBtn = document.getElementById('convert-btn'); // Mejor por id
 
     if (convertBtn) {
         convertBtn.addEventListener('click', async function () {
@@ -23,13 +23,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = await resp.json();
 
-            // Mostrar la imagen generada
+            // Cambiar el tab a 'sheet' ANTES de tocar el <img>
             if (data.imagen) {
-                document.querySelector('.sheet-image').src = data.imagen;
-
-                // Cambiar tab a "sheet"
-                if (window.Alpine) Alpine.store('activeTab', 'sheet');
-                else document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
+                if (window.Alpine) {
+                    Alpine.store('activeTab', 'sheet');
+                } else if (document.querySelector('[x-data]')?.__x?.$data) {
+                    document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
+                }
+                // Esperar que Alpine actualice el DOM
+                setTimeout(() => {
+                    document.querySelector('.sheet-image').src = data.imagen;
+                }, 100);
             }
         });
     }

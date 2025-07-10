@@ -120,8 +120,6 @@
         font-weight: bold;
         cursor: pointer;
         width: 250px;
-        
-
     }
     .custom-btn:hover {
         background-color: #6700c4;
@@ -131,7 +129,6 @@
         font-weight: normal;
         margin-bottom: 30px;
         font-size: 30px;
-
     }
     .custom-btn-part{
         background-color: #8300F6;
@@ -147,31 +144,25 @@
         justify-content: center;
         align-items: center;
     }
-
     .custom-file-upload {
-    display: inline-block;
-    padding: 12px 24px;
-    border-radius: 16px;
-    background-color: #8E00FF;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    text-align: center;
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 16px;
+        background-color: #8E00FF;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: center;
     }
-
     .custom-file-upload:hover {
-    background-color: #6B2BD9;
+        background-color: #6B2BD9;
     }
-
     input[type="file"] {
-    display: none;
+        display: none;
     }
-
-    .{'active': activeTab === 'sheet' }
     custom-btn-part:hover {
         background-color: #6700c4;
     }
-
 </style>
 </head>
 <body>
@@ -202,26 +193,23 @@
 
 <!-- Main content -->
 <main>
-
-    <div>
+    <!-- Formulario de mp3 -->
+    <template x-if="activeTab === 'mp3'">
+        <div>
             <p>Please first chose what instrument do you play and then select you audio.</p>
             <select class="custom-btn" id="instrumentSelect">
-            <option value="">Selec instrument</option>
-            <option value="piano">Piano</option>
-            <option value="guitarra">Guitarra</option>
-            <option value="violín">Violín</option>
-        </select>
+                <option value="">Selec instrument</option>
+                <option value="piano">Piano</option>
+                <option value="guitarra">Guitarra</option>
+                <option value="violín">Violín</option>
             </select>
             <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
             <input id="mp3-upload" type="file" accept=".mp3" />
-            
-        <button id="convert-btn" class="custom-btn">Convert</button>
+            <button id="convert-btn" class="custom-btn">Convert</button>
         </div>
-    
-    <template x-if="activeTab === 'mp3'">
-        
     </template>
 
+    <!-- Imagen de partitura -->
     <template x-if="activeTab === 'sheet'">
         <div>
             <p>partitura n.123</p>
@@ -251,7 +239,7 @@ function logout() {
 document.addEventListener('DOMContentLoaded', function () {
     const mp3Input = document.getElementById('mp3-upload');
     const instrumentSelect = document.getElementById('instrumentSelect');
-    const convertBtn = document.querySelector('button.custom-btn');
+    const convertBtn = document.getElementById('convert-btn');
 
     if (convertBtn) {
         convertBtn.addEventListener('click', async function () {
@@ -274,20 +262,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await resp.json();
 
             // Cambiar el tab a 'sheet' ANTES de tocar el <img>
-            if (window.Alpine) {
-                // Si usás store global (Alpine v3+)
-                Alpine.store('activeTab', 'sheet');
-            } else if (document.querySelector('[x-data]')?.__x?.$data) {
-                // Alpine en modo "clásico"
-                document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
-            }
-
-            // Como el <img> aparece por Alpine, dale un pequeño timeout para que lo renderice
-            setTimeout(() => {
-                if (data.imagen) {
-                    document.querySelector('.sheet-image').src = data.imagen;
+            if (data.imagen) {
+                if (window.Alpine) {
+                    Alpine.store('activeTab', 'sheet');
+                } else if (document.querySelector('[x-data]')?.__x?.$data) {
+                    document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
                 }
-            }, 100); // 100ms para que Alpine procese el DOM
+                // Esperar que Alpine actualice el DOM
+                setTimeout(() => {
+                    document.querySelector('.sheet-image').src = data.imagen;
+                }, 100);
+            }
         });
     }
 });
