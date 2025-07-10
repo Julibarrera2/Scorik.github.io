@@ -1,14 +1,20 @@
-from flask import Flask, request, jsonify
+# NotasAPartitura.py - VERSIÓN SIN FLASK
+
 from music21 import stream, note, instrument, environment
 import os
+import json
 import subprocess
-import time
 from time import time as timestamp
 
-us = environment.UserSettings()
-us['musicxmlPath'] = r'C:\Program Files\MuseScore 3\bin\MuseScore3.exe'
+# Poner tu ruta a MuseScore aquí:
+MUSESCORE_PATH = r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe"
 
-app = Flask(__name__)
+# Dónde está el JSON:
+JSON_PATH = os.path.join("JsonFiles", "notas_detectadas.json")
+
+# Dónde guardar los archivos:
+STATIC_FOLDER = "static"
+os.makedirs(STATIC_FOLDER, exist_ok=True)
 
 figura_a_duracion = {
     'redonda': 4.0,
@@ -20,87 +26,60 @@ figura_a_duracion = {
     'semifusa': 0.0625
 }
 
-@app.route('/generar_partitura', methods=['POST'])
-def generar_partitura():
-    notas = request.json.get('notas', [])
-
+def main():
+    # Leer JSON
+    if not os.path.exists(JSON_PATH):
+        print("No se encontró el archivo de notas:", JSON_PATH)
+        return
+    with open(JSON_PATH, "r") as f:
+        notas = json.load(f)
     if not notas:
-        return jsonify({'error': 'No se recibieron notas'}), 400
+        print("No se encontraron notas en el JSON.")
+        return
 
+    # Crear partitura
     score = stream.Score()
     part = stream.Part()
     part.insert(0, instrument.Violin())
-
     for n in notas:
         try:
             nombre_nota = n['nota']
             figura = n.get('figura', 'negra').lower()
-            duracion = figura_a_duracion.get(figura)
-
-            if duracion is None:
-                return jsonify({'error': f'Figura desconocida: {figura}'}), 400
-
+            duracion = figura_a_duracion.get(figura, 1.0)
             nueva_nota = note.Note(nombre_nota)
             nueva_nota.quarterLength = duracion
             part.append(nueva_nota)
         except Exception as e:
-            return jsonify({'error': f'Error procesando nota: {n}. Detalle: {str(e)}'}), 400
-
+            print(f"Error procesando nota: {n} ({e})")
     score.insert(0, part)
 
-    try:
-        if not os.path.exists("static"):
-            os.makedirs("static")
+    ts = int(timestamp())
+    base_name = f'partitura_{ts}'
+    xml_path = os.path.join(STATIC_FOLDER, f"{base_name}.musicxml")
+    png_output = os.path.join(STATIC_FOLDER, f"{base_name}.png")
 
-        ts = int(timestamp())
-        base_name = f'partitura_{ts}'
-        xml_path = f'static/{base_name}.musicxml'
-        png_output = f'static/{base_name}.png'
-        musescore_path = r'C:\Program Files\MuseScore 3\bin\MuseScore3.exe'
+    # Guardar MusicXML
+    score.write('musicxml', fp=xml_path)
 
-        score.write('musicxml', fp=xml_path)
+    # Llamar MuseScore para generar PNG
+    print("Llamando MuseScore...")
+    result = subprocess.run([
+        MUSESCORE_PATH,
+        xml_path,
+        '-o',
+        png_output
+    ], capture_output=True, text=True)
 
-        # Borrar versiones previas si existen
-        for f in os.listdir("static"):
-            if f.startswith(base_name) and f.endswith(".png"):
-                os.remove(os.path.join("static", f))
+    print("STDOUT:", result.stdout)
+    print("STDERR:", result.stderr)
 
-        # Ejecutar MuseScore con nombre de salida especificado
-        result = subprocess.run([
-            musescore_path,
-            xml_path,
-            '-o',
-            png_output
-        ], capture_output=True, text=True)
+    if result.returncode == 0 and os.path.exists(png_output):
+        print("✅ Imagen generada:", png_output)
+    else:
+        print("❌ Error al generar imagen PNG. Revisá los mensajes de error arriba.")
+        if not os.path.exists(MUSESCORE_PATH):
+            print("La ruta a MuseScore no existe. Chequeá la variable MUSESCORE_PATH.")
 
-        print("📤 STDOUT:", result.stdout)
-        print("❌ STDERR:", result.stderr)
-        time.sleep(0.5)
-
-        archivos_static = os.listdir("static")
-        print("📁 Archivos en static/:", archivos_static)
-
-        # Buscar el PNG que coincida con el prefijo
-        imagen_generada = None
-        for f in archivos_static:
-            if f.startswith(base_name) and f.endswith(".png"):
-                imagen_generada = f
-                break
-
-        if result.returncode != 0:
-            raise Exception(f"MuseScore falló: {result.stderr}")
-
-        if not imagen_generada:
-            raise Exception("MuseScore no generó una imagen con el nombre esperado.")
-
-    except Exception as e:
-        print("❌ ERROR al generar imagen:", str(e))
-        return jsonify({'error': f'Error al generar la imagen con MuseScore: {str(e)}'}), 500
-
-    return jsonify({
-        'mensaje': 'Partitura generada correctamente',
-        'img_url': f'/static/{imagen_generada}?ts={ts}'
-    })
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    main()
+# Nota: Este script no usa Flask, es una versión standalone para generar la partitura a partir del JSON.

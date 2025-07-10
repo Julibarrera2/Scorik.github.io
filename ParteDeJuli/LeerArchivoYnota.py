@@ -1,7 +1,4 @@
-# -----------------------------------------
-# VERSION AJUSTADA PARA VIOLÍN (Scorik)
-# -----------------------------------------
-
+# Procesamiento de audio
 import librosa
 import soundfile as sf
 import crepe
@@ -18,17 +15,11 @@ np.float = float
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-# ---- AJUSTES ESPECÍFICOS PARA VIOLÍN ----
-MIN_DURACION_NOTA = 0.05        # Duración mínima para una nota
-threshold_db = -55              # Energía mínima para considerar pitch
-NOTA_UMBRAL_VARIACION = 0.4     # Sensibilidad al cambio de nota (vibrato)
-crepe_threshold = 0.85          # Confianza mínima CREPE
-# -----------------------------------------
-
+# Configuración de ffmpeg y ffprobe para pydub
 AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
 AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
-def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=threshold_db):
+def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-60):
     hop = int(sr_signal * 0.01)
     rms = librosa.feature.rms(y=y_signal, hop_length=hop)[0]
     times = librosa.frames_to_time(np.arange(len(rms)), sr=sr_signal, hop_length=hop)
@@ -54,7 +45,7 @@ def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarra
     print("Audio cargado correctamente.")
     return y, sr, filepath
 
-def detect_pitch(y: np.ndarray, sr: int, threshold=crepe_threshold) -> List[Tuple[float, float]]:
+def detect_pitch(y: np.ndarray, sr: int, threshold=0.85) -> List[Tuple[float, float]]:
     step_size_ms=10
     print("Detectando pitch con CREPE...")
     if sr != 16000:
@@ -89,7 +80,6 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
     print("Primeros 20 valores de pitch_data (t, f):", pitch_data[:20])
     print("→ Cantidad de frames en pitch_data:", len(pitch_data))
     print("→ Primeros 10 frames:", pitch_data[:10])
-
     def calcular_figura_y_compas(duracion, tempo, inicio):
         negra_duracion = 60 / tempo
         if duracion < negra_duracion * 0.6:
@@ -103,6 +93,9 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
         compas = int(inicio / (negra_duracion * 4)) + 1
         return figura, compas
 
+    MIN_DURACION_NOTA = 0.08
+    NOTA_UMBRAL_VARIACION = 0.4
+
     def semitonos(f1, f2):
         return abs(12 * np.log2(f1 / f2))
 
@@ -111,6 +104,7 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
         inicio = pitch_data[0][0]
         freq_actual = pitch_data[0][1]
         nota_actual = frecuencia_a_nota(freq_actual)
+
         for t, f in pitch_data[1:]:
             if semitonos(f, freq_actual) > NOTA_UMBRAL_VARIACION:
                 duracion = t - inicio
@@ -129,6 +123,7 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
                 nota_actual = frecuencia_a_nota(f)
             else:
                 freq_actual = (freq_actual + f) / 2
+
         duracion = pitch_data[-1][0] - inicio
         if duracion >= MIN_DURACION_NOTA:
             figura, compas = calcular_figura_y_compas(duracion, tempo, inicio)
@@ -149,17 +144,9 @@ def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json"
     with open(ruta_completa, "w") as f:
         json.dump(notas_json, f, indent=2)
 
-print("✅ Archivo 'notas_detectadas.json' generado correctamente.")
-
 def generate_note_wave(freq, dur, sr=16000, volume=1.0) -> np.ndarray:
-    # Generador tipo senoide, simple, pero ajustado: 
     t = np.linspace(0, dur, int(sr * dur), endpoint=False)
-    # AGREGAMOS ARMÓNICOS para sonar más tipo violín:
-    wave = (
-        1.0 * np.sin(2 * np.pi * freq * t) +
-        0.4 * np.sin(2 * np.pi * 2 * freq * t) +
-        0.2 * np.sin(2 * np.pi * 3 * freq * t)
-    ) / 1.6
+    wave = np.sin(2 * np.pi * freq * t)
     env = np.ones_like(t)
     n_ataque = int(sr * 0.01)
     n_decay = int(sr * 0.1)
@@ -261,16 +248,16 @@ def main(filepath: str):
     for n in notas:
         freq = notas_dict[n["nota"]]
         start = int(n["inicio"] * sr_out)
-        end   = start + int(n["duracion"] * sr_out)
+        end = start + int(n["duracion"] * sr_out)
         wave = generate_note_wave(freq, n["duracion"], sr=sr_out, volume=1.0)
         fade_ms = int(0.005 * sr_out)
         if wave.shape[0] > fade_ms*2:
             ramp = np.linspace(0,1,fade_ms)
             if wave.ndim == 1:
-                wave[:fade_ms]  *= ramp
+                wave[:fade_ms] *= ramp
                 wave[-fade_ms:] *= ramp[::-1]
             else:
-                wave[:fade_ms]  *= ramp[:,None]
+                wave[:fade_ms] *= ramp[:,None]
                 wave[-fade_ms:] *= ramp[::-1][:,None]
         slice_end = min(end, audio_total.shape[0])
         existing = audio_total[start:slice_end]
@@ -281,13 +268,13 @@ def main(filepath: str):
         audio_total[start:slice_end] = np.clip(mix, -1.0, 1.0)
         seg = audio_original[start: slice_end]
         power = seg**2
-        if seg.ndim>1:
+        if seg.ndim > 1:
             power = power.mean(axis=1)
         orig_rms = np.sqrt(np.mean(power)) + 1e-8
-        wave_rms = np.sqrt(np.mean(wave**2))    + 1e-8
+        wave_rms = np.sqrt(np.mean(wave**2)) + 1e-8
         wave *= (orig_rms / wave_rms)
     slice_end = min(end, audio_total.shape[0])
-    existing  = audio_total[start: slice_end]
+    existing = audio_total[start: slice_end]
     wave_part = wave[: len(existing)]
     mix = existing + wave_part
     audio_total[start: slice_end] = np.clip(mix, -1.0, 1.0)
@@ -298,7 +285,6 @@ def main(filepath: str):
         audio_total[-fs:] *= fade_env
     else:
         audio_total[-fs:, :] *= fade_env[:, None]
-    fade_env = np.linspace(1.0, 0.0, fs)
     peak = np.max(np.abs(audio_total))
     if peak > 0:
         audio_total /= peak
@@ -309,9 +295,11 @@ def main(filepath: str):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Uso: python LeerArchivoYnota_violín.py <ruta_mp3>")
+        print("Uso: python LeerArchivoYnota.py <ruta_mp3>")
         exit(1)
     mp3_path = sys.argv[1]
     main(mp3_path)
     print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
-    subprocess.run(["python", "../ParteDeTota/NotasAPartitura.py"])
+    subprocess.run([sys.executable, r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py"])
+
+#Ruta tota PC: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py
