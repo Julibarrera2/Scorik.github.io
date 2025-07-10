@@ -120,6 +120,8 @@
         font-weight: bold;
         cursor: pointer;
         width: 250px;
+        
+
     }
     .custom-btn:hover {
         background-color: #6700c4;
@@ -129,6 +131,7 @@
         font-weight: normal;
         margin-bottom: 30px;
         font-size: 30px;
+
     }
     .custom-btn-part{
         background-color: #8300F6;
@@ -144,25 +147,31 @@
         justify-content: center;
         align-items: center;
     }
+
     .custom-file-upload {
-        display: inline-block;
-        padding: 12px 24px;
-        border-radius: 16px;
-        background-color: #8E00FF;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        text-align: center;
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 16px;
+    background-color: #8E00FF;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
     }
+
     .custom-file-upload:hover {
-        background-color: #6B2BD9;
+    background-color: #6B2BD9;
     }
+
     input[type="file"] {
-        display: none;
+    display: none;
     }
+
+    .{'active': activeTab === 'sheet' }
     custom-btn-part:hover {
         background-color: #6700c4;
     }
+
 </style>
 </head>
 <body>
@@ -193,7 +202,7 @@
 
 <!-- Main content -->
 <main>
-    <!-- Formulario de mp3 -->
+    <!-- SOLO SE MUESTRA EN EL TAB MP3 -->
     <template x-if="activeTab === 'mp3'">
         <div>
             <p>Please first chose what instrument do you play and then select you audio.</p>
@@ -209,16 +218,17 @@
         </div>
     </template>
 
-    <!-- Imagen de partitura -->
+    <!-- SOLO SE MUESTRA EN EL TAB SHEET -->
     <template x-if="activeTab === 'sheet'">
         <div>
             <p>partitura n.123</p>
-            <img class="sheet-image" src="" alt="Imagen partitura generada">
+            <img class="sheet-image" src="" alt="Imagen partitura generada" style="max-width:100%">
             <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
             <button class="custom-btn-part">save</button>
         </div>
     </template>
 </main>
+
 
 <script>
 function checkAuth() {
@@ -239,7 +249,7 @@ function logout() {
 document.addEventListener('DOMContentLoaded', function () {
     const mp3Input = document.getElementById('mp3-upload');
     const instrumentSelect = document.getElementById('instrumentSelect');
-    const convertBtn = document.getElementById('convert-btn');
+    const convertBtn = document.querySelector('button.custom-btn');
 
     if (convertBtn) {
         convertBtn.addEventListener('click', async function () {
@@ -262,20 +272,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await resp.json();
 
             // Cambiar el tab a 'sheet' ANTES de tocar el <img>
-            if (data.imagen) {
-                if (window.Alpine) {
-                    Alpine.store('activeTab', 'sheet');
-                } else if (document.querySelector('[x-data]')?.__x?.$data) {
-                    document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
-                }
-                // Esperar que Alpine actualice el DOM
-                setTimeout(() => {
-                    document.querySelector('.sheet-image').src = data.imagen;
-                }, 100);
+            if (window.Alpine) {
+                // Si usás store global (Alpine v3+)
+                Alpine.store('activeTab', 'sheet');
+            } else if (document.querySelector('[x-data]')?.__x?.$data) {
+                // Alpine en modo "clásico"
+                document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
             }
+
+            // Como el <img> aparece por Alpine, dale un pequeño timeout para que lo renderice
+            setTimeout(() => {
+                if (data.imagen) {
+                    document.querySelector('.sheet-image').src = data.imagen;
+                }
+            }, 100); // 100ms para que Alpine procese el DOM
         });
     }
 });
 </script>
+<script src="app.js"></script>
 </body>
 </html>
