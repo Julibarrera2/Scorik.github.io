@@ -64,6 +64,9 @@ def main():
             print("ERROR: No se generó el archivo MusicXML, aborto.")
             return
 
+    for f in os.listdir(STATIC_FOLDER):
+        if f.startswith(base_name) and f.endswith('.png'):
+            os.remove(os.path.join(STATIC_FOLDER, f))
     print("Llamando MuseScore...")
     result = subprocess.run([
         MUSESCORE_PATH,
@@ -75,8 +78,13 @@ def main():
     print("STDOUT:", result.stdout)
     print("STDERR:", result.stderr)
 
-    if result.returncode == 0 and os.path.exists(png_output):
-        print("✅ Imagen generada:", png_output)
+    if result.returncode == 0:
+        # Buscar cualquier PNG generado (con o sin sufijo)
+        pngs = [f for f in os.listdir(STATIC_FOLDER) if f.startswith(base_name) and f.endswith('.png')]
+        if pngs:
+            print("✅ Imagen generada(s):", pngs)
+        else:
+            print("❌ MuseScore devolvió éxito, pero no se encontró el PNG generado.")
     else:
         print("❌ Error al generar imagen PNG. Revisá los mensajes de error arriba.")
         if not os.path.exists(MUSESCORE_PATH):
