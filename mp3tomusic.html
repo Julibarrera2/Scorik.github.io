@@ -273,10 +273,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = await resp.json();
 
-            // Mostrar la imagen generada
-            if (data.imagen) {
-                document.querySelector('.sheet-image').src = data.imagen;
+            // Cambiar el tab a 'sheet' ANTES de tocar el <img>
+            if (window.Alpine) {
+                // Si usás store global (Alpine v3+)
+                Alpine.store('activeTab', 'sheet');
+            } else if (document.querySelector('[x-data]')?.__x?.$data) {
+                // Alpine en modo "clásico"
+                document.querySelector('[x-data]').__x.$data.activeTab = 'sheet';
             }
+
+            // Como el <img> aparece por Alpine, dale un pequeño timeout para que lo renderice
+            setTimeout(() => {
+                if (data.imagen) {
+                    document.querySelector('.sheet-image').src = data.imagen;
+                }
+            }, 100); // 100ms para que Alpine procese el DOM
         });
     }
 });
