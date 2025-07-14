@@ -1,5 +1,5 @@
 <!DOCTYPE html> 
-<html lang="en" x-data="appScorik()">
+<html lang="en" x-data="appScorik()" x-init="initScorik()">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -207,7 +207,7 @@ if (!localStorage.getItem('currentUser')) {
 
 <!-- Main content -->
 <main>
-    <!-- BLOQUE UPLOAD -->
+    <!-- UPLOAD FORM -->
     <div x-show="activeTab === 'mp3'" x-transition>
         <p>Please first chose what instrument do you play and then select you audio.</p>
         <select class="custom-btn" id="instrumentSelect">
@@ -218,10 +218,9 @@ if (!localStorage.getItem('currentUser')) {
         </select>
         <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
         <input id="mp3-upload" type="file" accept=".mp3" />
-        <button id="convert-btn" class="custom-btn">Convert</button>
+        <button id="convert-btn" class="custom-btn" @click="convertMp3()">Convert</button>
     </div>
-
-    <!-- BLOQUE PARTITURA -->
+    <!-- PARTITURA -->
     <div x-show="activeTab === 'sheet'" x-transition>
         <p>partitura</p>
         <img class="sheet-image" :src="lastImage" alt="Imagen partitura generada" style="max-width: 100%; background: #fafafa;">
@@ -231,36 +230,14 @@ if (!localStorage.getItem('currentUser')) {
 </main>
 
 <script>
-    function appScorik() {
+function appScorik() {
     return {
         sidebarOpen: false,
         activeTab: 'mp3',
         lastImage: '',
-
-        setSheetTab(img) {
-            this.activeTab = 'sheet';
-            this.lastImage = img + '?v=' + Date.now();
-        }
-    }
-}
-
-    function logout() {
-        localStorage.removeItem('currentUser');
-        window.location.href = 'index.html';
-    }
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-// --- JS para Convert y cambio de tab ---
-document.addEventListener('DOMContentLoaded', function () {
-    const mp3Input = document.getElementById('mp3-upload');
-    const instrumentSelect = document.getElementById('instrumentSelect');
-    const convertBtn = document.getElementById('convert-btn');
-
-    if (convertBtn) {
-        convertBtn.addEventListener('click', async function () {
+        convertMp3() {
+            const mp3Input = document.getElementById('mp3-upload');
+            const instrumentSelect = document.getElementById('instrumentSelect');
             const file = mp3Input.files[0];
             const instrument = instrumentSelect.value;
             if (!file || !instrument) {
@@ -269,22 +246,37 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const formData = new FormData();
             formData.append('file', file);
-
-            // Subir el archivo al backend
-            const resp = await fetch('/upload', {
+            fetch('/upload', {
                 method: 'POST',
                 body: formData
-            });
-            const data = await resp.json();
-
-            // Cambiar el tab a 'sheet' y setear imagen de forma reactiva con Alpine
-            if (data.imagen) {
-                // Llamá la función Alpine
-                document.querySelector('[x-data]').__x.$data.setSheetTab(data.imagen);
-            }
-        });
+            })
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.imagen) {
+                    this.activeTab = 'sheet';
+                    // Forzar refresco de la imagen con timestamp
+                    this.lastImage = data.imagen + '?v=' + Date.now();
+                } else {
+                    alert("No se generó imagen.");
+                }
+            })
+            .catch(() => alert("Error en el procesamiento."));
+        }
     }
-});
+}
+
+function initScorik() { /* opcional si querés lógica al iniciar, podés dejarlo vacío */ }
+function logout() {
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// --- JS para Convert y cambio de tab ---
+
 </script>
 </body>
 </html>
