@@ -159,7 +159,12 @@
 
 <script>
     function checkAuth() {
-    if (!localStorage.getItem('currentUser')) {
+    try {
+        const user = localStorage.getItem('currentUser');
+        if (!user || user === "null" || user === "undefined") {
+            window.location.href = 'login.html';
+        }
+    } catch(e) {
         window.location.href = 'login.html';
     }
     }
