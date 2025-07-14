@@ -202,33 +202,35 @@
 
 <!-- Main content -->
 <main>
-    <!-- SOLO SE MUESTRA EN EL TAB MP3 -->
-    <template x-if="activeTab === 'mp3'">
-        <div>
+
+    <div>
             <p>Please first chose what instrument do you play and then select you audio.</p>
             <select class="custom-btn" id="instrumentSelect">
-                <option value="">Selec instrument</option>
-                <option value="piano">Piano</option>
-                <option value="guitarra">Guitarra</option>
-                <option value="violín">Violín</option>
+            <option value="">Selec instrument</option>
+            <option value="piano">Piano</option>
+            <option value="guitarra">Guitarra</option>
+            <option value="violín">Violín</option>
+        </select>
             </select>
             <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
             <input id="mp3-upload" type="file" accept=".mp3" />
-            <button id="convert-btn" class="custom-btn">Convert</button>
+            
+        <button id="convert-btn" class="custom-btn">Convert</button>
         </div>
+    
+    <template x-if="activeTab === 'mp3'">
+        
     </template>
 
-    <!-- SOLO SE MUESTRA EN EL TAB SHEET -->
     <template x-if="activeTab === 'sheet'">
         <div>
             <p>partitura n.123</p>
-            <img class="sheet-image" src="" alt="Imagen partitura generada" style="max-width:100%">
+            <img class="sheet-image" src="" alt="Imagen partitura generada">
             <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
             <button class="custom-btn-part">save</button>
         </div>
     </template>
 </main>
-
 
 <script>
 function checkAuth() {
@@ -290,6 +292,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-<script src="app.js"></script>
 </body>
 </html>
