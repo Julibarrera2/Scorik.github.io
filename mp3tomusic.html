@@ -225,7 +225,7 @@ if (!localStorage.getItem('currentUser')) {
         <p>partitura</p>
         <img class="sheet-image" :src="lastImage" alt="Imagen partitura generada" style="max-width: 100%; background: #fafafa;">
         <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
-        <button class="custom-btn-part">save</button>
+        <button class="custom-btn-part" @click="savePartitura()">save</button>
     </div>
 </main>
 
@@ -235,6 +235,10 @@ function appScorik() {
         sidebarOpen: false,
         activeTab: 'mp3',
         lastImage: '',
+        lastXml: '',
+        nombrePartitura: 'mi_partitura',
+        usuario: JSON.parse(localStorage.getItem('currentUser') || '{}').email || '',
+
         convertMp3() {
             const mp3Input = document.getElementById('mp3-upload');
             const instrumentSelect = document.getElementById('instrumentSelect');
@@ -254,13 +258,35 @@ function appScorik() {
             .then(data => {
                 if (data.imagen) {
                     this.activeTab = 'sheet';
-                    // Forzar refresco de la imagen con timestamp
                     this.lastImage = data.imagen + '?v=' + Date.now();
+                    this.lastXml = data.xml || '';
                 } else {
                     alert("No se generó imagen.");
                 }
             })
             .catch(() => alert("Error en el procesamiento."));
+        },
+
+        savePartitura() {
+            // Enviar petición para guardar partitura en carpeta definitiva
+            fetch('/save_partitura', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    usuario: this.usuario,
+                    nombre: this.nombrePartitura,
+                    imagen: this.lastImage.split('?')[0], // sin cache
+                    xml: this.lastXml
+                })
+                })
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Partitura guardada correctamente en tu biblioteca.");
+                } else {
+                    alert("Error al guardar partitura.");
+                }
+            });
         }
     }
 }

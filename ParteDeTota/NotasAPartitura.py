@@ -1,15 +1,17 @@
-# NotasAPartitura.py - FINAL - 10/07/2025
-
 from music21 import stream, note, instrument
 import os
 import json
 import subprocess
 from time import time as timestamp
+import sys
 
 MUSESCORE_PATH = r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe"
-JSON_PATH = os.path.join("JsonFiles", "notas_detectadas.json")
-STATIC_FOLDER = "static"
-os.makedirs(STATIC_FOLDER, exist_ok=True)
+
+# === CAMBIO: Carpeta destino por argumento (por defecto static/temp) ===
+carpeta_destino = sys.argv[1] if len(sys.argv) > 1 else os.path.join("static", "temp")
+os.makedirs(carpeta_destino, exist_ok=True)
+
+JSON_PATH = os.path.join(carpeta_destino, "notas_detectadas.json")
 
 figura_a_duracion = {
     'redonda': 4.0,
@@ -48,9 +50,9 @@ def main():
 
     ts = int(timestamp())
     base_name = f'partitura_{ts}'
-    xml_path = os.path.join(STATIC_FOLDER, f"{base_name}.musicxml")
-    xml_path2 = os.path.join(STATIC_FOLDER, f"{base_name}.xml")
-    png_output = os.path.join(STATIC_FOLDER, f"{base_name}.png")
+    xml_path = os.path.join(carpeta_destino, f"{base_name}.musicxml")
+    xml_path2 = os.path.join(carpeta_destino, f"{base_name}.xml")
+    png_output = os.path.join(carpeta_destino, f"{base_name}.png")
 
     # Guardar como musicxml (puede guardar .xml realmente)
     score.write('musicxml', fp=xml_path)
@@ -64,9 +66,9 @@ def main():
             print("ERROR: No se generó el archivo MusicXML, aborto.")
             return
 
-    for f in os.listdir(STATIC_FOLDER):
+    for f in os.listdir(carpeta_destino):
         if f.startswith(base_name) and f.endswith('.png'):
-            os.remove(os.path.join(STATIC_FOLDER, f))
+            os.remove(os.path.join(carpeta_destino, f))
     print("Llamando MuseScore...")
     result = subprocess.run([
         MUSESCORE_PATH,
@@ -80,7 +82,7 @@ def main():
 
     if result.returncode == 0:
         # Buscar cualquier PNG generado (con o sin sufijo)
-        pngs = [f for f in os.listdir(STATIC_FOLDER) if f.startswith(base_name) and f.endswith('.png')]
+        pngs = [f for f in os.listdir(carpeta_destino) if f.startswith(base_name) and f.endswith('.png')]
         if pngs:
             print("✅ Imagen generada(s):", pngs)
         else:

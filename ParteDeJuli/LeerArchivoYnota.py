@@ -137,10 +137,9 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
             })
     return notas_json
 
-def write_notes_to_json(notas_json: List[Dict], filename="notas_detectadas.json") -> None:
-    carpeta_destino = "JsonFiles"
+def write_notes_to_json(notas_json: List[Dict], carpeta_destino="JsonFiles") -> None:
     os.makedirs(carpeta_destino, exist_ok=True)
-    ruta_completa = os.path.join(carpeta_destino, filename)
+    ruta_completa = os.path.join(carpeta_destino, "notas_detectadas.json")
     with open(ruta_completa, "w") as f:
         json.dump(notas_json, f, indent=2)
 
@@ -208,7 +207,7 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, ruta_jso
         for err in errores:
             print("   →", err)
 
-def main(filepath: str):
+def main(filepath: str, carpeta_destino="static/temp"):
     y, sr, filepath = load_and_preprocess_audio(filepath)
     y_trim = y
     pitches = detect_pitch(y_trim, sr)
@@ -218,22 +217,18 @@ def main(filepath: str):
     print("Primeros 10 pitches:", pitches[:10])
     tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
     notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
-    write_notes_to_json(notas_json)
-    print(f"\n=== Antes de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
-    for n in notas_json:
-        pass
-    duracion_audio_trim = librosa.get_duration(y=y, sr=sr)
+
+    # Guardar JSON en la carpeta destino:
+    write_notes_to_json(notas_json, carpeta_destino)
     print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
-    for n in notas_json:
-        pass
-    ruta_json = os.path.join("JsonFiles", "notas_detectadas.json")
+
+    # ====== RECONSTRUCCIÓN DEL AUDIO COMO ANTES ======
+    ruta_json = os.path.join(carpeta_destino, "notas_detectadas.json")
     with open(ruta_json, "r") as f:
         notas = json.load(f)
     if not notas:
         print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
         exit()
-    with open(ruta_json, "r") as f:
-        notas = json.load(f)
     audio_original, sr_original = sf.read(filepath)
     expected_duration = len(audio_original) / sr_original
     sr_out = sr_original
@@ -290,18 +285,20 @@ def main(filepath: str):
         audio_total /= peak
     sf.write("reconstruccion.wav", audio_total, sr_out)
     print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
-    exportar_json_si_confirmado(notas_json, duracion_audio_trim)
-    verificar_notas_detectadas(filepath, "reconstruccion.wav")
 
+    # ====== LLAMADA FINAL A NotasAPartitura.py PASANDO LA CARPETA DE DESTINO ======
+    print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
+    subprocess.run([sys.executable, r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py", carpeta_destino])
+
+# ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Uso: python LeerArchivoYnota.py <ruta_mp3>")
+        print("Uso: python LeerArchivoYnota.py <ruta_mp3> [carpeta_destino]")
         exit(1)
     mp3_path = sys.argv[1]
-    main(mp3_path)
-    print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
-    # ATENCIÓN: CAMBIO → El script NotasAPartitura.py debe ser el CORREGIDO
-    subprocess.run([sys.executable, r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py"])
+    carpeta_destino = sys.argv[2] if len(sys.argv) > 2 else "static/temp"
+    main(mp3_path, carpeta_destino)
+
 
 #Ruta tota PC: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py
 #Ruta tota Laptop: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py
