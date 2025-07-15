@@ -288,7 +288,7 @@ def main(filepath: str, carpeta_destino="static/temp"):
 
     # ====== LLAMADA FINAL A NotasAPartitura.py PASANDO LA CARPETA DE DESTINO ======
     print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
-    subprocess.run([sys.executable, r"C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py", carpeta_destino])
+    subprocess.run([sys.executable, r"c:\Users\fb050\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py", carpeta_destino])
 
 # ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========
 if __name__ == '__main__':
