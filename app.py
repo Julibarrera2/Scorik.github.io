@@ -176,6 +176,29 @@ def serve_js(filename):
 def serve_css(filename):
     return send_from_directory('.', filename + '.css')
 
+@app.route('/api/partituras_usuario/<usuario>')
+def api_partituras_usuario(usuario):
+    user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
+    if not os.path.exists(user_dir):
+        return jsonify([])
+    partituras = []
+    for fname in os.listdir(user_dir):
+        if fname.endswith('.png'):
+            base = os.path.splitext(fname)[0]
+            # Buscamos el .xml asociado (si existe)
+            xml = None
+            for ext in ('.xml', '.musicxml'):
+                xml_path = os.path.join(user_dir, base + ext)
+                if os.path.exists(xml_path):
+                    xml = f"/partituras_usuario/{usuario}/{base + ext}"
+                    break
+            partituras.append({
+                "nombre": base,
+                "imagen": f"/partituras_usuario/{usuario}/{fname}",
+                "xml": xml
+            })
+    return jsonify(partituras)
+
 # --- ESTA RUTA VA ÚLTIMA ---
 @app.route('/<path:filename>')
 def root_files(filename):

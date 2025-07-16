@@ -149,14 +149,21 @@
     .card {
         width: 100px;
         height: 140px;
-        background-color: lime;
+        background-color: rgb(247, 247, 247);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-direction: column;
         border-radius: 10px;
         font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 3px 12px 0 rgba(110, 0, 246, 0.08);
         color: #6b00d6;
+    }
+    .card:hover {
+    box-shadow: 0 6px 16px 0 rgba(110, 0, 246, 0.18);
+    transform: translateY(-4px) scale(1.04);
+    border-color: #9B00F6;
     }
     .card img {
         width: 50px;
@@ -239,14 +246,8 @@
     <div x-show="activeSection === 'library'" x-transition.opacity.duration.500ms>
         <div class="library">
             <h3>recientes</h3>
-            <div class="cards">
-                <div class="card">
-                    <img src="https://img.icons8.com/ios/50/plus.png" alt="plus">
-                </div>
-                <div class="card">Sheet #1</div>
-                <div class="card">Sheet #1</div>
-                <div class="card">Sheet #1</div>
-                <div class="card">Sheet #1</div>
+            <div class="cards" id="partituras-cards">
+            <!-- Aquí van las cards dinámicas -->
             </div>
         </div>
     </div>
@@ -259,6 +260,17 @@
                 <div class="search-icon">🔍</div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- MODAL PARA VER LA PARTITURA EN GRANDE -->
+<div id="partitura-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(20,0,50,0.6);z-index:5000;align-items:center;justify-content:center;">
+    <div style="background:white;padding:28px 24px 12px 24px;border-radius:20px;max-width:98vw;max-height:95vh;display:flex;flex-direction:column;align-items:center;">
+        <img id="modal-img" src="" style="max-width:70vw;max-height:65vh;border-radius:14px;box-shadow:0 6px 36px #0004;">
+        <button onclick="document.getElementById('partitura-modal').style.display='none'"
+            style="margin-top:24px;border:none;background:#9B00F6;color:white;font-size:20px;padding:8px 24px;border-radius:16px;cursor:pointer;">
+            Cerrar
+        </button>
     </div>
 </div>
 
@@ -276,5 +288,41 @@ function logout() {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const usuario = JSON.parse(localStorage.getItem('currentUser') || '{}').email || '';
+    const cardsContainer = document.getElementById('partituras-cards');
+
+    // Botón +
+    const plusCard = document.createElement('div');
+    plusCard.className = 'card';
+    plusCard.innerHTML = '<img src="https://img.icons8.com/ios/50/plus.png" alt="plus">';
+    plusCard.onclick = () => location.href = 'mp3tomusic.html';
+    cardsContainer.appendChild(plusCard);
+
+    if (!usuario) return;
+
+    fetch('/api/partituras_usuario/' + encodeURIComponent(usuario))
+        .then(resp => resp.json())
+        .then(partituras => {
+            partituras.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${p.imagen}" alt="partitura" style="width:60px;height:60px;border-radius:7px;">
+                    <span style="font-size:14px;margin-top:5px;">${p.nombre.replaceAll('_', ' ')}</span>
+                `;
+                card.onclick = () => {
+                    document.getElementById('modal-img').src = p.imagen;
+                    document.getElementById('partitura-modal').style.display = 'flex';
+                }
+                cardsContainer.appendChild(card);
+            });
+        });
+});
+
+</script>
+
 </body>
 </html>
