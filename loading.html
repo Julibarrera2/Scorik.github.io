@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cargando partitura...</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body { 
+        background: #fff; 
+        font-family: 'Montserrat', Arial, sans-serif; 
+        margin: 0; 
+        height: 100vh; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+    }
+    #center { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+    }
+    #progress-bar-bg { 
+        width: 350px; 
+        height: 18px; 
+        border-radius: 10px; 
+        background: #ececec; 
+        margin-top: 40px; 
+        overflow: hidden; 
+    }
+    #progress-bar { 
+        width: 0%; 
+        height: 100%; 
+        background: #5AE9DD; 
+        transition: width 0.4s; 
+    }
+    #loading-msg { 
+        color: #8300F6; 
+        margin-top: 30px; 
+        font-size: 1.5rem; 
+        font-weight: bold; 
+    }
+    #logo { 
+        margin-bottom: 35px; 
+    }
+    @media (max-width: 500px) {
+        #progress-bar-bg { 
+            width: 90vw; 
+        }
+    }
+</style>
+</head>
+<body>
+<div id="center">
+    <img src="Img/logo_skorik.png" alt="Logo" width="90" id="logo">
+    <svg width="110" height="110" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" stroke="#8300F6" stroke-width="10" fill="none" stroke-linecap="round"
+        stroke-dasharray="283"
+        stroke-dashoffset="75">
+        <animateTransform attributeName="transform" attributeType="XML" type="rotate"
+            from="0 50 50" to="360 50 50" dur="1s" repeatCount="indefinite"/>
+    </circle>
+    </svg>
+    <div id="progress-bar-bg">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="loading-msg">Convirtiendo el audio...</div>
+</div>
+
+<script>
+    // Obtené el usuario (ej: localStorage, o querystring)
+    let usuario = localStorage.getItem('currentUser') ? JSON.parse(localStorage.getItem('currentUser')).email : '';
+    if (!usuario) usuario = 'anon';
+
+    const estados = [
+        { msg: "Convirtiendo el audio...", percent: 10 },
+        { msg: "Audio cargado correctamente.", percent: 25 },
+        { msg: "Detectando notas...", percent: 60 },
+        { msg: "Generando imagen ...", percent: 85 },
+        { msg: "Imagen generada", percent: 100 }
+    ];
+
+    function setEstado(msg) {
+        document.getElementById('loading-msg').textContent = msg;
+        let p = estados.find(e => msg.startsWith(e.msg));
+        let percent = p ? p.percent : 15;
+        document.getElementById('progress-bar').style.width = percent + "%";
+    }
+
+    function checkProgress() {
+        fetch(`/api/progress/${encodeURIComponent(usuario)}`)
+        .then(resp => resp.json())
+        .then(data => {
+            setEstado(data.msg || "Cargando...");
+            if ((data.msg || "") === "Imagen generada") {
+            setTimeout(() => {
+                window.location.href = 'mp3tomusic.html#sheet';
+            }, 900);
+            } else {
+            setTimeout(checkProgress, 900);
+            }
+        });
+    }
+
+    checkProgress();
+</script>
+</body>
+</html>

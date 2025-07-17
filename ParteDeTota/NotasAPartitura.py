@@ -84,7 +84,7 @@ def main():
         # Buscar cualquier PNG generado (con o sin sufijo)
         pngs = [f for f in os.listdir(carpeta_destino) if f.startswith(base_name) and f.endswith('.png')]
         if pngs:
-            print("✅ Imagen generada(s):", pngs)
+            print("Imagen generada", pngs)
         else:
             print("❌ MuseScore devolvió éxito, pero no se encontró el PNG generado.")
     else:

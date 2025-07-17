@@ -35,7 +35,7 @@ def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarra
         raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
     filename, ext = os.path.splitext(filepath)
     if ext.lower() == ".mp3":
-        print("Convirtiendo .mp3 a .wav...")
+        print("Convirtiendo el audio...")
         audio_mp3 = AudioSegment.from_mp3(filepath)
         filepath_wav = filename + ".wav"
         audio_mp3.export(filepath_wav, format="wav")
@@ -47,7 +47,7 @@ def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarra
 
 def detect_pitch(y: np.ndarray, sr: int, threshold=0.85) -> List[Tuple[float, float]]:
     step_size_ms=10
-    print("Detectando pitch con CREPE...")
+    print("Detectando notas...")
     if sr != 16000:
         y = librosa.resample(y, orig_sr=sr, target_sr=16000)
         sr = 16000
@@ -287,7 +287,7 @@ def main(filepath: str, carpeta_destino="static/temp"):
     print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
 
     # ====== LLAMADA FINAL A NotasAPartitura.py PASANDO LA CARPETA DE DESTINO ======
-    print("\n🎯 Generando imagen a partir del JSON con el script de Tota...")
+    print("\n Generando imagen...")
     subprocess.run([sys.executable, r"c:\Users\fb050\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py", carpeta_destino])
 
 # ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========

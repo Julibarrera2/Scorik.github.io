@@ -11,16 +11,17 @@ app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
 STATIC_FOLDER = os.path.join(os.getcwd(), "static")
-STATIC_TEMP_FOLDER = os.path.join(STATIC_FOLDER, "temp")  # << NUEVO: carpeta temporal
-PARTITURAS_USER_FOLDER = os.path.join(os.getcwd(), "partituras_usuario")  # << NUEVO: carpeta de partituras guardadas
+STATIC_TEMP_FOLDER = os.path.join(STATIC_FOLDER, "temp")  # carpeta temporal
+PARTITURAS_USER_FOLDER = os.path.join(os.getcwd(), "partituras_usuario")  # carpeta de partituras guardadas
 USERS_FILE = os.path.join(os.getcwd(), "usuarios.json")
 PYTHON_EXEC = sys.executable
+PROGRESS_FOLDER = os.path.join(os.getcwd(), "progress") # carpeta para progreso
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(STATIC_FOLDER, exist_ok=True)
 os.makedirs(STATIC_TEMP_FOLDER, exist_ok=True)
 os.makedirs(PARTITURAS_USER_FOLDER, exist_ok=True)
-
+os.makedirs(PROGRESS_FOLDER, exist_ok=True) # carpeta de progreso
 
 def cargar_usuarios():
     if not os.path.exists(USERS_FILE):
@@ -36,6 +37,21 @@ def cargar_usuarios():
 def guardar_usuarios(usuarios):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(usuarios, f, indent=2)
+
+# Función para establecer el progreso del usuario
+def set_progress(usuario, msg):
+    path = os.path.join(PROGRESS_FOLDER, f"{usuario}.json")
+    with open(path, "w") as f:
+        json.dump({"msg": msg}, f)
+
+# Ruta para obtener el progreso del usuario
+@app.route('/api/progress/<usuario>')
+def api_progress(usuario):
+    path = os.path.join(PROGRESS_FOLDER, f"{usuario}.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            return jsonify(json.load(f))
+    return jsonify({"msg": "Convirtiendo el audio..."})
 
 #Lo de registrer y login
 @app.route('/api/register', methods=['POST'])
@@ -73,10 +89,17 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    # --- 1. Tomar usuario del FormData (si no, poné "anon") ---
+    usuario = request.form.get('usuario', 'anon')
+
+    set_progress(usuario, "Convirtiendo el audio...")
+
     if 'file' not in request.files:
+        set_progress(usuario, "Error: No se envió archivo")
         return jsonify({"error": "No se envió archivo"}), 400
     file = request.files.get('file')
     if file is None or file.filename is None or file.filename == '':
+        set_progress(usuario, "Error: Archivo vacío")
         return jsonify({"error": "Archivo vacío"}), 400
     
     # Limpiar archivos temporales anteriores
@@ -90,15 +113,29 @@ def upload_file():
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
 
-    # Ejecutar el script de notas con path correcto
+    set_progress(usuario, "Audio cargado correctamente.")
+
+    # ---- Ejecutar los scripts paso a paso con actualización de progreso ----
+    # Paso 1: Detectando notas...
+    set_progress(usuario, "Detectando notas...")
+
+    # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
+    # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
     subprocess.run([PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, STATIC_TEMP_FOLDER], check=True)
 
-    # Buscar último PNG y XML TEMPORAL
+    # Paso 2: Generando imagen...
+    set_progress(usuario, "Generando imagen ...")
+
+    # Esperar a que el PNG se genere (esto ya lo hace tu script)
     temp_pngs = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".png")]
     temp_xmls = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".xml") or f.endswith(".musicxml")]
 
     if not temp_pngs or not temp_xmls:
+        set_progress(usuario, "Error: No se generó imagen")
         return jsonify({"error": "No se generó imagen"}), 500
+
+    # Finalización
+    set_progress(usuario, "Imagen generada")
 
     return jsonify({
         "imagen": f"/static/temp/{temp_pngs[0]}",

@@ -227,6 +227,24 @@ if (!localStorage.getItem('currentUser')) {
         <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
         <button class="custom-btn-part" @click="savePartitura()">save</button>
     </div>
+
+    <!-- Pantalla de carga oculta por defecto -->
+<div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.9); z-index:2000; justify-content:center; align-items:center; flex-direction:column;">
+    <div style="margin-bottom:30px;">
+        <svg id="circular-loader" width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" stroke="#9B00F6" stroke-width="8" fill="none" opacity="0.2"/>
+            <circle id="progress-circle" cx="50" cy="50" r="45" stroke="#5AE9DD" stroke-width="8" fill="none"
+                stroke-linecap="round"
+                stroke-dasharray="282.74"
+                stroke-dashoffset="282.74"
+                transform="rotate(-90 50 50)" />
+        </svg>
+    </div>
+    <div style="width:300px; margin-bottom:15px; background:#eee; border-radius:8px; overflow:hidden;">
+        <div id="bar" style="height:15px; width:0; background:linear-gradient(90deg,#9B00F6,#5AE9DD); transition:width 0.4s;"></div>
+    </div>
+    <div id="progress-msg" style="font-size:20px; color:#8300F6; font-weight:bold;"></div>
+</div>
 </main>
 
 <script>
@@ -248,23 +266,42 @@ function appScorik() {
                 alert("Seleccioná instrumento y archivo mp3");
                 return;
             }
+            // Iniciar pantalla de loading
+            showLoading();
+
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('usuario', this.usuario);
+
+            // Lanzar la consulta de progreso en paralelo
+            let keepPolling = true;
+            pollProgress(this.usuario, () => keepPolling);
+
             fetch('/upload', {
                 method: 'POST',
                 body: formData
             })
             .then(resp => resp.json())
             .then(data => {
-                if (data.imagen) {
-                    this.activeTab = 'sheet';
-                    this.lastImage = data.imagen + '?v=' + Date.now();
-                    this.lastXml = data.xml || '';
-                } else {
-                    alert("No se generó imagen.");
-                }
+                keepPolling = false; // Terminar polling
+
+                // Esperar un segundo para que la barra llegue al final y después mostrar el resultado
+                setTimeout(() => {
+                    hideLoading();
+                    if (data.imagen) {
+                        this.activeTab = 'sheet';
+                        this.lastImage = data.imagen + '?v=' + Date.now();
+                        this.lastXml = data.xml || '';
+                    } else {
+                        alert("No se generó imagen.");
+                    }
+                }, 900);
             })
-            .catch(() => alert("Error en el procesamiento."));
+            .catch(() => {
+                keepPolling = false;
+                hideLoading();
+                alert("Error en el procesamiento.");
+            });
         },
 
         savePartitura() {
@@ -295,6 +332,63 @@ function initScorik() { /* opcional si querés lógica al iniciar, podés dejarl
 function logout() {
     localStorage.removeItem('currentUser');
     window.location.href = 'index.html';
+}
+
+// ---- Pantalla de loading y polling ----
+
+const PROGRESS_STEPS = [
+    { txt: "Convirtiendo el audio...", pct: 10 },
+    { txt: "Audio cargado correctamente.", pct: 20 },
+    { txt: "Detectando notas...", pct: 50 },
+    { txt: "Generando imagen ...", pct: 85 },
+    { txt: "Imagen generada", pct: 100 }
+];
+
+function showLoading() {
+    document.getElementById('loading-overlay').style.display = 'flex';
+    setProgressUI(0, "Preparando...");
+}
+function hideLoading() {
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+// Avanza la barra en base al texto recibido del backend
+function setProgressUI(pct, msg) {
+    const circle = document.getElementById('progress-circle');
+    const bar = document.getElementById('bar');
+    const msgDiv = document.getElementById('progress-msg');
+    const full = 2 * Math.PI * 45;
+    circle.setAttribute('stroke-dashoffset', full - (pct/100)*full);
+    bar.style.width = `${pct}%`;
+    msgDiv.textContent = msg;
+}
+
+// Consulta cada 1s el backend y actualiza la barra
+function pollProgress(usuario, keepPollingFunc) {
+    let lastPct = 0;
+    let lastMsg = "";
+    function buscar() {
+        fetch('/api/progress/' + encodeURIComponent(usuario))
+            .then(r => r.json())
+            .then(data => {
+                let pct = lastPct, msg = data.msg || "";
+                for (const step of PROGRESS_STEPS) {
+                    if (msg.includes(step.txt)) {
+                        pct = step.pct;
+                        break;
+                    }
+                }
+                setProgressUI(pct, msg);
+                lastPct = pct;
+                lastMsg = msg;
+            })
+            .finally(() => {
+                if (keepPollingFunc()) {
+                    setTimeout(buscar, 1000);
+                }
+            });
+    }
+    buscar();
 }
 </script>
 
