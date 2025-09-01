@@ -5,7 +5,7 @@ import subprocess
 from time import time as timestamp
 import sys
 
-MUSESCORE_PATH = r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe"
+MUSESCORE_PATH = os.environ.get("MUSESCORE_PATH", r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe" if os.name == "nt" else "mscore3-cli")
 
 # === CAMBIO: Carpeta destino por argumento (por defecto static/temp) ===
 carpeta_destino = sys.argv[1] if len(sys.argv) > 1 else os.path.join("static", "temp")

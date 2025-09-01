@@ -18,28 +18,12 @@ import sys
 np.float = float
 
 #Links de PC
-# ruta video piano: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
-# ruta video violin 1: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-1.mp3
-# ruta video violin 2: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-2.mp3
-# ruta video violin 3: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-3.mp3
 
 #Links ruta Notebook personal
-# ruta video: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\piano-lento.mp3
 # ruta ffmpeg: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
 # ruta ffprobe: c:\Users\fb050\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
-# ruta video violin 1: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-1.mp3
-# ruta video violin 2: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-2.mp3
-# ruta video violin 3: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeJuli\Samples\violin-3.mp3
-
-#Links ruta Notebook ORT
-# ruta video: 
-# ruta ffmpeg: C:\Users\48592310\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe
-# ruta ffprobe: C:\Users\48592310\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe
-# ruta video violin 1: 
-# ruta video violin 2:
-# ruta video violin 3: 
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 # Utilidades extra para filtrar silencios y notas con poca energía
@@ -67,9 +51,8 @@ def recortar_final_por_energia(y_signal, sr_signal, threshold_db=-60):
     return y_signal[:end_sample]
 
 #Los directorios de ffmpeg del .exe para que funciones
-AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
-
+AudioSegment.converter = which("ffmpeg") or "ffmpeg"
+setattr(AudioSegment, "ffprobe", which("ffprobe") or "ffprobe") 
 #Ruta del archivo
 
 
