@@ -15,9 +15,25 @@ np.float = float
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-# Configuración de ffmpeg y ffprobe para pydub
-AudioSegment.converter = which("ffmpeg") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = which("ffprobe") or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+# 1) Primero: variables de entorno (Dockerfile ya exporta FFMPEG_BINARY=ffmpeg)
+FFMPEG_BIN  = os.getenv("FFMPEG_BINARY") or which("ffmpeg") or which("ffmpeg.exe")
+FFPROBE_BIN = os.getenv("FFPROBE_BINARY") or which("ffprobe") or which("ffprobe.exe")
+
+# 2) Si en Windows local no encontraste nada, podés dejar un ÚLTIMO fallback opcional
+if (not FFMPEG_BIN or not FFPROBE_BIN) and os.name == "nt":  # typo: fix below
+    # <-- si querés, podés dejar tu ruta local como último recurso:
+    FFMPEG_BIN  = FFMPEG_BIN  or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
+    FFPROBE_BIN = FFPROBE_BIN or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
+
+# 3) Asignar a pydub y validar
+AudioSegment.converter = FFMPEG_BIN
+AudioSegment.ffprobe   = FFPROBE_BIN
+if not AudioSegment.converter or not AudioSegment.ffprobe:
+    raise RuntimeError(
+        "FFmpeg/ffprobe no encontrados. "
+        "En Docker vienen instalados; en Windows podés setear "
+        "FFMPEG_BINARY y FFPROBE_BINARY o agregar ffmpeg al PATH."
+    )
 
 def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-60):
     hop = int(sr_signal * 0.01)

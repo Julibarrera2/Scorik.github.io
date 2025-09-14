@@ -99,7 +99,7 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     # --- 1. Tomar usuario del FormData (si no, poné "anon") ---
-    usuario = request.form.get('usuario', 'anon')
+    usuario = request.form.get('usuario', 'anon') or 'anon'
 
     set_progress(usuario, "Convirtiendo el audio...")
 
