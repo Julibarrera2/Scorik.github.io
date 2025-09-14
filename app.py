@@ -40,18 +40,27 @@ def guardar_usuarios(usuarios):
 
 # Función para establecer el progreso del usuario
 def set_progress(usuario, msg):
+    if not usuario:
+        usuario = "anon"
     path = os.path.join(PROGRESS_FOLDER, f"{usuario}.json")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump({"msg": msg}, f)
 
 # Ruta para obtener el progreso del usuario
 @app.route('/api/progress/<usuario>')
 def api_progress(usuario):
+    if not usuario:
+        usuario = "anon"
     path = os.path.join(PROGRESS_FOLDER, f"{usuario}.json")
     if os.path.exists(path):
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return jsonify(json.load(f))
     return jsonify({"msg": "Convirtiendo el audio..."})
+
+# Progreso SIN usuario → usa "anon"
+@app.route('/api/progress/', defaults={'usuario': 'anon'})
+def api_progress_default(usuario):
+    return api_progress(usuario)
 
 #Lo de registrer y login
 @app.route('/api/register', methods=['POST'])

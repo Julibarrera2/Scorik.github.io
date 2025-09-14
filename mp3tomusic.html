@@ -255,7 +255,7 @@ function appScorik() {
         lastImage: '',
         lastXml: '',
         nombrePartitura: 'mi_partitura',
-        usuario: JSON.parse(localStorage.getItem('currentUser') || '{}').email || '',
+        usuario: (JSON.parse(localStorage.getItem('currentUser') || '{}').email) || 'anon',
 
         convertMp3() {
             const mp3Input = document.getElementById('mp3-upload');
@@ -271,11 +271,11 @@ function appScorik() {
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('usuario', this.usuario);
+            formData.append('usuario', this.usuario || 'anon');
 
             // Lanzar la consulta de progreso en paralelo
             let keepPolling = true;
-            pollProgress(this.usuario, () => keepPolling);
+            pollProgress(this.usuario || 'anon', () => keepPolling);
 
             fetch('/upload', {
                 method: 'POST',
@@ -365,13 +365,14 @@ function setProgressUI(pct, msg) {
 
 // Consulta cada 1s el backend y actualiza la barra
 function pollProgress(usuario, keepPollingFunc) {
+    usuario = usuario || 'anon';
     let lastPct = 0;
-    let lastMsg = "";
     function buscar() {
         fetch('/api/progress/' + encodeURIComponent(usuario))
             .then(r => r.json())
             .then(data => {
-                let pct = lastPct, msg = data.msg || "";
+                const msg = data.msg || "Preparando...";
+                let pct = lastPct;
                 for (const step of PROGRESS_STEPS) {
                     if (msg.includes(step.txt)) {
                         pct = step.pct;
@@ -380,7 +381,6 @@ function pollProgress(usuario, keepPollingFunc) {
                 }
                 setProgressUI(pct, msg);
                 lastPct = pct;
-                lastMsg = msg;
             })
             .finally(() => {
                 if (keepPollingFunc()) {

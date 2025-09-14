@@ -276,9 +276,12 @@
 
 <script>
 function checkAuth() {
-    if (!localStorage.getItem('currentUser')) {
-        window.location.href = 'login.html';
-    }
+    const cu = localStorage.getItem('currentUser');
+    if (!cu) { window.location.href = 'login.html'; return; }
+    try {
+        const u = JSON.parse(cu);
+        if (!u.email) { window.location.href = 'login.html'; }
+    } catch { window.location.href = 'login.html'; }
 }
 
 function logout() {

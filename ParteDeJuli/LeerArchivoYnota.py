@@ -288,7 +288,9 @@ def main(filepath: str, carpeta_destino="static/temp"):
 
     # ====== LLAMADA FINAL A NotasAPartitura.py PASANDO LA CARPETA DE DESTINO ======
     print("\n Generando imagen...")
-    subprocess.run([sys.executable, r"c:\Users\fb050\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py", carpeta_destino])
+    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura.py")
+    subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
 # ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========
 if __name__ == '__main__':

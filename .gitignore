@@ -1,11 +1,13 @@
 **/.librerias/
 **/.libRaiz/
+**/.requirements/
 *.wav
 __pycache__/
 *.pyc
 .DS_Store
 .libreriasRaiz/
 .librerias/
+.requirements/
 __pycache__/
 *.pyc
 *.pyo
