@@ -33,28 +33,41 @@
 
 <script>
 function loginApp() {
-return {
-    email: '',
-    password: '',
-    error: false,
-    errorMsg: '',
-    async checkLogin() {
-        const resp = await fetch('/api/login', { // <-- ¡Puerto 5001!
+    return {
+        email: '',
+        password: '',
+        error: false,
+        errorMsg: '',
+        async checkLogin() {
+        this.error = false;
+        this.errorMsg = '';
+        try {
+            const resp = await fetch('/api/login', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ email: this.email, password: this.password })
-        });
-        const data = await resp.json();
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: this.email.trim().toLowerCase(),
+                password: this.password
+            })
+            });
+            const data = await resp.json();
+
         if (data.success) {
-            this.error = false;
-            localStorage.setItem('currentUser', JSON.stringify({ email: this.email }));
+            const emailNorm = this.email.trim().toLowerCase();
+            // guardá SIEMPRE un objeto { email }
+            localStorage.setItem('currentUser', JSON.stringify({ email: emailNorm }));
+            // redirigí a donde prefieras
             window.location.href = 'dashboard.html';
         } else {
             this.error = true;
             this.errorMsg = data.message || 'Incorrect email or password.';
         }
+        } catch (e) {
+            this.error = true;
+            this.errorMsg = 'Network error. Try again.';
+        }
     }
-}
+    }
 }
 </script>
 

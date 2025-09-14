@@ -275,13 +275,32 @@
 </div>
 
 <script>
-function checkAuth() {
-    const cu = localStorage.getItem('currentUser');
-    if (!cu) { window.location.href = 'login.html'; return; }
+// Devuelve el email guardado sin importar si guardaste objeto o string
+function getCurrentUserEmail() {
+    const raw = localStorage.getItem('currentUser');
+    if (!raw) return '';
+
+    // 1) Si es JSON con { email }
     try {
-        const u = JSON.parse(cu);
-        if (!u.email) { window.location.href = 'login.html'; }
-    } catch { window.location.href = 'login.html'; }
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object' && obj.email) {
+        return String(obj.email).trim().toLowerCase();
+        }
+    } catch (_) { /* no era JSON */ }
+
+    // 2) Si era string plano (email)
+    if (/^\S+@\S+\.\S+$/.test(raw)) {
+        return raw.trim().toLowerCase();
+    }
+    return '';
+}
+
+// Redirección solo si NO hay email válido
+function checkAuth() {
+    const email = getCurrentUserEmail();
+    if (!email) {
+        window.location.href = 'login.html';
+    }
 }
 
 function logout() {
@@ -294,7 +313,7 @@ function logout() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const usuario = JSON.parse(localStorage.getItem('currentUser') || '{}').email || '';
+    const usuario = getCurrentUserEmail();
     const cardsContainer = document.getElementById('partituras-cards');
 
     // Botón +

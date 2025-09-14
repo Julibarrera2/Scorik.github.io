@@ -36,31 +36,41 @@
 
 <script>
 function registerApp() {
-return {
-    email: '',
-    password: '',
-    error: false,
-    errorMsg: '',
-    success: false,
-    async register() {
-        const resp = await fetch('/api/register', { // <-- ¡Puerto 5001!
+    return {
+        email: '',
+        password: '',
+        error: false,
+        success: false,
+        errorMsg: '',
+        async register() {
+        this.error = false; this.success = false; this.errorMsg = '';
+        try {
+            const resp = await fetch('/api/register', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ email: this.email, password: this.password })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: this.email.trim().toLowerCase(),
+                password: this.password
+            })
         });
         const data = await resp.json();
+
         if (data.success) {
-            this.error = false;
-            this.success = true;
-            this.email = '';
-            this.password = '';
+            // Auto-login: guardamos SIEMPRE { email } en localStorage
+            const emailNorm = this.email.trim().toLowerCase();
+            localStorage.setItem('currentUser', JSON.stringify({ email: emailNorm }));
+            // Redirigí a donde quieras ver la app ya autenticada
+            window.location.href = 'dashboard.html'; // o 'mp3tomusic.html'
         } else {
             this.error = true;
-            this.success = false;
-            this.errorMsg = data.message || 'Error';
+            this.errorMsg = data.message || 'Error registering user.';
+        }
+        } catch (e) {
+            this.error = true;
+            this.errorMsg = 'Network error. Try again.';
         }
     }
-}
+    }
 }
 </script>
 
