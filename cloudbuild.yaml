@@ -1,0 +1,23 @@
+steps:
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '-t', '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/scorik-repo/scorik-mscore3:$SHORT_SHA', '.']
+
+- name: gcr.io/cloud-builders/docker
+  args: ['push', '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/scorik-repo/scorik-mscore3:$SHORT_SHA']
+
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  entrypoint: gcloud
+  args:
+    - run
+    - deploy
+    - scorik-web
+    - --image=${_LOCATION}-docker.pkg.dev/$PROJECT_ID/scorik-repo/scorik-mscore3:$SHORT_SHA
+    - --region=${_LOCATION}
+    - --platform=managed
+    - --allow-unauthenticated
+
+images:
+- '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/scorik-repo/scorik-mscore3:$SHORT_SHA'
+
+substitutions:
+  _LOCATION: southamerica-east1
