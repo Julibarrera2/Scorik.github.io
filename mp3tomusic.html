@@ -247,20 +247,33 @@ if (!localStorage.getItem('currentUser')) {
 </div>
 </main>
 <script>
-// Lee el email sin importar si currentUser es string o {email: "..."}
+// Devuelve el email aunque currentUser sea string, objeto o hasta doble-JSON
 function getCurrentUserEmail() {
-    const raw = localStorage.getItem('currentUser');
-        if (!raw) return '';
-        try {
+    let raw = localStorage.getItem('currentUser');
+    if (!raw || raw === 'null' || raw === 'undefined') return '';
+
+  // intentá "des-envolver" hasta 2 veces por si está doble-stringificado
+for (let i = 0; i < 2; i++) {
+    try {
         const obj = JSON.parse(raw);
         if (obj && typeof obj === 'object' && obj.email) {
-            return String(obj.email).trim().toLowerCase();
-        }
-    } catch (_) {}
-    if (/^\S+@\S+\.\S+$/.test(raw)) return raw.trim().toLowerCase();
-    return '';
+        raw = String(obj.email);
+        break;
+    }
+    if (typeof obj === 'string') { raw = obj; continue; }
+    break;
+    } catch { break; }
+    }
+    const email = String(raw).trim().toLowerCase();
+    return /^\S+@\S+\.\S+$/.test(email) ? email : '';
+}
+// Redirigí solo si no hay email válido
+const __EMAIL__ = getCurrentUserEmail();
+if (!__EMAIL__) {
+    window.location.href = 'login.html';
 }
 </script>
+
 
 <script>
 function appScorik() {
