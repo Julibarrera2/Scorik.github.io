@@ -246,6 +246,21 @@ if (!localStorage.getItem('currentUser')) {
     <div id="progress-msg" style="font-size:20px; color:#8300F6; font-weight:bold;"></div>
 </div>
 </main>
+<script>
+// Lee el email sin importar si currentUser es string o {email: "..."}
+function getCurrentUserEmail() {
+    const raw = localStorage.getItem('currentUser');
+        if (!raw) return '';
+        try {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object' && obj.email) {
+            return String(obj.email).trim().toLowerCase();
+        }
+    } catch (_) {}
+    if (/^\S+@\S+\.\S+$/.test(raw)) return raw.trim().toLowerCase();
+    return '';
+}
+</script>
 
 <script>
 function appScorik() {
@@ -255,13 +270,16 @@ function appScorik() {
         lastImage: '',
         lastXml: '',
         nombrePartitura: 'mi_partitura',
-        usuario: (JSON.parse(localStorage.getItem('currentUser') || '{}').email) || 'anon',
+        get usuario() { return getCurrentUserEmail(); },
 
         convertMp3() {
             const mp3Input = document.getElementById('mp3-upload');
             const instrumentSelect = document.getElementById('instrumentSelect');
             const file = mp3Input.files[0];
             const instrument = instrumentSelect.value;
+            const email = getCurrentUserEmail();
+            if (!email) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
+
             if (!file || !instrument) {
                 alert("Seleccioná instrumento y archivo mp3");
                 return;
@@ -271,11 +289,11 @@ function appScorik() {
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('usuario', this.usuario || 'anon');
+            formData.append('usuario', email);
 
             // Lanzar la consulta de progreso en paralelo
             let keepPolling = true;
-            pollProgress(this.usuario || 'anon', () => keepPolling);
+            pollProgress(email, () => keepPolling);
 
             fetch('/upload', {
                 method: 'POST',
@@ -305,13 +323,30 @@ function appScorik() {
         },
 
         savePartitura() {
+            const email = getCurrentUserEmail();
+            if (!email) {
+                alert("Tu sesión expiró. Volvé a loguearte.");
+                return;
+            }
+        // 2) Debe existir una imagen generada
+        if (!this.lastImage) {
+            alert("No hay partitura para guardar. Convertí un MP3 primero.");
+            return;
+        }
+
+        // 3) Nombre saneado (evita espacios y caracteres raros en el archivo)
+        const nombreLimpio = (this.nombrePartitura || 'mi_partitura')
+            .trim().toLowerCase()
+            .replace(/[^a-z0-9._-]+/g, '_')
+            .replace(/^_+|_+$/g, '') || 'mi_partitura';
+            
             // Enviar petición para guardar partitura en carpeta definitiva
             fetch('/save_partitura', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    usuario: this.usuario,
-                    nombre: this.nombrePartitura,
+                    usuario: email,
+                    nombre: nombreLimpio,
                     imagen: this.lastImage.split('?')[0], // sin cache
                     xml: this.lastXml
                 })
