@@ -21,3 +21,6 @@ images:
 
 substitutions:
   _LOCATION: southamerica-east1
+
+options:
+  logging: CLOUD_LOGGING_ONLY
