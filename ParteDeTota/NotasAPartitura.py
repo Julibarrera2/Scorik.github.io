@@ -1,4 +1,4 @@
-from music21 import stream, note, instrument
+from music21 import stream, note, instrument, tempo as m21tempo, meter
 import os
 import json
 import subprocess
@@ -36,16 +36,92 @@ def main():
     score = stream.Score()
     part = stream.Part()
     part.insert(0, instrument.Violin())
+
+    # --- Agregar tempo (usa el primer tempo válido del JSON) ---
+    primer_tempo = next((n.get('tempo', 120) for n in notas if 'tempo' in n), 120)  
+    part.insert(0, m21tempo.MetronomeMark(number=primer_tempo))
+
+    # --- Ordenar por compás y luego por inicio ---
+    notas = [n for n in notas if 'compas' in n and 'nota' in n and 'inicio' in n] 
+    notas = sorted(notas, key=lambda n: (n['compas'], n['inicio']))
+
+    # --- Agrupar por compás ---
+    compases = {}
     for n in notas:
-        try:
-            nombre_nota = n['nota']
-            figura = n.get('figura', 'negra').lower()
-            duracion = figura_a_duracion.get(figura, 1.0)
-            nueva_nota = note.Note(nombre_nota)
-            nueva_nota.quarterLength = duracion
-            part.append(nueva_nota)
-        except Exception as e:
-            print(f"Error procesando nota: {n} ({e})")
+        c = n['compas']
+        compases.setdefault(c, []).append(n)
+    
+    if not compases:  
+        print("No hay compases válidos en el JSON.")  
+        return  
+
+    # --- Detectar métrica automáticamente según el primer compás ---
+    primer_compas = compases[sorted(compases.keys())[0]]
+    suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0) for n in primer_compas)
+    if abs(suma - 4.0) < 0.01:
+        tsig = '4/4'
+        duracion_compas = 4.0
+    elif abs(suma - 3.0) < 0.01:
+        tsig = '3/4'
+        duracion_compas = 3.0
+    elif abs(suma - 2.0) < 0.01:
+        tsig = '2/4'
+        duracion_compas = 2.0
+    elif abs(suma - 6.0) < 0.01:
+        tsig = '6/4'
+        duracion_compas = 6.0
+    else:
+        tsig = '4/4'
+        duracion_compas = 4.0
+
+    part.append(meter.TimeSignature(tsig))
+
+    # --- Asumimos compás de 4/4 (puedes cambiarlo si quieres) ---
+    #duracion_compas = 4.0
+    #part.append(meter.TimeSignature('4/4'))
+
+    for num_compas in sorted(compases.keys()):
+        m = stream.Measure(number=num_compas)
+        tiempo_en_compas = 0.0
+        notas_compas = compases[num_compas]
+
+        for n in notas_compas:
+            try:
+                nombre_nota = n['nota']
+                figura = n.get('figura', 'negra').lower()
+                duracion = figura_a_duracion.get(figura, 1.0)
+                #nueva_nota = note.Note(nombre_nota)
+                #nueva_nota.quarterLength = duracion
+                #part.append(nueva_nota)
+                inicio = n.get('inicio', tiempo_en_compas)
+                
+                # --- Insertar silencio si hay espacio ---
+                if inicio > tiempo_en_compas:
+                    silencio_dur = inicio - tiempo_en_compas
+                    if silencio_dur > 0:  
+                        silencio = note.Rest()
+                        silencio.quarterLength = silencio_dur
+                        m.append(silencio)
+                        tiempo_en_compas = inicio
+
+                # --- Insertar nota ---
+                nueva_nota = note.Note(nombre_nota)
+                nueva_nota.quarterLength = duracion
+                m.append(nueva_nota)
+                tiempo_en_compas += duracion
+            
+            except Exception as e:
+                print(f"Error procesando nota: {n} ({e})")
+        
+        # Rellenar con silencio si el compás no está completo
+        if tiempo_en_compas < duracion_compas:
+            silencio_dur = duracion_compas - tiempo_en_compas  
+            if silencio_dur > 0:  
+                silencio = note.Rest()
+                silencio.quarterLength = silencio_dur
+                m.append(silencio)
+        part.append(m)
+
     score.insert(0, part)
 
     ts = int(timestamp())

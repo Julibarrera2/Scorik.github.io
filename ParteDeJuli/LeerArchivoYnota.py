@@ -62,6 +62,7 @@ def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarra
     return y, sr, filepath
 
 def detect_pitch(y: np.ndarray, sr: int, threshold=0.85) -> List[Tuple[float, float]]:
+    #ACA SE VE LA CANTIDAD DE FRAMES QUE SE VAN A ANALIZAR (10ms) para menor timepo y menor presicion cambiar
     step_size_ms=10
     print("Detectando notas...")
     if sr != 16000:
@@ -256,6 +257,9 @@ def main(filepath: str, carpeta_destino="static/temp"):
         audio_total = np.zeros((audio_original.shape[0], n_channels), dtype=np.float32)
     else:
         audio_total = np.zeros(audio_total.shape, dtype=np.float32)
+    
+    end = 0
+    start = 0
     for n in notas:
         freq = notas_dict[n["nota"]]
         start = int(n["inicio"] * sr_out)
