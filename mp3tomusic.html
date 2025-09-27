@@ -1,5 +1,5 @@
 <!DOCTYPE html> 
-<html lang="en" x-data="appScorik()" x-init="initScorik()">
+<html lang="en" x-data="appScorik()" x-init="init()">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -305,8 +305,7 @@ function appScorik() {
             const instrumentSelect = document.getElementById('instrumentSelect');
             const file = mp3Input.files[0];
             const instrument = instrumentSelect.value;
-            const email = getCurrentUserEmail();
-            if (!email) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
+            if (!this.usuario) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
 
             if (!file || !instrument) {
                 alert("Seleccioná instrumento y archivo mp3");
@@ -351,8 +350,7 @@ function appScorik() {
         },
 
         async savePartitura() {
-            const email = getCurrentUserEmail();
-            if (!email) {
+            if (!this.usuario) {
                 alert("Tu sesión expiró. Volvé a loguearte.");
                 return;
             }
@@ -373,7 +371,7 @@ function appScorik() {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    usuario: email,
+                    usuario: this.usuario,
                     nombre: nombreLimpio,
                     imagen: this.lastImage.split('?')[0], // sin cache
                     xml: this.lastXml
@@ -390,7 +388,7 @@ function appScorik() {
         },
 
         async logout() {
-            localStorage.removeItem('currentUser');
+            await fetch('/api/logout', { method: 'POST' });
             window.location.href = 'index.html';
         }
     }
