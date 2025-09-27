@@ -17,21 +17,26 @@ os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 
 # Configuración de rutas y carpetas
 
-
+TMP_BASE = '/tmp/scorik'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
-STATIC_FOLDER = os.path.join(os.getcwd(), "static")
-STATIC_TEMP_FOLDER = os.path.join(STATIC_FOLDER, "temp")  # carpeta temporal
+STATIC_TEMP_FOLDER = os.path.join( "static_temp")  # carpeta temporal
 PARTITURAS_USER_FOLDER = os.path.join(os.getcwd(), "partituras_usuario")  # carpeta de partituras guardadas
 USERS_FILE = os.path.join(os.getcwd(), "usuarios.json")
 PYTHON_EXEC = sys.executable
 PROGRESS_FOLDER = os.path.join(os.getcwd(), "progress") # carpeta para progreso
 
+ROOT_DIR     = os.getcwd()
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(STATIC_FOLDER, exist_ok=True)
 os.makedirs(STATIC_TEMP_FOLDER, exist_ok=True)
 os.makedirs(PARTITURAS_USER_FOLDER, exist_ok=True)
 os.makedirs(PROGRESS_FOLDER, exist_ok=True) # carpeta de progreso
+
+# Crear solo las carpetas de ESCRITURA
+for p in (TMP_BASE, UPLOAD_FOLDER, STATIC_TEMP_FOLDER, PARTITURAS_USER_FOLDER, PROGRESS_FOLDER):
+    os.makedirs(p, exist_ok=True)
+
+PYTHON_EXEC = sys.executable
 
 def cargar_usuarios():
     if not os.path.exists(USERS_FILE):
@@ -230,7 +235,7 @@ def download_json(filename):
 
 @app.route('/static/<path:filename>')
 def get_image(filename):
-    return send_from_directory(STATIC_FOLDER, filename)
+    return send_from_directory(STATIC_TEMP_FOLDER, filename)
 
 # Extra: para servir imágenes de /Img/
 @app.route('/Img/<path:filename>')
