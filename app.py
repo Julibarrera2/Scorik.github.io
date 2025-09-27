@@ -8,9 +8,15 @@ import shutil
 
 
 app = Flask(__name__)
-app.secret_key = 'TU_CLAVE_SECRETA'  
-app.config['SESSION_TYPE'] = 'filesystem' 
-Session(app)  
+app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+app.config['SESSION_PERMANENT'] = False
+Session(app)
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+
+# Configuración de rutas y carpetas
+
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
