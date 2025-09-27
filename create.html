@@ -159,13 +159,18 @@
 </div>
 
 <script>
-function checkAuth() {
-    if (!localStorage.getItem('currentUser')) {
-        window.location.href = 'login.html';
+async function checkAuth() {
+    try {
+    const r = await fetch('/api/session');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!d.logged_in) throw 0;
+    } catch {
+    window.location.href = 'login.html';
     }
 }
-function logout() {
-    localStorage.removeItem('currentUser');
+async function logout() {
+    await fetch('/api/logout', { method: 'POST' });
     window.location.href = 'index.html';
 }
 </script>

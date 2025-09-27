@@ -6,19 +6,18 @@
 <title>Biblioteca & Shearch</title>
 <script>
   // Guardia temprano: corre apenas se parsea el <head>
-(function () {
+async function requireSessionOrRedirect() {
     try {
-        const raw = localStorage.getItem('currentUser');
-        if (!raw) { location.replace('login.html'); return; }
-        const u = JSON.parse(raw);
-        const email = String(u && u.email || '').trim().toLowerCase();
-        if (!email) { location.replace('login.html'); return; }
-      // normalizo y re-grabo por si había basura vieja
-        localStorage.setItem('currentUser', JSON.stringify({ email }));
-    } catch (e) {
-        location.replace('login.html');
+    const r = await fetch('/api/session');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!d.logged_in) throw 0;
+    return d.email || '';
+    } catch {
+    location.href = 'login.html';
+    return '';
     }
-})();
+}
 </script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -290,46 +289,12 @@
     </div>
 </div>
 
-<script>
-// Devuelve el email guardado sin importar si guardaste objeto o string
-function getCurrentUserEmail() {
-    const raw = localStorage.getItem('currentUser');
-    if (!raw) return '';
-
-    // 1) Si es JSON con { email }
-    try {
-        const obj = JSON.parse(raw);
-        if (obj && typeof obj === 'object' && obj.email) {
-        return String(obj.email).trim().toLowerCase();
-        }
-    } catch (_) { /* no era JSON */ }
-
-    // 2) Si era string plano (email)
-    if (/^\S+@\S+\.\S+$/.test(raw)) {
-        return raw.trim().toLowerCase();
-    }
-    return '';
-}
-
-// Redirección solo si NO hay email válido
-function checkAuth() {
-    const email = getCurrentUserEmail();
-    if (!email) {
-        window.location.href = 'login.html';
-    }
-}
-
-function logout() {
-    localStorage.removeItem('currentUser');
-    window.location.href = 'index.html';
-}
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const usuario = getCurrentUserEmail();
+document.addEventListener('DOMContentLoaded', async () => {
+    const usuario = await requireSessionOrRedirect();
+
     const cardsContainer = document.getElementById('partituras-cards');
 
     // Botón +
@@ -359,6 +324,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 });
+async function logout() {
+    await fetch('/api/logout', { method: 'POST' });
+    location.href = 'index.html';
+}
 
 </script>
 

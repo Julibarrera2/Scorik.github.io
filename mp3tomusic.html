@@ -252,29 +252,6 @@ async function getSessionEmail() {
     <div id="progress-msg" style="font-size:20px; color:#8300F6; font-weight:bold;"></div>
 </div>
 </main>
-<script>
-// Devuelve el email aunque currentUser sea string, objeto o hasta doble-JSON
-function getCurrentUserEmail() {
-    let raw = localStorage.getItem('currentUser');
-    if (!raw || raw === 'null' || raw === 'undefined') return '';
-
-  // intentá "des-envolver" hasta 2 veces por si está doble-stringificado
-for (let i = 0; i < 2; i++) {
-    try {
-        const obj = JSON.parse(raw);
-        if (obj && typeof obj === 'object' && obj.email) {
-        raw = String(obj.email);
-        break;
-    }
-    if (typeof obj === 'string') { raw = obj; continue; }
-    break;
-    } catch { break; }
-    }
-    const email = String(raw).trim().toLowerCase();
-    return /^\S+@\S+\.\S+$/.test(email) ? email : '';
-}
-
-</script>
 
 
 <script>
@@ -285,7 +262,7 @@ function appScorik() {
         lastImage: '',
         lastXml: '',
         nombrePartitura: 'mi_partitura',
-        get usuario() { return getCurrentUserEmail(); },
+        usuario: '',
 
         // Redirigí solo si no hay email válido
         async init() {
@@ -311,11 +288,11 @@ function appScorik() {
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('usuario', email);
+            formData.append('usuario', this.usuario);
 
             // Lanzar la consulta de progreso en paralelo
             let keepPolling = true;
-            pollProgress(email, () => keepPolling);
+            pollProgress(this.usuario, () => keepPolling);
 
             fetch('/upload', {
                 method: 'POST',
