@@ -273,13 +273,7 @@ for (let i = 0; i < 2; i++) {
     const email = String(raw).trim().toLowerCase();
     return /^\S+@\S+\.\S+$/.test(email) ? email : '';
 }
-// Redirigí solo si no hay email válido
-async init() {
-    this.usuario = await getSessionEmail();
-    if (!this.usuario) {
-        window.location.href = 'login.html';
-    }
-}
+
 </script>
 
 
@@ -293,6 +287,7 @@ function appScorik() {
         nombrePartitura: 'mi_partitura',
         get usuario() { return getCurrentUserEmail(); },
 
+        // Redirigí solo si no hay email válido
         async init() {
             this.usuario = await getSessionEmail();
             if (!this.usuario) {
