@@ -5,8 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
 <script>
-if (!localStorage.getItem('currentUser')) {
-    window.location.href = 'login.html';
+async function getSessionEmail() {
+    try {
+        const resp = await fetch('/api/session');
+        if (resp.ok) {
+            const data = await resp.json();
+            return data.email || '';
+        }
+    } catch {}
+    return '';
 }
 </script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -267,9 +274,11 @@ for (let i = 0; i < 2; i++) {
     return /^\S+@\S+\.\S+$/.test(email) ? email : '';
 }
 // Redirigí solo si no hay email válido
-const __EMAIL__ = getCurrentUserEmail();
-if (!__EMAIL__) {
-    window.location.href = 'login.html';
+async init() {
+    this.usuario = await getSessionEmail();
+    if (!this.usuario) {
+        window.location.href = 'login.html';
+    }
 }
 </script>
 
@@ -284,7 +293,14 @@ function appScorik() {
         nombrePartitura: 'mi_partitura',
         get usuario() { return getCurrentUserEmail(); },
 
-        convertMp3() {
+        async init() {
+            this.usuario = await getSessionEmail();
+            if (!this.usuario) {
+                window.location.href = 'login.html';
+            }
+        },
+
+        async convertMp3() {
             const mp3Input = document.getElementById('mp3-upload');
             const instrumentSelect = document.getElementById('instrumentSelect');
             const file = mp3Input.files[0];
@@ -334,7 +350,7 @@ function appScorik() {
             });
         },
 
-        savePartitura() {
+        async savePartitura() {
             const email = getCurrentUserEmail();
             if (!email) {
                 alert("Tu sesión expiró. Volvé a loguearte.");
@@ -373,7 +389,7 @@ function appScorik() {
             });
         },
 
-        logout() {
+        async logout() {
             localStorage.removeItem('currentUser');
             window.location.href = 'index.html';
         }

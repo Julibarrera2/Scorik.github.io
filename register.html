@@ -59,7 +59,6 @@ function registerApp() {
         if (data.success) {
             // Auto-login: guardamos SIEMPRE { email } en localStorage
             const emailNorm = this.email.trim().toLowerCase();
-            localStorage.setItem('currentUser', JSON.stringify({ email: emailNorm }));
             // Redirigí a donde quieras ver la app ya autenticada
             window.location.href = 'dashboard.html'; // o 'mp3tomusic.html'
         } else {

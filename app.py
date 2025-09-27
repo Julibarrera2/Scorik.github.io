@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
+from flask_session import Session
 import os
 import subprocess
 import json
@@ -7,6 +8,9 @@ import shutil
 
 
 app = Flask(__name__)
+app.secret_key = 'TU_CLAVE_SECRETA'  
+app.config['SESSION_TYPE'] = 'filesystem' 
+Session(app)  
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
@@ -87,9 +91,23 @@ def api_login():
     usuarios = cargar_usuarios()
     user = next((u for u in usuarios if u['email'] == email and u['password'] == password), None)
     if user:
+        session['user_email'] = email
         return jsonify({'success': True, 'message': 'Login exitoso'})
     else:
         return jsonify({'success': False, 'message': 'Usuario o contraseña incorrectos'}), 401
+    
+@app.route('/api/session')
+def api_session():
+    email = session.get('user_email')
+    if email:
+        return jsonify({'logged_in': True, 'email': email})
+    else:
+        return jsonify({'logged_in': False}), 401
+    
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    session.pop('user_email', None)
+    return jsonify({'success': True})
 
 # Página principal (index.html en la raíz)
 @app.route('/')

@@ -54,8 +54,6 @@ function loginApp() {
 
         if (data.success) {
             const emailNorm = this.email.trim().toLowerCase();
-            // guardá SIEMPRE un objeto { email }
-            localStorage.setItem('currentUser', JSON.stringify({ email: emailNorm }));
             // redirigí a donde prefieras
             window.location.href = 'dashboard.html';
         } else {
