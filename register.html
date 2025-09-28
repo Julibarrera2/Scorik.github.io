@@ -49,6 +49,7 @@ function registerApp() {
             const resp = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // para enviar cookies
             body: JSON.stringify({
                 email: this.email.trim().toLowerCase(),
                 password: this.password

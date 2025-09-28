@@ -7,7 +7,7 @@
 <script>
 async function getSessionEmail() {
     try {
-        const resp = await fetch('/api/session');
+        const resp = await fetch('/api/session', { credentials: 'include' });
         if (resp.ok) {
             const data = await resp.json();
             return data.email || '';
@@ -288,16 +288,13 @@ function appScorik() {
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('usuario', this.usuario);
+            formData.append('usuario', this.usuario || 'anon');
 
             // Lanzar la consulta de progreso en paralelo
             let keepPolling = true;
-            pollProgress(this.usuario, () => keepPolling);
+            pollProgress(this.usuario || 'anon', () => keepPolling);
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
+            fetch('/upload', { method: 'POST', body: formData, credentials: 'include'})
             .then(resp => resp.json())
             .then(data => {
                 keepPolling = false; // Terminar polling
@@ -360,7 +357,7 @@ function appScorik() {
         },
 
         async logout() {
-            await fetch('/api/logout', { method: 'POST' });
+            await fetch('/api/logout', { method: 'POST', credentials: 'include' });
             window.location.href = 'index.html';
         }
     }

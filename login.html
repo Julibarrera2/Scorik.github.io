@@ -45,6 +45,7 @@ function loginApp() {
             const resp = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // para enviar cookies
             body: JSON.stringify({
                 email: this.email.trim().toLowerCase(),
                 password: this.password

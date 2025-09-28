@@ -5,6 +5,7 @@ import subprocess
 import json
 import sys
 import shutil
+from google.cloud import storage
 
 
 app = Flask(__name__)
@@ -12,6 +13,8 @@ app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
 Session(app)
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 
@@ -20,11 +23,14 @@ os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 TMP_BASE = '/tmp/scorik'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
-STATIC_TEMP_FOLDER = os.path.join( "static_temp")  # carpeta temporal
+STATIC_TEMP_FOLDER = os.path.join(os.getcwd(), "static_temp")  # carpeta temporal
 PARTITURAS_USER_FOLDER = os.path.join(os.getcwd(), "partituras_usuario")  # carpeta de partituras guardadas
 USERS_FILE = os.path.join(os.getcwd(), "usuarios.json")
 PYTHON_EXEC = sys.executable
 PROGRESS_FOLDER = os.path.join(os.getcwd(), "progress") # carpeta para progreso
+
+USERS_BUCKET = os.environ.get('USERS_BUCKET')
+USERS_BLOB   = os.environ.get('USERS_BLOB', 'usuarios.json')
 
 ROOT_DIR     = os.getcwd()
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -38,7 +44,23 @@ for p in (TMP_BASE, UPLOAD_FOLDER, STATIC_TEMP_FOLDER, PARTITURAS_USER_FOLDER, P
 
 PYTHON_EXEC = sys.executable
 
+def _gcs_client():
+    return storage.Client()
+
 def cargar_usuarios():
+    if USERS_BUCKET:
+        try:
+            client = _gcs_client()
+            bucket = client.bucket(USERS_BUCKET)
+            blob = bucket.blob(USERS_BLOB)
+            if not blob.exists(client):    # si aún no existe, lista vacía
+                return []
+            data = blob.download_as_text(encoding='utf-8')
+            return json.loads(data or '[]')
+        except Exception as e:
+            print("WARN cargar_usuarios GCS:", e, file=sys.stderr)
+            return []
+    # Si no hay bucket, cargar localmente
     if not os.path.exists(USERS_FILE):
         return []
     with open(USERS_FILE, 'r', encoding='utf-8') as f:
@@ -50,6 +72,16 @@ def cargar_usuarios():
 #Guardar el usuario en el archivo JSON
 # Si el archivo no existe, se crea uno nuevo
 def guardar_usuarios(usuarios):
+    if USERS_BUCKET:
+        try:
+            client = _gcs_client()
+            bucket = client.bucket(USERS_BUCKET)
+            blob = bucket.blob(USERS_BLOB)
+            blob.upload_from_string(json.dumps(usuarios, indent=2), content_type='application/json')
+            return
+        except Exception as e:
+            print("ERROR guardar_usuarios GCS:", e, file=sys.stderr)
+    # Si hay error, guardar localmente de todas formas
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(usuarios, f, indent=2)
 
@@ -80,7 +112,7 @@ def api_progress_default(usuario):
 #Lo de registrer y login
 @app.route('/api/register', methods=['POST'])
 def api_register():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     email = data.get('email', '').strip().lower()
     password = data.get('password', '').strip()
     if not email or not password:
@@ -96,7 +128,7 @@ def api_register():
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     email = data.get('email', '').strip().lower()
     password = data.get('password', '').strip()
     usuarios = cargar_usuarios()
@@ -183,7 +215,7 @@ def upload_file():
 @app.route('/save_partitura', methods=['POST'])
 def save_partitura():
     # ======== NUEVA RUTA PARA GUARDAR DEFINITIVO ========
-    data = request.json
+    data = request.get_json(silent=True) or {}
     usuario = data.get('usuario')
     nombre = data.get('nombre', 'partitura')
     imagen = data.get('imagen')  # Ruta relativa tipo "/static/temp/partitura_xxxxx.png"
@@ -273,6 +305,10 @@ def api_partituras_usuario(usuario):
                 "xml": xml
             })
     return jsonify(partituras)
+
+@app.route('/healthz')
+def healthz():
+    return "ok", 200
 
 # --- ESTA RUTA VA ÚLTIMA ---
 @app.route('/<path:filename>')
