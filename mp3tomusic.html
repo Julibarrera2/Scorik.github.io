@@ -339,6 +339,7 @@ function appScorik() {
             fetch('/save_partitura', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({
                     usuario: this.usuario,
                     nombre: nombreLimpio,
@@ -346,14 +347,16 @@ function appScorik() {
                     xml: this.lastXml
                 })
                 })
-            .then(resp => resp.json())
-            .then(data => {
+                .then(resp => resp.json())
+                .then(data => {
                 if (data.success) {
                     alert("Partitura guardada correctamente en tu biblioteca.");
+                    // opcional: apuntar a la ruta final para que siga viéndose
+
                 } else {
                     alert("Error al guardar partitura.");
                 }
-            });
+                });
         },
 
         async logout() {

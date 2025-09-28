@@ -159,58 +159,61 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # --- 1. Tomar usuario del FormData (si no, poné "anon") ---
-    usuario = request.form.get('usuario', 'anon') or 'anon'
+    try:
+        # --- 1. Tomar usuario del FormData (si no, poné "anon") ---
+        usuario = request.form.get('usuario', 'anon') or 'anon'
+        set_progress(usuario, "Convirtiendo el audio...")
 
-    set_progress(usuario, "Convirtiendo el audio...")
-
-    if 'file' not in request.files:
-        set_progress(usuario, "Error: No se envió archivo")
-        return jsonify({"error": "No se envió archivo"}), 400
-    file = request.files.get('file')
-    if file is None or file.filename is None or file.filename == '':
-        set_progress(usuario, "Error: Archivo vacío")
-        return jsonify({"error": "Archivo vacío"}), 400
+        if 'file' not in request.files:
+            set_progress(usuario, "Error: No se envió archivo")
+            return jsonify({"error": "No se envió archivo"}), 400
+        file = request.files.get('file')
+        if file is None or file.filename is None or file.filename == '':
+            set_progress(usuario, "Error: Archivo vacío")
+            return jsonify({"error": "Archivo vacío"}), 400
     
-    # Limpiar archivos temporales anteriores
-    for f in os.listdir(STATIC_TEMP_FOLDER):
-        try:
-            os.remove(os.path.join(STATIC_TEMP_FOLDER, f))
-        except Exception:
-            pass
+        # Limpiar archivos temporales anteriores
+        for f in os.listdir(STATIC_TEMP_FOLDER):
+            try:os.remove(os.path.join(STATIC_TEMP_FOLDER, f))
+            except:  pass
 
-    filename = file.filename
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
+        filename = file.filename
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
 
-    set_progress(usuario, "Audio cargado correctamente.")
+        set_progress(usuario, "Audio cargado correctamente.")
 
-    # ---- Ejecutar los scripts paso a paso con actualización de progreso ----
-    # Paso 1: Detectando notas...
-    set_progress(usuario, "Detectando notas...")
+        # ---- Ejecutar los scripts paso a paso con actualización de progreso ----
+        # Paso 1: Detectando notas...
+        set_progress(usuario, "Detectando notas...")
 
-    # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
-    # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
-    subprocess.run([PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, STATIC_TEMP_FOLDER], check=True)
+        # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
+        # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
+        subprocess.run([PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, STATIC_TEMP_FOLDER], check=True)
 
-    # Paso 2: Generando imagen...
-    set_progress(usuario, "Generando imagen ...")
+        # Paso 2: Generando imagen...
+        set_progress(usuario, "Generando imagen ...")
 
-    # Esperar a que el PNG se genere (esto ya lo hace tu script)
-    temp_pngs = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".png")]
-    temp_xmls = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".xml") or f.endswith(".musicxml")]
+        # Esperar a que el PNG se genere (esto ya lo hace tu script)
+        temp_pngs = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".png")]
+        temp_xmls = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".xml") or f.endswith(".musicxml")]
 
-    if not temp_pngs or not temp_xmls:
-        set_progress(usuario, "Error: No se generó imagen")
-        return jsonify({"error": "No se generó imagen"}), 500
+        if not temp_pngs or not temp_xmls:
+            set_progress(usuario, "Error: No se generó imagen")
+            return jsonify({"error": "No se generó imagen"}), 500
 
-    # Finalización
-    set_progress(usuario, "Imagen generada")
+        # Finalización
+        set_progress(usuario, "Imagen generada")
 
-    return jsonify({
-        "imagen": f"/static/temp/{temp_pngs[0]}",
-        "xml": f"/static/temp/{temp_xmls[0]}" if temp_xmls else None
-    })
+        return jsonify({
+            "imagen": f"/static/temp/{temp_pngs[0]}",
+            "xml": f"/static/temp/{temp_xmls[0]}" if temp_xmls else None
+        })
+    
+    except Exception as e:
+        app.logger.exception("Fallo en /upload")
+        set_progress(request.form.get('usuario','anon'), "Error: procesamiento")
+        return jsonify({"error": "fallo servidor"}), 500
 
 @app.route('/save_partitura', methods=['POST'])
 def save_partitura():
@@ -231,7 +234,15 @@ def save_partitura():
     def mover_archivo(rel_path, nombre_destino):
         if not rel_path:
             return None
-        src = os.path.join('.', rel_path.lstrip('/'))
+        
+        # Si la ruta viene como /static/temp/xxx.png -> buscar en STATIC_TEMP_FOLDER
+        if rel_path.startswith('/static/temp/'):
+            fname = os.path.basename(rel_path)
+            src = os.path.join(STATIC_TEMP_FOLDER, fname)
+        else:
+            # fallback por si alguna vez mandás otra ruta relativa
+            src = os.path.join('.', rel_path.lstrip('/'))
+
         if os.path.exists(src):
             ext = os.path.splitext(src)[1]
             dst = os.path.join(user_dir, nombre_destino + ext)
