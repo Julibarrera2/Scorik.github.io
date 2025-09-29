@@ -4,6 +4,7 @@ import subprocess
 import json
 import sys
 import shutil
+import time  
 from google.cloud import storage
 from urllib.parse import quote, unquote
 
@@ -226,28 +227,44 @@ def upload_file():
         set_progress(usuario, "Generando imagen ...")
 
         # Buscar PNG y XML en toda la carpeta (subcarpetas incl.)
-        img_path = None
-        xml_path = None
-        for root, dirs, files in os.walk(STATIC_TEMP_FOLDER):
-            for f in files:
-                fl = f.lower()
-                if not img_path and fl.endswith(('.png', '.jpg', '.jpeg', '.svg')):
-                    img_path = os.path.join(root, f)
-                if not xml_path and fl.endswith(('.xml', '.musicxml')):
-                    xml_path = os.path.join(root, f)
-            if img_path and xml_path:
+        # --- helper para encontrar la salida (con subcarpetas) ---
+        IMG_EXTS = ('.png', '.jpg', '.jpeg', '.svg')
+        XML_EXTS = ('.xml', '.musicxml')
+
+        def find_outputs(base_dir):
+            img, xml = None, None
+            for root, _, files in os.walk(base_dir):
+                for f in files:
+                    fl = f.lower()
+                    if (not img) and fl.endswith(IMG_EXTS):
+                        img = os.path.join(root, f)
+                    if (not xml) and fl.endswith(XML_EXTS):
+                        xml = os.path.join(root, f)
+                if img and xml:
+                    return img, xml
+            return img, xml
+
+        # --- reintentar hasta 8s (por si el script descarga o mueve al final) ---
+        img_path, xml_path = None, None
+        for _ in range(16):  # 16 * 0.5s = 8s
+            img_path, xml_path = find_outputs(STATIC_TEMP_FOLDER)
+            if img_path:
                 break
+            time.sleep(0.5)
 
         if not img_path:
+            # devolver árbol para depurar
             tree = []
-            for root, dirs, files in os.walk(STATIC_TEMP_FOLDER):
+            for root, _, files in os.walk(STATIC_TEMP_FOLDER):
                 tree.append({"dir": root, "files": files})
             print("Contenido de static_temp:", tree)
             set_progress(usuario, "Error: No se generó imagen")
             return jsonify({"error": "No se generó imagen", "tree": tree}), 500
 
-        # Normalizar a STATIC_TEMP_FOLDER
+        # Normalizar a STATIC_TEMP_FOLDER (si salieron en subcarpeta)
         def _ensure_in_temp(path):
+            if not path:
+                return None
             dst = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(path))
             if os.path.dirname(path) != STATIC_TEMP_FOLDER:
                 shutil.move(path, dst)
@@ -256,10 +273,10 @@ def upload_file():
             return dst
 
         img_path = _ensure_in_temp(img_path)
-        xml_path = _ensure_in_temp(xml_path) if xml_path else None
+        xml_path = _ensure_in_temp(xml_path)
 
-        img_url = "/static/temp/" + os.path.basename(img_path)
-        xml_url = "/static/temp/" + os.path.basename(xml_path) if xml_path else None
+        img_url = "/static/temp/" + os.path.basename(str(img_path))
+        xml_url = "/static/temp/" + os.path.basename(str(xml_path)) if xml_path else None
 
         set_progress(usuario, "Imagen generada")
         return jsonify({"imagen": img_url, "xml": xml_url})

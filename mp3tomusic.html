@@ -295,81 +295,83 @@ function appScorik() {
             pollProgress(this.usuario || 'anon', () => keepPolling);
 
             fetch('/upload', { method: 'POST', body: formData, credentials: 'include'})
-            .then(resp => resp.json())
-            .then(data => {
-                keepPolling = false; // Terminar polling
+                .then(async resp => {
+                    let data;
+                    try { data = await resp.json(); } catch { data = {}; }
+                    if (!resp.ok) {
+                    keepPolling = false;
+                    hideLoading();
+                    alert((data && (data.error || JSON.stringify(data))) || 'Error en el procesamiento.');
+                    return;
+                    }
 
-                // Esperar un segundo para que la barra llegue al final y después mostrar el resultado
-                setTimeout(() => {
+                    keepPolling = false;
+
+                    setTimeout(() => {
                     hideLoading();
                     if (data.imagen) {
                         this.activeTab = 'sheet';
                         this.lastImage = data.imagen + '?v=' + Date.now();
                         this.lastXml = data.xml || '';
                     } else {
-                        alert("No se generó imagen.");
+                        alert(data.error || "No se generó imagen.");
                     }
-                }, 900);
-            })
-            .catch(() => {
-                keepPolling = false;
-                hideLoading();
-                alert("Error en el procesamiento.");
-            });
+                    }, 900);
+                })
+                .catch(() => {
+                    keepPolling = false;
+                    hideLoading();
+                    alert("Error en el procesamiento.");
+                });
         },
 
-        async savePartitura() {
-            if (!this.usuario) {
-                alert("Tu sesión expiró. Volvé a loguearte.");
-                return;
-            }
-        // 2) Debe existir una imagen generada
-        if (!this.lastImage) {
-            alert("No hay partitura para guardar. Convertí un MP3 primero.");
+    async savePartitura() {
+        if (!this.usuario) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
+        if (!this.lastImage) { alert("No hay partitura para guardar. Convertí un MP3 primero."); return; }
+
+        const nombreLimpio = (this.nombrePartitura || 'mi_partitura')
+        .trim().toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'mi_partitura';
+
+        try {
+        const resp = await fetch('/save_partitura', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({
+            usuario: this.usuario,
+            nombre: nombreLimpio,
+            imagen: this.lastImage.split('?')[0],
+            xml: this.lastXml || null
+            })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+            console.error('save_partitura resp:', data);
+            alert(data.error || 'Error al guardar partitura.');
             return;
         }
 
-        // 3) Nombre saneado (evita espacios y caracteres raros en el archivo)
-        const nombreLimpio = (this.nombrePartitura || 'mi_partitura')
-            .trim().toLowerCase()
-            .replace(/[^a-z0-9._-]+/g, '_')
-            .replace(/^_+|_+$/g, '') || 'mi_partitura';
-            
-            // Enviar petición para guardar partitura en carpeta definitiva
-            fetch('/save_partitura', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                credentials: 'include',
-                body: JSON.stringify({
-                    usuario: this.usuario,
-                    nombre: nombreLimpio,
-                    imagen: this.lastImage.split('?')[0], // sin cache
-                    xml: this.lastXml
-                })
-                })
-                .then(resp => resp.json())
-                .then(data => {
-                    keepPolling = false;
-                    setTimeout(() => {
-                        hideLoading();
-                        if (data.imagen) {
-                        this.activeTab = 'sheet';
-                        this.lastImage = data.imagen + '?v=' + Date.now();
-                        this.lastXml = data.xml || '';
-                        } else {
-                        console.log('Respuesta /upload:', data);
-                        alert(data.error || 'No se generó imagen.');
-                        }
-                    });
-                }, 900);
-        },
-
-        async logout() {
-            await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-            window.location.href = 'index.html';
+        alert('Partitura guardada correctamente en tu biblioteca.');
+        if (data.ruta) this.lastImage = data.ruta + '?v=' + Date.now();
+        window.location.href = 'library.html';
+        } catch (e) {
+        console.error(e);
+        alert('Error al guardar partitura.');
         }
+    },
+
+    async logout() {
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = 'index.html';
     }
+    };
 }
+
+
 
 function initScorik() { /* opcional si querés lógica al iniciar, podés dejarlo vacío */ }
 
