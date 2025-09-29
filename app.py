@@ -25,7 +25,7 @@ JSON_FOLDER = os.path.join(ROOT_DIR, "ParteDeJuli", "JsonFiles")
 UPLOAD_FOLDER = os.path.join(TMP_BASE, "uploads")
 STATIC_TEMP_FOLDER = os.path.join(TMP_BASE, "static_temp")        # imágenes/temp
 PARTITURAS_USER_FOLDER = os.path.join(TMP_BASE, "partituras_usuario") # biblioteca usuario
-PROGRESS_FOLDER = os.path.join(TMP_BASE, "progress")           # progreso
+PROGRESS_FOLDER = os.path.join(TMP_BASE, "progress")
 USERS_FILE = os.path.join(TMP_BASE, "usuarios.json") 
 
 PYTHON_EXEC = sys.executable
