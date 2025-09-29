@@ -192,13 +192,12 @@ def upload_file():
             set_progress(usuario, "Error: Archivo vacío")
             return jsonify({"error": "Archivo vacío"}), 400
 
-        # limpiar temp
-        for f in os.listdir(STATIC_TEMP_FOLDER):
-            try:
-                os.remove(os.path.join(STATIC_TEMP_FOLDER, f))
-            except:
-                pass
+        # === subcarpeta de trabajo por request ===
+        req_id   = f"{usuario}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
+        work_dir = os.path.join(STATIC_TEMP_FOLDER, req_id)
+        os.makedirs(work_dir, exist_ok=True)
 
+        # Guardar el MP3 en uploads (opcional) o en work_dir
         filename = file.filename
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
@@ -209,14 +208,14 @@ def upload_file():
         # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
         # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
         # Ejecutar script y capturar salida
+        # Ejecutar tu script apuntando la salida a work_dir
         try:
             proc = subprocess.run(
-                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, STATIC_TEMP_FOLDER],
+                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, work_dir],
                 check=True,
                 capture_output=True,
                 text=True
             )
-            # Si querés ver logs en Cloud Run:
             print("LeerArchivoYnota.py STDOUT:\n", proc.stdout)
             print("LeerArchivoYnota.py STDERR:\n", proc.stderr)
         except subprocess.CalledProcessError as e:
@@ -244,48 +243,39 @@ def upload_file():
                     return img, xml
             return img, xml
 
-        # --- reintentar hasta 8s (por si el script descarga o mueve al final) ---
+        # Reintentar hasta 8s por si el script escribe al final
         img_path, xml_path = None, None
-        for _ in range(16):  # 16 * 0.5s = 8s
-            img_path, xml_path = find_outputs(STATIC_TEMP_FOLDER)
+        for _ in range(16):
+            img_path, xml_path = find_outputs(work_dir)
             if img_path:
                 break
             time.sleep(0.5)
 
         if not img_path:
-            # devolver árbol para depurar
             tree = []
-            for root, _, files in os.walk(STATIC_TEMP_FOLDER):
+            for root, _, files in os.walk(work_dir):
                 tree.append({"dir": root, "files": files})
-            print("Contenido de static_temp:", tree)
+            print("Contenido de work_dir:", tree)
             set_progress(usuario, "Error: No se generó imagen")
             return jsonify({"error": "No se generó imagen", "tree": tree}), 500
 
-        # Normalizar a STATIC_TEMP_FOLDER (si salieron en subcarpeta)
-        def _ensure_in_temp(path):
-            if not path:
-                return None
-            dst = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(path))
-            if os.path.dirname(path) != STATIC_TEMP_FOLDER:
-                shutil.move(path, dst)
-            else:
-                dst = path
-            return dst
+        # NO mover los archivos fuera: servilos desde la subcarpeta
+        # /static/temp/<req_id>/<archivo>
+        def to_url(p):
+            rel = os.path.relpath(p, STATIC_TEMP_FOLDER).replace("\\", "/")
+            return "/static/temp/" + rel
 
-        img_path = _ensure_in_temp(img_path)
-        xml_path = _ensure_in_temp(xml_path)
-
-        img_url = "/static/temp/" + os.path.basename(str(img_path))
-        xml_url = "/static/temp/" + os.path.basename(str(xml_path)) if xml_path else None
+        img_url = to_url(img_path)
+        xml_url = to_url(xml_path) if xml_path else None
 
         set_progress(usuario, "Imagen generada")
         return jsonify({"imagen": img_url, "xml": xml_url})
 
-    except Exception as e:
+    except Exception:
         app.logger.exception("Fallo en /upload")
         set_progress(request.form.get('usuario','anon'), "Error: procesamiento")
         return jsonify({"error": "fallo servidor"}), 500
-
+    
 @app.route('/save_partitura', methods=['POST'])
 def save_partitura():
     # ======== NUEVA RUTA PARA GUARDAR DEFINITIVO ========
@@ -305,19 +295,27 @@ def save_partitura():
     def mover_archivo(rel_path, nombre_destino):
         if not rel_path:
             return None
-        
-        # Si la ruta viene como /static/temp/xxx.png -> buscar en STATIC_TEMP_FOLDER
+
         if rel_path.startswith('/static/temp/'):
-            fname = os.path.basename(rel_path)
-            src = os.path.join(STATIC_TEMP_FOLDER, fname)
+            rel_sub = rel_path[len('/static/temp/'):]           # puede incluir subcarpeta
+            src = os.path.join(STATIC_TEMP_FOLDER, rel_sub)
         else:
-            # fallback por si alguna vez mandás otra ruta relativa
             src = os.path.join('.', rel_path.lstrip('/'))
 
         if os.path.exists(src):
             ext = os.path.splitext(src)[1]
             dst = os.path.join(user_dir, nombre_destino + ext)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.move(src, dst)
+
+            # si quedó la subcarpeta vacía, la limpiamos
+            try:
+                subdir = os.path.dirname(src)
+                if subdir.startswith(STATIC_TEMP_FOLDER):
+                    if not os.listdir(subdir):
+                        os.rmdir(subdir)
+            except: pass
+
             return dst
         return None
 

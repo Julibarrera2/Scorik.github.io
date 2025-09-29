@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!usuario) return;
 
-    fetch('/api/partituras_usuario/' + encodeURIComponent(usuario), { credentials: 'include' })
+    fetch('/api/partituras_usuario/' + encodeURIComponent(usuario) + '?t=' + Date.now(), { credentials: 'include' })
         .then(resp => resp.json())
         .then(partituras => {
             partituras.forEach(p => {
