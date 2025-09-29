@@ -164,49 +164,87 @@ def upload_file():
         if 'file' not in request.files:
             set_progress(usuario, "Error: No se envió archivo")
             return jsonify({"error": "No se envió archivo"}), 400
+
         file = request.files.get('file')
-        if file is None or file.filename is None or file.filename == '':
+        if not file or not file.filename:
             set_progress(usuario, "Error: Archivo vacío")
             return jsonify({"error": "Archivo vacío"}), 400
-    
-        # Limpiar archivos temporales anteriores
+
+        # limpiar temp
         for f in os.listdir(STATIC_TEMP_FOLDER):
-            try:os.remove(os.path.join(STATIC_TEMP_FOLDER, f))
-            except:  pass
+            try:
+                os.remove(os.path.join(STATIC_TEMP_FOLDER, f))
+            except:
+                pass
 
         filename = file.filename
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
         set_progress(usuario, "Audio cargado correctamente.")
-
-        # ---- Ejecutar los scripts paso a paso con actualización de progreso ----
-        # Paso 1: Detectando notas...
         set_progress(usuario, "Detectando notas...")
 
         # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
         # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
-        subprocess.run([PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, STATIC_TEMP_FOLDER], check=True)
+        # Ejecutar script y capturar salida
+        try:
+            proc = subprocess.run(
+                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, STATIC_TEMP_FOLDER],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            # Si querés ver logs en Cloud Run:
+            print("LeerArchivoYnota.py STDOUT:\n", proc.stdout)
+            print("LeerArchivoYnota.py STDERR:\n", proc.stderr)
+        except subprocess.CalledProcessError as e:
+            print("ERROR ejecutando script:\n", e.stdout, "\nSTDERR:\n", e.stderr, file=sys.stderr)
+            set_progress(usuario, "Error: procesamiento")
+            return jsonify({"error": "Fallo el script de conversión", "stdout": e.stdout, "stderr": e.stderr}), 500
 
-        # Paso 2: Generando imagen...
         set_progress(usuario, "Generando imagen ...")
 
-        # Esperar a que el PNG se genere (esto ya lo hace tu script)
-        temp_pngs = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".png")]
-        temp_xmls = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".xml") or f.endswith(".musicxml")]
+        # Buscar PNG y XML en toda la carpeta (subcarpetas incl.)
+        png_path = None
+        xml_path = None
+        for root, dirs, files in os.walk(STATIC_TEMP_FOLDER):
+            for f in files:
+                fn = f.lower()
+                if fn.endswith(".png") and not png_path:
+                    png_path = os.path.join(root, f)
+                if (fn.endswith(".xml") or fn.endswith(".musicxml")) and not xml_path:
+                    xml_path = os.path.join(root, f)
+            if png_path and xml_path:
+                break
 
-        if not temp_pngs:
+        if not png_path:
+            # devolver contenido que hay para depurar
+            tree = []
+            for root, dirs, files in os.walk(STATIC_TEMP_FOLDER):
+                tree.append({"dir": root, "files": files})
+            print("Contenido de static_temp:", tree)
             set_progress(usuario, "Error: No se generó imagen")
-            return jsonify({"error": "No se generó imagen"}), 500
+            return jsonify({"error": "No se generó imagen", "tree": tree}), 500
 
-        # Finalización
+        # Normalizar rutas a URLs servibles
+        png_url = "/static/temp/" + os.path.basename(png_path)
+        if os.path.dirname(png_path) != STATIC_TEMP_FOLDER:
+            # si lo generó en subcarpeta, moverlo a STATIC_TEMP_FOLDER
+            dst = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(png_path))
+            shutil.move(png_path, dst)
+            png_url = "/static/temp/" + os.path.basename(dst)
+
+        xml_url = None
+        if xml_path:
+            xml_url = "/static/temp/" + os.path.basename(xml_path)
+            if os.path.dirname(xml_path) != STATIC_TEMP_FOLDER:
+                dst_xml = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(xml_path))
+                shutil.move(xml_path, dst_xml)
+                xml_url = "/static/temp/" + os.path.basename(dst_xml)
+
         set_progress(usuario, "Imagen generada")
+        return jsonify({"imagen": png_url, "xml": xml_url})
 
-        return jsonify({
-            "imagen": f"/static/temp/{temp_pngs[0]}",
-            "xml": f"/static/temp/{temp_xmls[0]}" if temp_xmls else None
-        })
-    
     except Exception as e:
         app.logger.exception("Fallo en /upload")
         set_progress(request.form.get('usuario','anon'), "Error: procesamiento")
