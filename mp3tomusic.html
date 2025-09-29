@@ -352,7 +352,8 @@ function appScorik() {
                 if (data.success) {
                     alert("Partitura guardada correctamente en tu biblioteca.");
                     // opcional: apuntar a la ruta final para que siga viéndose
-
+                    if (data.ruta) this.lastImage = data.ruta + '?v=' + Date.now();
+                    window.location.href = 'library.html';
                 } else {
                     alert("Error al guardar partitura.");
                 }

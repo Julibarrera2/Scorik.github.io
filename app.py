@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, send_from_directory, session
-from flask_session import Session
 import os
 import subprocess
 import json
@@ -10,29 +9,27 @@ from google.cloud import storage
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
-app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
-Session(app)
-os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+
 
 # Configuración de rutas y carpetas
 
 TMP_BASE = '/tmp/scorik'
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
-JSON_FOLDER = os.path.join(os.getcwd(), "ParteDeJuli", "JsonFiles")
-STATIC_TEMP_FOLDER = os.path.join(os.getcwd(), "static_temp")  # carpeta temporal
-PARTITURAS_USER_FOLDER = os.path.join(os.getcwd(), "partituras_usuario")  # carpeta de partituras guardadas
-USERS_FILE = os.path.join(os.getcwd(), "usuarios.json")
+ROOT_DIR     = os.getcwd()
+
+UPLOAD_FOLDER = os.path.join(ROOT_DIR, "uploads")
+JSON_FOLDER = os.path.join(ROOT_DIR, "ParteDeJuli", "JsonFiles")
+STATIC_TEMP_FOLDER = os.path.join(ROOT_DIR, "static_temp")  # carpeta temporal
+PARTITURAS_USER_FOLDER = os.path.join(ROOT_DIR, "partituras_usuario")  # carpeta de partituras guardadas
+USERS_FILE = os.path.join(ROOT_DIR, "usuarios.json")
 PYTHON_EXEC = sys.executable
-PROGRESS_FOLDER = os.path.join(os.getcwd(), "progress") # carpeta para progreso
+PROGRESS_FOLDER = os.path.join(ROOT_DIR, "progress") # carpeta para progreso
 
 USERS_BUCKET = os.environ.get('USERS_BUCKET')
 USERS_BLOB   = os.environ.get('USERS_BLOB', 'usuarios.json')
 
-ROOT_DIR     = os.getcwd()
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(STATIC_TEMP_FOLDER, exist_ok=True)
 os.makedirs(PARTITURAS_USER_FOLDER, exist_ok=True)
@@ -117,13 +114,13 @@ def api_register():
     password = data.get('password', '').strip()
     if not email or not password:
         return jsonify({'success': False, 'message': 'Faltan datos'}), 400
-
     usuarios = cargar_usuarios()
     if any(u['email'] == email for u in usuarios):
         return jsonify({'success': False, 'message': 'Usuario ya existe'}), 400
-
     usuarios.append({'email': email, 'password': password})
     guardar_usuarios(usuarios)
+    # deja cookie de sesión ya logueado
+    session['user_email'] = email
     return jsonify({'success': True, 'message': 'Usuario registrado correctamente'})
 
 @app.route('/api/login', methods=['POST'])
@@ -138,7 +135,7 @@ def api_login():
         return jsonify({'success': True, 'message': 'Login exitoso'})
     else:
         return jsonify({'success': False, 'message': 'Usuario o contraseña incorrectos'}), 401
-    
+
 @app.route('/api/session')
 def api_session():
     email = session.get('user_email')
@@ -198,7 +195,7 @@ def upload_file():
         temp_pngs = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".png")]
         temp_xmls = [f for f in os.listdir(STATIC_TEMP_FOLDER) if f.endswith(".xml") or f.endswith(".musicxml")]
 
-        if not temp_pngs or not temp_xmls:
+        if not temp_pngs:
             set_progress(usuario, "Error: No se generó imagen")
             return jsonify({"error": "No se generó imagen"}), 500
 
@@ -257,10 +254,14 @@ def save_partitura():
     for f in os.listdir(STATIC_TEMP_FOLDER):
         try:
             os.remove(os.path.join(STATIC_TEMP_FOLDER, f))
-        except Exception:
+        except Exception: 
             pass
+    # 👇 construir la URL SOLO si realmente se movió el archivo
+    img_url = None
+    if imagen_final:
+        img_url = f"/partituras_usuario/{usuario}/{os.path.basename(imagen_final)}"
 
-    return jsonify({'success': True, 'message': 'Partitura guardada', 'ruta': imagen_final})
+    return jsonify({'success': True, 'message': 'Partitura guardada', 'ruta': img_url})
 
 @app.route('/static/temp/<path:filename>')
 def get_temp_image(filename):
@@ -275,6 +276,7 @@ def get_user_partitura(usuario, filename):
 @app.route('/json/<path:filename>')
 def download_json(filename):
     return send_from_directory(JSON_FOLDER, filename)
+
 
 @app.route('/static/<path:filename>')
 def get_image(filename):
