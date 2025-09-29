@@ -349,15 +349,19 @@ function appScorik() {
                 })
                 .then(resp => resp.json())
                 .then(data => {
-                if (data.success) {
-                    alert("Partitura guardada correctamente en tu biblioteca.");
-                    // opcional: apuntar a la ruta final para que siga viéndose
-                    if (data.ruta) this.lastImage = data.ruta + '?v=' + Date.now();
-                    window.location.href = 'library.html';
-                } else {
-                    alert("Error al guardar partitura.");
-                }
-                });
+                    keepPolling = false;
+                    setTimeout(() => {
+                        hideLoading();
+                        if (data.imagen) {
+                        this.activeTab = 'sheet';
+                        this.lastImage = data.imagen + '?v=' + Date.now();
+                        this.lastXml = data.xml || '';
+                        } else {
+                        console.log('Respuesta /upload:', data);
+                        alert(data.error || 'No se generó imagen.');
+                        }
+                    });
+                }, 900);
         },
 
         async logout() {

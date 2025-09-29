@@ -5,6 +5,7 @@ import json
 import sys
 import shutil
 from google.cloud import storage
+from urllib.parse import quote, unquote
 
 
 app = Flask(__name__)
@@ -225,20 +226,19 @@ def upload_file():
         set_progress(usuario, "Generando imagen ...")
 
         # Buscar PNG y XML en toda la carpeta (subcarpetas incl.)
-        png_path = None
+        img_path = None
         xml_path = None
         for root, dirs, files in os.walk(STATIC_TEMP_FOLDER):
             for f in files:
-                fn = f.lower()
-                if fn.endswith(".png") and not png_path:
-                    png_path = os.path.join(root, f)
-                if (fn.endswith(".xml") or fn.endswith(".musicxml")) and not xml_path:
+                fl = f.lower()
+                if not img_path and fl.endswith(('.png', '.jpg', '.jpeg', '.svg')):
+                    img_path = os.path.join(root, f)
+                if not xml_path and fl.endswith(('.xml', '.musicxml')):
                     xml_path = os.path.join(root, f)
-            if png_path and xml_path:
+            if img_path and xml_path:
                 break
 
-        if not png_path:
-            # devolver contenido que hay para depurar
+        if not img_path:
             tree = []
             for root, dirs, files in os.walk(STATIC_TEMP_FOLDER):
                 tree.append({"dir": root, "files": files})
@@ -246,24 +246,23 @@ def upload_file():
             set_progress(usuario, "Error: No se generó imagen")
             return jsonify({"error": "No se generó imagen", "tree": tree}), 500
 
-        # Normalizar rutas a URLs servibles
-        png_url = "/static/temp/" + os.path.basename(png_path)
-        if os.path.dirname(png_path) != STATIC_TEMP_FOLDER:
-            # si lo generó en subcarpeta, moverlo a STATIC_TEMP_FOLDER
-            dst = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(png_path))
-            shutil.move(png_path, dst)
-            png_url = "/static/temp/" + os.path.basename(dst)
+        # Normalizar a STATIC_TEMP_FOLDER
+        def _ensure_in_temp(path):
+            dst = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(path))
+            if os.path.dirname(path) != STATIC_TEMP_FOLDER:
+                shutil.move(path, dst)
+            else:
+                dst = path
+            return dst
 
-        xml_url = None
-        if xml_path:
-            xml_url = "/static/temp/" + os.path.basename(xml_path)
-            if os.path.dirname(xml_path) != STATIC_TEMP_FOLDER:
-                dst_xml = os.path.join(STATIC_TEMP_FOLDER, os.path.basename(xml_path))
-                shutil.move(xml_path, dst_xml)
-                xml_url = "/static/temp/" + os.path.basename(dst_xml)
+        img_path = _ensure_in_temp(img_path)
+        xml_path = _ensure_in_temp(xml_path) if xml_path else None
+
+        img_url = "/static/temp/" + os.path.basename(img_path)
+        xml_url = "/static/temp/" + os.path.basename(xml_path) if xml_path else None
 
         set_progress(usuario, "Imagen generada")
-        return jsonify({"imagen": png_url, "xml": xml_url})
+        return jsonify({"imagen": img_url, "xml": xml_url})
 
     except Exception as e:
         app.logger.exception("Fallo en /upload")
@@ -342,17 +341,19 @@ def gcs_partitura(usuario, filename):
     if not PARTITURAS_BUCKET:
         return "Bucket no configurado", 404
     try:
+        usuario = unquote(usuario)
         path = f"{usuario}/{filename}"
         data = gcs_download_bytes(PARTITURAS_BUCKET, path)
-        # mimetype simple por extensión
-        if filename.lower().endswith(".png"):
-            mime = "image/png"
-        elif filename.lower().endswith(".xml") or filename.lower().endswith(".musicxml"):
-            mime = "application/xml"
-        else:
-            mime = "application/octet-stream"
+        # mimetype simple
+        low = filename.lower()
+        if   low.endswith(".png"):   mime = "image/png"
+        elif low.endswith((".jpg",".jpeg")): mime = "image/jpeg"
+        elif low.endswith((".xml",".musicxml")): mime = "application/xml"
+        elif low.endswith(".svg"): mime = "image/svg+xml"
+        else: mime = "application/octet-stream"
         return Response(data, mimetype=mime)
-    except Exception:
+    except Exception as e:
+        print("ERROR sirviendo GCS:", e, file=sys.stderr)
         return "No encontrado", 404
 
 @app.route('/static/temp/<path:filename>')
@@ -392,8 +393,12 @@ def serve_css(filename):
 def api_partituras_usuario(usuario):
     # Modo GCS (recomendado)
     if PARTITURAS_BUCKET:
-        blobs = gcs_list(PARTITURAS_BUCKET, prefix=f"{usuario}/")
-        # agrupamos por base (nombre sin extensión)
+        try:
+            blobs = gcs_list(PARTITURAS_BUCKET, prefix=f"{usuario}/")
+        except Exception as e:
+            print("ERROR listando GCS:", e, file=sys.stderr)
+            return jsonify([])
+
         por_base = {}
         for b in blobs:
             fname = os.path.basename(b.name)
@@ -401,11 +406,13 @@ def api_partituras_usuario(usuario):
             if not base:
                 continue
             por_base.setdefault(base, {"nombre": base, "imagen": None, "xml": None})
+
+            user_q = quote(usuario, safe='')
             if ext.lower() == ".png":
-                por_base[base]["imagen"] = f"/gcs_partituras/{usuario}/{fname}"
+                por_base[base]["imagen"] = f"/gcs_partituras/{user_q}/{fname}"
             if ext.lower() in (".xml", ".musicxml"):
-                por_base[base]["xml"] = f"/gcs_partituras/{usuario}/{fname}"
-        # devolvemos solo los que tienen imagen
+                por_base[base]["xml"] = f"/gcs_partituras/{user_q}/{fname}"
+
         return jsonify([v for v in por_base.values() if v["imagen"]])
 
     # Modo local (/tmp) – compatibilidad
