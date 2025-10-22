@@ -294,14 +294,24 @@ function appScorik() {
             let keepPolling = true;
             pollProgress(this.usuario || 'anon', () => keepPolling);
 
+            const kill = setTimeout(() => {
+                keepPolling = false;
+                hideLoading();
+                alert('Tardó demasiado. Revisá tu audio o probá de nuevo.');
+            }, 60000);
+
             fetch('/upload', { method: 'POST', body: formData, credentials: 'include'})
                 .then(async resp => {
+                    clearTimeout(kill);
                     let data;
                     try { data = await resp.json(); } catch { data = {}; }
+                    
                     if (!resp.ok) {
                     keepPolling = false;
                     hideLoading();
-                    alert((data && (data.error || JSON.stringify(data))) || 'Error en el procesamiento.');
+                    const msg = data?.error || 'Error en el procesamiento.';
+                    const detail = (data?.stderr || '').slice(0, 800);
+                    alert(msg + (detail ? ("\n\nDetalle:\n" + detail) : ""));
                     return;
                     }
 
@@ -319,6 +329,7 @@ function appScorik() {
                     }, 900);
                 })
                 .catch(() => {
+                    clearTimeout(kill);
                     keepPolling = false;
                     hideLoading();
                     alert("Error en el procesamiento.");

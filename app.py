@@ -8,18 +8,21 @@ import time
 import uuid
 from google.cloud import storage
 from urllib.parse import quote, unquote
-
+from datetime import timedelta
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True
+
+@app.before_request
+def _force_cookie_flags():
+    app.config['SESSION_COOKIE_SECURE'] = True
 
 
 # Configuración de rutas y carpetas
 
 TMP_BASE = '/tmp/scorik'
-ROOT_DIR     = os.getcwd()
+ROOT_DIR = os.getcwd()
 
 JSON_FOLDER = os.path.join(ROOT_DIR, "ParteDeJuli", "JsonFiles")
 UPLOAD_FOLDER = os.path.join(TMP_BASE, "uploads")
@@ -146,6 +149,7 @@ def api_register():
     session['user_email'] = email
     return jsonify({'success': True, 'message': 'Usuario registrado correctamente'})
 
+app.permanent_session_lifetime = timedelta(days=30)
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.get_json(silent=True) or {}
@@ -154,6 +158,7 @@ def api_login():
     usuarios = cargar_usuarios()
     user = next((u for u in usuarios if u['email'] == email and u['password'] == password), None)
     if user:
+        session.permanent = True
         session['user_email'] = email
         return jsonify({'success': True, 'message': 'Login exitoso'})
     else:
@@ -212,7 +217,7 @@ def upload_file():
         # Ejecutar tu script apuntando la salida a work_dir
         try:
             proc = subprocess.run(
-                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, work_dir],
+                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, work_dir, file=sys.stderr],
                 check=True,
                 capture_output=True,
                 text=True
