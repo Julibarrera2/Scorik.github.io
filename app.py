@@ -206,23 +206,36 @@ def upload_file():
         set_progress(usuario, "Audio cargado correctamente.")
         set_progress(usuario, "Detectando notas...")
 
-        # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
-        # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
-        # Ejecutar script y capturar salida
-        # Ejecutar tu script apuntando la salida a work_dir
+        def separate_with_spleeter(input_path: str, out_dir: str) -> str:
+            """
+            Separa en 2 stems: vocals / accompaniment
+            Retorna el path del stem instrumental.
+            """
+            os.makedirs(out_dir, exist_ok=True)
+            cmd = [
+                "spleeter", "separate",
+                "-p", "spleeter:2stems",  # modelo más rápido: voz + acompañamiento
+                "-o", out_dir,
+                input_path
+            ]
+            subprocess.run(cmd, check=True)
+            base = os.path.splitext(os.path.basename(input_path))[0]
+            instrumental = os.path.join(out_dir, base, "accompaniment.wav")
+            return instrumental if os.path.exists(instrumental) else input_path
+
+        set_progress(usuario, "Separando instrumentos...")
         try:
-            proc = subprocess.run(
-                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, work_dir],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-            print("LeerArchivoYnota.py STDOUT:\n", proc.stdout)
-            print("LeerArchivoYnota.py STDERR:\n", proc.stderr)
-        except subprocess.CalledProcessError as e:
-            print("ERROR ejecutando script:\n", e.stdout, "\nSTDERR:\n", e.stderr, file=sys.stderr)
-            set_progress(usuario, "Error: procesamiento")
-            return jsonify({"error": "Fallo el script de conversión", "stdout": e.stdout, "stderr": e.stderr}), 500
+            stem_path = separate_with_spleeter(filepath, work_dir)
+            print("Usando stem:", stem_path, file=sys.stderr)
+        except Exception as e:
+            print("Fallo separacion, uso original:", e, file=sys.stderr)
+            stem_path = filepath
+
+        set_progress(usuario, "Detectando notas...")
+        proc = subprocess.run(
+            [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", stem_path, work_dir],
+            check=True, capture_output=True, text=True
+        )
 
         set_progress(usuario, "Generando imagen ...")
 
@@ -272,6 +285,10 @@ def upload_file():
         set_progress(usuario, "Imagen generada")
         return jsonify({"imagen": img_url, "xml": xml_url})
 
+    except subprocess.CalledProcessError as e:
+        print("ERROR ejecutando script:\n", e.stdout, "\nSTDERR:\n", e.stderr, file=sys.stderr)
+        set_progress(usuario, "Error: procesamiento")
+        return jsonify({"error": "Fallo el script de conversión", "stdout": e.stdout, "stderr": e.stderr}), 500
     except Exception:
         app.logger.exception("Fallo en /upload")
         set_progress(request.form.get('usuario','anon'), "Error: procesamiento")
