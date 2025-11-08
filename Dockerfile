@@ -1,4 +1,3 @@
-# ---------- Base Ubuntu ----------
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -29,35 +28,23 @@ RUN printf '%s\n' \
 
 WORKDIR /app
 
-# ---------- Python deps ----------
-# 1. Instalar dependencias base primero
-COPY requirements-base.txt .
-RUN pip install --no-cache-dir -r requirements-base.txt
+# ---------- Deps APP ----------
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt
 
-# 2. Crear y configurar el entorno virtual para spleeter
+# ---------- venv aislado para Spleeter ----------
 COPY requirements-spleeter.txt .
 RUN python3.9 -m venv /opt/spleenv \
     && /opt/spleenv/bin/pip install --no-cache-dir -r requirements-spleeter.txt
-
-# 3. Instalar el resto de dependencias en el entorno principal
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV SPLEETER_BIN=/opt/spleenv/bin/spleeter
 
 # ---------- Código ----------
 COPY . .
 
-# (NO creamos carpetas en /app; ahora la app usa /tmp)
 ENV FFMPEG_BINARY=ffmpeg \
     MUSESCORE_PATH=/usr/local/bin/mscore3-cli \
     PORT=8080
 
 EXPOSE 8080
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]
-
-# --- venv aislado para Spleeter ---
-RUN python3.9 -m venv /opt/spleenv \
-    && /opt/spleenv/bin/pip install --no-cache-dir \
-        spleeter==2.3.2 librosa==0.8.1 \
-    && echo "Spleeter instalado en /opt/spleenv"
-
-ENV SPLEETER_BIN=/opt/spleenv/bin/spleeter
