@@ -6,3 +6,8 @@ KEY PAIR
 
 
 Comando: gcloud builds submit --no-cache --tag southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web
+
+
+Rta: (.libreriasRaiz) PS C:\Users\fb050\Downloads\Scorik.github.io> gcloud builds submit --no-cache --tag southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web
+ERROR: (gcloud.builds.submit) Invalid value for [no-cache]: Cannot specify --no-cache if builds/use_kaniko property is False
+(.libreriasRaiz) PS C:\Users\fb050\Downloads\Scorik.github.io> 
