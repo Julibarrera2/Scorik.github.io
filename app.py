@@ -217,7 +217,7 @@ def upload_file():
         # Ejecutar tu script apuntando la salida a work_dir
         try:
             proc = subprocess.run(
-                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, work_dir, file=sys.stderr],
+                [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", filepath, work_dir],
                 check=True,
                 capture_output=True,
                 text=True
@@ -277,6 +277,10 @@ def upload_file():
         set_progress(usuario, "Imagen generada")
         return jsonify({"imagen": img_url, "xml": xml_url})
 
+    except subprocess.CalledProcessError as e:
+        print("ERROR ejecutando script:\n", e.stdout, "\nSTDERR:\n", e.stderr, file=sys.stderr)
+        set_progress(usuario, "Error: procesamiento")
+        return jsonify({"error": "Fallo el script de conversión", "stdout": e.stdout, "stderr": e.stderr}), 500
     except Exception:
         app.logger.exception("Fallo en /upload")
         set_progress(request.form.get('usuario','anon'), "Error: procesamiento")

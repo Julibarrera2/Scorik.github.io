@@ -1,4 +1,3 @@
-# ---------- Base Ubuntu ----------
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -29,14 +28,20 @@ RUN printf '%s\n' \
 
 WORKDIR /app
 
-# ---------- Python deps ----------
+# ---------- Deps APP ----------
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt
+
+# ---------- venv aislado para Spleeter ----------
+COPY requirements-spleeter.txt .
+RUN python3.9 -m venv /opt/spleenv \
+    && /opt/spleenv/bin/pip install --no-cache-dir -r requirements-spleeter.txt
+ENV SPLEETER_BIN=/opt/spleenv/bin/spleeter
 
 # ---------- Código ----------
 COPY . .
 
-# (NO creamos carpetas en /app; ahora la app usa /tmp)
 ENV FFMPEG_BINARY=ffmpeg \
     MUSESCORE_PATH=/usr/local/bin/mscore3-cli \
     PORT=8080
