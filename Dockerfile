@@ -30,16 +30,16 @@ RUN printf '%s\n' \
 WORKDIR /app
 
 # ---------- Python deps ----------
-# Instalar dependencias base primero
+# 1. Instalar dependencias base primero
 COPY requirements-base.txt .
 RUN pip install --no-cache-dir -r requirements-base.txt
 
-# Instalar spleeter en su propio venv
+# 2. Crear y configurar el entorno virtual para spleeter
+COPY requirements-spleeter.txt .
 RUN python3.9 -m venv /opt/spleenv \
-    && /opt/spleenv/bin/pip install --no-cache-dir \
-    spleeter==2.3.2 librosa==0.8.1
+    && /opt/spleenv/bin/pip install --no-cache-dir -r requirements-spleeter.txt
 
-# Instalar el resto de dependencias
+# 3. Instalar el resto de dependencias en el entorno principal
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
