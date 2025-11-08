@@ -1,172 +1,159 @@
 from music21 import stream, note, instrument, tempo as m21tempo, meter
-import os
-import json
-import subprocess
+import os, sys, json, subprocess, traceback
 from time import time as timestamp
-import sys
 
-MUSESCORE_PATH = os.environ.get("MUSESCORE_PATH", r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe" if os.name == "nt" else "mscore3-cli")
+# MuseScore: en Cloud Run viene por ENV como /usr/local/bin/mscore3-cli
+MUSESCORE_PATH = os.environ.get(
+    "MUSESCORE_PATH",
+    r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe" if os.name == "nt" else "mscore3-cli"
+)
 
-# === CAMBIO: Carpeta destino por argumento (por defecto static/temp) ===
-carpeta_destino = sys.argv[1] if len(sys.argv) > 1 else os.path.join("static", "temp")
-os.makedirs(carpeta_destino, exist_ok=True)
+def safe_print(*a, **kw):
+    print(*a, file=sys.stderr, **kw)
 
-JSON_PATH = os.path.join(carpeta_destino, "notas_detectadas.json")
+def sanitize(s: str) -> str:
+    return "".join(c if c.isalnum() or c in "-_." else "_" for c in s)
+
+# === Carpeta destino por argumento (default static/temp) ===
+out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join("static", "temp")
+os.makedirs(out_dir, exist_ok=True)
+safe_print("OUT_DIR:", out_dir)
+safe_print("MUSESCORE_PATH:", MUSESCORE_PATH)
+
+JSON_PATH = os.path.join(out_dir, "notas_detectadas.json")
 
 figura_a_duracion = {
-    'redonda': 4.0,
-    'blanca': 2.0,
-    'negra': 1.0,
-    'corchea': 0.5,
-    'semicorchea': 0.25,
-    'fusa': 0.125,
-    'semifusa': 0.0625
+    'redonda': 4.0, 'blanca': 2.0, 'negra': 1.0, 'corchea': 0.5,
+    'semicorchea': 0.25, 'fusa': 0.125, 'semifusa': 0.0625
 }
 
 def main():
-    if not os.path.exists(JSON_PATH):
-        print("No se encontró el archivo de notas:", JSON_PATH)
-        return
-    with open(JSON_PATH, "r") as f:
-        notas = json.load(f)
-    if not notas:
-        print("No se encontraron notas en el JSON.")
-        return
+    try:
+        if not os.path.exists(JSON_PATH):
+            safe_print("ERROR: No se encontró notas JSON:", JSON_PATH)
+            return sys.exit(1)
 
-    score = stream.Score()
-    part = stream.Part()
-    part.insert(0, instrument.Violin())
+        with open(JSON_PATH, "r", encoding="utf-8") as f:
+            notas = json.load(f)
 
-    # --- Agregar tempo (usa el primer tempo válido del JSON) ---
-    primer_tempo = next((n.get('tempo', 120) for n in notas if 'tempo' in n), 120)  
-    part.insert(0, m21tempo.MetronomeMark(number=primer_tempo))
+        if not notas:
+            safe_print("ERROR: JSON sin notas.")
+            return sys.exit(1)
+        score = stream.Score()
+        part  = stream.Part()
+        part.insert(0, instrument.Violin())
 
-    # --- Ordenar por compás y luego por inicio ---
-    notas = [n for n in notas if 'compas' in n and 'nota' in n and 'inicio' in n] 
-    notas = sorted(notas, key=lambda n: (n['compas'], n['inicio']))
+        # Tempo (toma el primero que aparezca, default 120)
+        primer_tempo = next((n.get('tempo') for n in notas if 'tempo' in n), 120)
+        part.insert(0, m21tempo.MetronomeMark(number=primer_tempo))
 
-    # --- Agrupar por compás ---
-    compases = {}
-    for n in notas:
-        c = n['compas']
-        compases.setdefault(c, []).append(n)
-    
-    if not compases:  
-        print("No hay compases válidos en el JSON.")  
-        return  
+        # Ordenar, agrupar y descartar notas incompletas
+        notas = [n for n in notas if 'compas' in n and 'nota' in n and 'inicio' in n]
+        notas = sorted(notas, key=lambda n: (n['compas'], n['inicio']))
 
-    # --- Detectar métrica automáticamente según el primer compás ---
-    primer_compas = compases[sorted(compases.keys())[0]]
-    suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0) for n in primer_compas)
-    if abs(suma - 4.0) < 0.01:
-        tsig = '4/4'
-        duracion_compas = 4.0
-    elif abs(suma - 3.0) < 0.01:
-        tsig = '3/4'
-        duracion_compas = 3.0
-    elif abs(suma - 2.0) < 0.01:
-        tsig = '2/4'
-        duracion_compas = 2.0
-    elif abs(suma - 6.0) < 0.01:
-        tsig = '6/4'
-        duracion_compas = 6.0
-    else:
-        tsig = '4/4'
-        duracion_compas = 4.0
+        compases = {}
+        for n in notas:
+            compases.setdefault(n['compas'], []).append(n)
 
-    part.append(meter.TimeSignature(tsig))
+        if not compases:
+            safe_print("ERROR: No hay compases válidos.")
+            return sys.exit(1)
 
-    # --- Asumimos compás de 4/4 (puedes cambiarlo si quieres) ---
-    #duracion_compas = 4.0
-    #part.append(meter.TimeSignature('4/4'))
+        # Métrica heurística con el primer compás
+        primer_compas = compases[sorted(compases.keys())[0]]
+        suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0) for n in primer_compas)
+        if   abs(suma - 4.0) < 0.01: tsig, dur_compas = '4/4', 4.0
+        elif abs(suma - 3.0) < 0.01: tsig, dur_compas = '3/4', 3.0
+        elif abs(suma - 2.0) < 0.01: tsig, dur_compas = '2/4', 2.0
+        elif abs(suma - 6.0) < 0.01: tsig, dur_compas = '6/4', 6.0
+        else:                        tsig, dur_compas = '4/4', 4.0
 
-    for num_compas in sorted(compases.keys()):
-        m = stream.Measure(number=num_compas)
-        tiempo_en_compas = 0.0
-        notas_compas = compases[num_compas]
+        part.append(meter.TimeSignature(tsig))
 
-        for n in notas_compas:
-            try:
-                nombre_nota = n['nota']
-                figura = n.get('figura', 'negra').lower()
-                duracion = figura_a_duracion.get(figura, 1.0)
-                #nueva_nota = note.Note(nombre_nota)
-                #nueva_nota.quarterLength = duracion
-                #part.append(nueva_nota)
-                inicio = n.get('inicio', tiempo_en_compas)
-                
-                # --- Insertar silencio si hay espacio ---
-                if inicio > tiempo_en_compas:
-                    silencio_dur = inicio - tiempo_en_compas
-                    if silencio_dur > 0:  
-                        silencio = note.Rest()
-                        silencio.quarterLength = silencio_dur
-                        m.append(silencio)
-                        tiempo_en_compas = inicio
+        for num_compas in sorted(compases.keys()):
+            m  = stream.Measure(number=num_compas)
+            tC = 0.0
+            for n in compases[num_compas]:
+                try:
+                    nombre = n['nota']
+                    figura = n.get('figura', 'negra').lower()
+                    dur    = figura_a_duracion.get(figura, 1.0)
+                    inicio = n.get('inicio', tC)
 
-                # --- Insertar nota ---
-                nueva_nota = note.Note(nombre_nota)
-                nueva_nota.quarterLength = duracion
-                m.append(nueva_nota)
-                tiempo_en_compas += duracion
-            
-            except Exception as e:
-                print(f"Error procesando nota: {n} ({e})")
-        
-        # Rellenar con silencio si el compás no está completo
-        if tiempo_en_compas < duracion_compas:
-            silencio_dur = duracion_compas - tiempo_en_compas  
-            if silencio_dur > 0:  
-                silencio = note.Rest()
-                silencio.quarterLength = silencio_dur
-                m.append(silencio)
-        part.append(m)
+                    # Silencio previo si hay hueco
+                    if inicio > tC:
+                        r = note.Rest()
+                        r.quarterLength = max(0.0, inicio - tC)
+                        if r.quarterLength > 0:
+                            m.append(r)
+                        tC = inicio
 
-    score.insert(0, part)
+                    nn = note.Note(nombre)
+                    nn.quarterLength = dur
+                    m.append(nn)
+                    tC += dur
+                except Exception as e:
+                    safe_print("WARN: nota inválida:", n, repr(e))
 
-    ts = int(timestamp())
-    base_name = f'partitura_{ts}'
-    xml_path = os.path.join(carpeta_destino, f"{base_name}.musicxml")
-    xml_path2 = os.path.join(carpeta_destino, f"{base_name}.xml")
-    png_output = os.path.join(carpeta_destino, f"{base_name}.png")
+            # Rellenar hasta completar compás
+            if tC < dur_compas:
+                r = note.Rest()
+                r.quarterLength = max(0.0, dur_compas - tC)
+                if r.quarterLength > 0:
+                    m.append(r)
 
-    # Guardar como musicxml (puede guardar .xml realmente)
-    score.write('musicxml', fp=xml_path)
-    print(f"XML generado: {xml_path}  | Existe: {os.path.exists(xml_path)}")
-    if not os.path.exists(xml_path):
-        # Buscar .xml alternativo
-        if os.path.exists(xml_path2):
-            print(f"El archivo se guardó como: {xml_path2}")
-            xml_path = xml_path2  # Usar este!
-        else:
-            print("ERROR: No se generó el archivo MusicXML, aborto.")
-            return
+            part.append(m)
 
-    for f in os.listdir(carpeta_destino):
-        if f.startswith(base_name) and f.endswith('.png'):
-            os.remove(os.path.join(carpeta_destino, f))
-    print("Llamando MuseScore...")
-    result = subprocess.run([
-        MUSESCORE_PATH,
-        xml_path,
-        '-o',
-        png_output
-    ], capture_output=True, text=True)
+        score.insert(0, part)
 
-    print("STDOUT:", result.stdout)
-    print("STDERR:", result.stderr)
+        base = sanitize(f"partitura_{int(timestamp())}")
+        xml_path  = os.path.join(out_dir, base + ".musicxml")
+        xml_path2 = os.path.join(out_dir, base + ".xml")
+        png_path  = os.path.join(out_dir, base + ".png")
 
-    if result.returncode == 0:
-        # Buscar cualquier PNG generado (con o sin sufijo)
-        pngs = [f for f in os.listdir(carpeta_destino) if f.startswith(base_name) and f.endswith('.png')]
-        if pngs:
-            print("Imagen generada", pngs)
-        else:
-            print("❌ MuseScore devolvió éxito, pero no se encontró el PNG generado.")
-    else:
-        print("❌ Error al generar imagen PNG. Revisá los mensajes de error arriba.")
-        if not os.path.exists(MUSESCORE_PATH):
-            print("La ruta a MuseScore no existe. Chequeá la variable MUSESCORE_PATH.")
+        # --- Escribir MusicXML con manejo de errores
+        try:
+            safe_print("WRITE_XML ->", xml_path)
+            score.write('musicxml', fp=xml_path)
+        except Exception as e:
+            safe_print("XML_WRITE_ERROR:", repr(e))
+            traceback.print_exc()
+            return sys.exit(1)
+
+        # A veces music21 escribe .xml aunque pidas .musicxml
+        if not os.path.exists(xml_path) and os.path.exists(xml_path2):
+            xml_path = xml_path2
+        if not os.path.exists(xml_path):
+            safe_print("ERROR: No se generó MusicXML en", xml_path, "ni", xml_path2)
+            return sys.exit(1)
+
+        # --- Render PNG con MuseScore
+        cmd = [MUSESCORE_PATH, xml_path, "-o", png_path]
+        safe_print("RUN_MUSESCORE:", cmd)
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            safe_print("PNG_WRITE_ERROR: returncode=", e.returncode)
+            safe_print("STDOUT:", e.stdout)
+            safe_print("STDERR:", e.stderr)
+            if not os.path.exists(MUSESCORE_PATH):
+                safe_print("HINT: MUSESCORE_PATH no existe:", MUSESCORE_PATH)
+            return sys.exit(1)
+
+        # Verificar PNG
+        pngs = [f for f in os.listdir(out_dir) if f.startswith(base) and f.endswith(".png")]
+        if not pngs:
+            safe_print("ERROR: MuseScore no produjo PNG en", out_dir)
+            return sys.exit(1)
+
+        safe_print("OK_XML ->", xml_path)
+        safe_print("OK_PNG ->", [os.path.join(out_dir, p) for p in pngs])
+        return 0
+
+    except Exception as e:
+        safe_print("FATAL:", repr(e))
+        traceback.print_exc()
+        return sys.exit(1)
 
 if __name__ == "__main__":
     main()

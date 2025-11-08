@@ -216,17 +216,9 @@ def upload_file():
         # Ejecutar script y capturar salida
         # Ejecutar tu script apuntando la salida a work_dir
         def separate_with_spleeter(input_path: str, out_dir: str) -> str:
-            """
-            Separa en 2 stems: vocals / accompaniment
-            Retorna el path del stem instrumental.
-            """
             os.makedirs(out_dir, exist_ok=True)
-            cmd = [
-                "spleeter", "separate",
-                "-p", "spleeter:2stems",  # modelo más rápido: voz + acompañamiento
-                "-o", out_dir,
-                input_path
-            ]
+            spleeter_bin = os.environ.get("SPLEETER_BIN", "spleeter")  # <— usa la ENV
+            cmd = [spleeter_bin, "separate", "-p", "spleeter:2stems", "-o", out_dir, input_path]
             subprocess.run(cmd, check=True)
             base = os.path.splitext(os.path.basename(input_path))[0]
             instrumental = os.path.join(out_dir, base, "accompaniment.wav")
