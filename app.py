@@ -212,16 +212,12 @@ def upload_file():
             Retorna el path del stem instrumental.
             """
             os.makedirs(out_dir, exist_ok=True)
-            cmd = [
-                "spleeter", "separate",
-                "-p", "spleeter:2stems",  # modelo más rápido: voz + acompañamiento
-                "-o", out_dir,
-                input_path
-            ]
+            spleeter_bin = os.environ.get("SPLEETER_BIN", "spleeter")
+            cmd = [spleeter_bin, "separate", "-p", "spleeter:2stems", "-o", out_dir, input_path]
             subprocess.run(cmd, check=True)
             base = os.path.splitext(os.path.basename(input_path))[0]
-            instrumental = os.path.join(out_dir, base, "accompaniment.wav")
-            return instrumental if os.path.exists(instrumental) else input_path
+            stem = os.path.join(out_dir, base, "accompaniment.wav")  # instrumental
+            return stem if os.path.exists(stem) else input_path
 
         set_progress(usuario, "Separando instrumentos...")
         try:

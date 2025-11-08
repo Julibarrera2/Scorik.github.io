@@ -43,3 +43,11 @@ ENV FFMPEG_BINARY=ffmpeg \
 
 EXPOSE 8080
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]
+
+# --- venv aislado para Spleeter ---
+RUN python3.9 -m venv /opt/spleenv \
+    && /opt/spleenv/bin/pip install --no-cache-dir \
+        spleeter==2.3.2 librosa==0.8.1 \
+    && echo "Spleeter instalado en /opt/spleenv"
+
+ENV SPLEETER_BIN=/opt/spleenv/bin/spleeter
