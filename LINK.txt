@@ -5,4 +5,4 @@ ssh-keygen -t ed25519 -C "tu_email_de_github"
 KEY PAIR
 
 
-Comando: PS C:\Users\Julia Barrera\Downloads\Scorik.github.io> gcloud builds submit --no-cache --tag southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web
+Comando: gcloud builds submit --no-cache --tag southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web

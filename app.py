@@ -244,8 +244,8 @@ def upload_file():
         proc = subprocess.run(
             [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", stem_path, work_dir],
             check=True, capture_output=True, text=True
-        set_progress(usuario, "Generando imagen ...")
         )
+        set_progress(usuario, "Generando imagen ...")
 
         # Buscar PNG y XML en toda la carpeta (subcarpetas incl.)
         # --- helper para encontrar la salida (con subcarpetas) ---
