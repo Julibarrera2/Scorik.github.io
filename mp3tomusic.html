@@ -298,7 +298,7 @@ function appScorik() {
                 keepPolling = false;
                 hideLoading();
                 alert('Tardó demasiado. Revisá tu audio o probá de nuevo.');
-            }, 60000);
+            }, 180000);//3 minutos
 
             fetch('/upload', { method: 'POST', body: formData, credentials: 'include'})
                 .then(async resp => {

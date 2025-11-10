@@ -216,14 +216,17 @@ def upload_file():
         # Ejecutar script y capturar salida
         # Ejecutar tu script apuntando la salida a work_dir
         def separate_with_spleeter(input_path: str, out_dir: str) -> str:
-            os.makedirs(out_dir, exist_ok=True)
-            spleeter_bin = os.environ.get("SPLEETER_BIN", "spleeter")  # <— usa la ENV
-            cmd = [spleeter_bin, "separate", "-p", "spleeter:2stems", "-o", out_dir, input_path]
-            subprocess.run(cmd, check=True)
-            base = os.path.splitext(os.path.basename(input_path))[0]
-            instrumental = os.path.join(out_dir, base, "accompaniment.wav")
-            return instrumental if os.path.exists(instrumental) else input_path
-
+            #os.makedirs(out_dir, exist_ok=True)
+            #spleeter_bin = os.environ.get("SPLEETER_BIN", "spleeter")  # <— usa la ENV
+            #cmd = [spleeter_bin, "separate", "-p", "spleeter:2stems", "-o", out_dir, input_path]
+            #subprocess.run(cmd, check=True)
+            #base = os.path.splitext(os.path.basename(input_path))[0]
+            #instrumental = os.path.join(out_dir, base, "accompaniment.wav")
+            #return instrumental if os.path.exists(instrumental) else input_path
+            
+            print("Spleeter desactivado: usando audio original", file=sys.stderr)
+            return input_path
+    
         set_progress(usuario, "Separando instrumentos...")
         try:
             stem_path = separate_with_spleeter(filepath, work_dir)
