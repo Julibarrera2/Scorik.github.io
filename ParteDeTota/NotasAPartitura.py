@@ -14,7 +14,7 @@ def safe_print(*a, **kw):
 def sanitize(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-_." else "_" for c in s)
 
-# --- NUEVO: cuantizar duraciones a múltiplos simples ---
+# --- Cuantizar duraciones a múltiplos simples ---
 def quantize_duration(d: float, step: float = 0.25) -> float:
     """
     Redondea la duración 'd' (en quarterLength) al múltiplo más cercano de 'step'
@@ -23,7 +23,6 @@ def quantize_duration(d: float, step: float = 0.25) -> float:
     if d is None or d <= 0:
         return 0.0
     q = round(d / step) * step
-    # Evitar cosas muy pequeñas tipo 1e-16
     if abs(q) < 1e-6:
         return 0.0
     return q
@@ -62,9 +61,9 @@ def main():
         primer_tempo = next((n.get('tempo') for n in notas if 'tempo' in n), 120)
         part.insert(0, m21tempo.MetronomeMark(number=primer_tempo))
 
-        # Ordenar, agrupar y descartar notas incompletas
-        notas = [n for n in notas if 'compas' in n and 'nota' in n and 'inicio' in n]
-        notas = sorted(notas, key=lambda n: (n['compas'], n['inicio']))
+        # Ordenar y agrupar por compás
+        notas = [n for n in notas if 'compas' in n and 'nota' in n]
+        notas = sorted(notas, key=lambda n: (n['compas'], n.get('inicio', 0.0)))
 
         compases = {}
         for n in notas:
@@ -76,7 +75,9 @@ def main():
 
         # Métrica heurística con el primer compás
         primer_compas = compases[sorted(compases.keys())[0]]
-        suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0) for n in primer_compas)
+        suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0)
+                   for n in primer_compas)
+
         if   abs(suma - 4.0) < 0.01: tsig, dur_compas = '4/4', 4.0
         elif abs(suma - 3.0) < 0.01: tsig, dur_compas = '3/4', 3.0
         elif abs(suma - 2.0) < 0.01: tsig, dur_compas = '2/4', 2.0
@@ -85,9 +86,11 @@ def main():
 
         part.append(meter.TimeSignature(tsig))
 
+        # === Construir cada compás SOLO con figuras, sin usar "inicio" ===
         for num_compas in sorted(compases.keys()):
             m  = stream.Measure(number=num_compas)
-            tC = 0.0
+            tC = 0.0  # tiempo acumulado dentro del compás
+
             for n in compases[num_compas]:
                 try:
                     nombre = n['nota']
@@ -95,20 +98,8 @@ def main():
                     dur_raw = figura_a_duracion.get(figura, 1.0)
                     dur     = quantize_duration(dur_raw)
 
-                    # si por redondeo quedó en 0, salteamos
                     if dur <= 0:
                         continue
-
-                    inicio = n.get('inicio', tC)
-
-                    # Silencio previo si hay hueco
-                    gap_raw = max(0.0, inicio - tC)
-                    gap     = quantize_duration(gap_raw)
-                    if gap > 0:
-                        r = note.Rest()
-                        r.quarterLength = gap
-                        m.append(r)
-                        tC += gap
 
                     nn = note.Note(nombre)
                     nn.quarterLength = dur
