@@ -39,6 +39,8 @@ def main():
         if not notas:
             safe_print("ERROR: JSON sin notas.")
             return sys.exit(1)
+
+        # ---------- ARMAR PARTITURA SIMPLE, SIN MEASURES MANUALES ----------
         score = stream.Score()
         part  = stream.Part()
         part.insert(0, instrument.Violin())
@@ -47,64 +49,63 @@ def main():
         primer_tempo = next((n.get('tempo') for n in notas if 'tempo' in n), 120)
         part.insert(0, m21tempo.MetronomeMark(number=primer_tempo))
 
-        # Ordenar, agrupar y descartar notas incompletas
-        notas = [n for n in notas if 'compas' in n and 'nota' in n and 'inicio' in n]
-        notas = sorted(notas, key=lambda n: (n['compas'], n['inicio']))
+        # Métrica heurística usando sólo el primer compás (si existe)
+        figura_sum = 0.0
+        try:
+            # si hay info de compás, calculamos sobre el primero
+            compases = {}
+            for n in notas:
+                if 'compas' in n:
+                    compases.setdefault(n['compas'], []).append(n)
+            if compases:
+                primer_compas = compases[sorted(compases.keys())[0]]
+                figura_sum = sum(
+                    figura_a_duracion.get(nn.get('figura', 'negra').lower(), 1.0)
+                    for nn in primer_compas
+                )
+        except Exception:
+            figura_sum = 0.0
 
-        compases = {}
-        for n in notas:
-            compases.setdefault(n['compas'], []).append(n)
-
-        if not compases:
-            safe_print("ERROR: No hay compases válidos.")
-            return sys.exit(1)
-
-        # Métrica heurística con el primer compás
-        primer_compas = compases[sorted(compases.keys())[0]]
-        suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0) for n in primer_compas)
-        if   abs(suma - 4.0) < 0.01: tsig, dur_compas = '4/4', 4.0
-        elif abs(suma - 3.0) < 0.01: tsig, dur_compas = '3/4', 3.0
-        elif abs(suma - 2.0) < 0.01: tsig, dur_compas = '2/4', 2.0
-        elif abs(suma - 6.0) < 0.01: tsig, dur_compas = '6/4', 6.0
-        else:                        tsig, dur_compas = '4/4', 4.0
+        if   abs(figura_sum - 4.0) < 0.01: tsig = '4/4'
+        elif abs(figura_sum - 3.0) < 0.01: tsig = '3/4'
+        elif abs(figura_sum - 2.0) < 0.01: tsig = '2/4'
+        elif abs(figura_sum - 6.0) < 0.01: tsig = '6/4'
+        else:                              tsig = '4/4'
 
         part.append(meter.TimeSignature(tsig))
 
-        for num_compas in sorted(compases.keys()):
-            m  = stream.Measure(number=num_compas)
-            tC = 0.0
-            for n in compases[num_compas]:
-                try:
-                    nombre = n['nota']
-                    figura = n.get('figura', 'negra').lower()
-                    dur    = figura_a_duracion.get(figura, 1.0)
-                    inicio = n.get('inicio', tC)
+        # Ordenar TODAS las notas por tiempo de inicio
+        notas_ordenadas = [
+            n for n in notas
+            if 'nota' in n and 'inicio' in n
+        ]
+        notas_ordenadas.sort(key=lambda n: n['inicio'])
 
-                    # Silencio previo si hay hueco
-                    if inicio > tC:
-                        r = note.Rest()
-                        r.quarterLength = max(0.0, inicio - tC)
-                        if r.quarterLength > 0:
-                            m.append(r)
-                        tC = inicio
+        t_actual = 0.0
+        for n in notas_ordenadas:
+            try:
+                nombre = n['nota']
+                figura = n.get('figura', 'negra').lower()
+                dur    = figura_a_duracion.get(figura, 1.0)
+                inicio = float(n.get('inicio', t_actual))
 
-                    nn = note.Note(nombre)
-                    nn.quarterLength = dur
-                    m.append(nn)
-                    tC += dur
-                except Exception as e:
-                    safe_print("WARN: nota inválida:", n, repr(e))
+                # Si hay hueco entre la última nota y esta, metemos silencio
+                if inicio > t_actual:
+                    r = note.Rest()
+                    r.quarterLength = max(0.0, inicio - t_actual)
+                    if r.quarterLength > 0:
+                        part.append(r)
+                    t_actual = inicio
 
-            # Rellenar hasta completar compás
-            if tC < dur_compas:
-                r = note.Rest()
-                r.quarterLength = max(0.0, dur_compas - tC)
-                if r.quarterLength > 0:
-                    m.append(r)
-
-            part.append(m)
+                nn = note.Note(nombre)
+                nn.quarterLength = dur
+                part.append(nn)
+                t_actual += dur
+            except Exception as e:
+                safe_print("WARN nota inválida:", n, repr(e))
 
         score.insert(0, part)
+        # -------------------------------------------------------------------
 
         base = sanitize(f"partitura_{int(timestamp())}")
         xml_path  = os.path.join(out_dir, base + ".musicxml")
