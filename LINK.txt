@@ -13,13 +13,8 @@ ERROR: (gcloud.builds.submit) Invalid value for [no-cache]: Cannot specify --no-
 (.libreriasRaiz) PS C:\Users\fb050\Downloads\Scorik.github.io> 
 
 gcloud config set builds/use_kaniko True
-gcloud builds submit --no-cache \
-  --tag southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web
+gcloud builds submit --no-cache  --tag southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web
 
 gcloud config set builds/use_kaniko False
 
-gcloud run deploy scorik-web \
-  --image southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web \
-  --region southamerica-east1 \
-  --platform managed \
-  --allow-unauthenticated
+gcloud run deploy scorik-web --image southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web  --region southamerica-east1   --platform managed   --allow-unauthenticated
