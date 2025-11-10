@@ -76,7 +76,7 @@ def main():
         # Métrica heurística con el primer compás
         primer_compas = compases[sorted(compases.keys())[0]]
         suma = sum(figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0)
-                   for n in primer_compas)
+                    for n in primer_compas)
 
         if   abs(suma - 4.0) < 0.01: tsig, dur_compas = '4/4', 4.0
         elif abs(suma - 3.0) < 0.01: tsig, dur_compas = '3/4', 3.0
