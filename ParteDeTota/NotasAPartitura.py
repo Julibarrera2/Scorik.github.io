@@ -126,13 +126,16 @@ def main():
         png_path  = os.path.join(out_dir, base + ".png")
 
         # --- Escribir MusicXML con manejo de errores
+        # --- Escribir MusicXML con manejo de errores
         try:
             safe_print("WRITE_XML ->", xml_path)
-            score.write('musicxml', fp=xml_path)
+            # 👇 Desactivar makeNotation interno de music21
+            score.write('musicxml', fp=xml_path, makeNotation=False)
         except Exception as e:
             safe_print("XML_WRITE_ERROR:", repr(e))
             traceback.print_exc()
             return sys.exit(1)
+
 
         # A veces music21 escribe .xml aunque pidas .musicxml
         if not os.path.exists(xml_path) and os.path.exists(xml_path2):
