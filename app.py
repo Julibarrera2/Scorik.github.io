@@ -487,6 +487,80 @@ def api_partituras_usuario(usuario):
                 "xml": xml
             })
     return jsonify(partituras)
+@app.route('/api/editor/save', methods=['POST'])
+def api_editor_save():
+    data = request.get_json(silent=True) or {}
+    usuario = data.get("usuario")
+    nombre = data.get("nombre", "partitura")
+    xml = data.get("xml")  # STRING del MusicXML completo
+    png_base64 = data.get("png")  # PNG en base64
+
+    if not usuario or not xml or not png_base64:
+        return jsonify({"error": "Faltan datos"}), 400
+
+    user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
+    os.makedirs(user_dir, exist_ok=True)
+
+    xml_path = os.path.join(user_dir, nombre + ".musicxml")
+    png_path = os.path.join(user_dir, nombre + ".png")
+
+    # Guardar XML
+    with open(xml_path, "w", encoding="utf-8") as f:
+        f.write(xml)
+
+    # Guardar PNG desde base64
+    import base64
+    img_bytes = base64.b64decode(png_base64.split(",")[-1])
+    with open(png_path, "wb") as f:
+        f.write(img_bytes)
+
+    return jsonify({"success": True, "message": "Partitura guardada"})
+
+@app.route('/api/editor/load/<usuario>/<nombre>')
+def api_editor_load(usuario, nombre):
+    user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
+    xml_path = os.path.join(user_dir, nombre + ".musicxml")
+
+    if not os.path.exists(xml_path):
+        return jsonify({"error": "No existe ese archivo"}), 404
+
+    with open(xml_path, "r", encoding="utf-8") as f:
+        contenido = f.read()
+
+    return jsonify({"xml": contenido})
+
+@app.route('/api/editor/png/<usuario>/<nombre>')
+def api_editor_png(usuario, nombre):
+    user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
+    png_path = os.path.join(user_dir, nombre + ".png")
+
+    if not os.path.exists(png_path):
+        return jsonify({"error": "PNG no encontrado"}), 404
+
+    return send_from_directory(user_dir, nombre + ".png")
+
+@app.route('/api/editor/delete', methods=['POST'])
+def delete_partitura():
+    data = request.get_json()
+    usuario = data.get("usuario")
+    nombre = data.get("nombre")
+
+    if not usuario or not nombre:
+        return jsonify({"success": False, "error": "Faltan datos"}), 400
+
+    user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
+
+    eliminados = 0
+    for ext in (".png", ".xml", ".musicxml"):
+        path = os.path.join(user_dir, nombre + ext)
+        if os.path.exists(path):
+            os.remove(path)
+            eliminados += 1
+
+    if eliminados == 0:
+        return jsonify({"success": False, "error": "No se encontró la partitura"}), 404
+
+    return jsonify({"success": True})
 
 @app.route('/healthz')
 def healthz():
