@@ -309,7 +309,7 @@ def main(filepath: str, carpeta_destino="static/temp"):
     # ====== LLAMADA FINAL A NotasAPartitura.py PASANDO LA CARPETA DE DESTINO ======
     print("\n Generando imagen...")
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura.py")
+    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_violin.py")
     subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
 # ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========
@@ -320,7 +320,3 @@ if __name__ == '__main__':
     mp3_path = sys.argv[1]
     carpeta_destino = sys.argv[2] if len(sys.argv) > 2 else "static/temp"
     main(mp3_path, carpeta_destino)
-
-
-#Ruta tota PC: C:\Users\Julia Barrera\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py
-#Ruta tota Laptop: c:\Users\fb050\Downloads\Scorik.github.io\ParteDeTota\NotasAPartitura.py

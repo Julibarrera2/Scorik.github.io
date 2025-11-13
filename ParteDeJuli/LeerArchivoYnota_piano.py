@@ -170,7 +170,7 @@ def main(filepath, carpeta_destino="static/temp"):
 
     # Llamada a NotasAPartitura
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura.py")
+    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_piano.py")
     subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
 if __name__ == "__main__":

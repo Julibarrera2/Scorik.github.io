@@ -292,7 +292,7 @@ def main(filepath: str, carpeta_destino="static/temp"):
     # ====== Llamada a NotasAPartitura.py ======
     print("\n Generando imagen...")
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura.py")
+    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_guitarra.py")
     subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
 # ========== ENTRADA ==========
