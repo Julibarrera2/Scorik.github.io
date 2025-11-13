@@ -219,7 +219,7 @@ def upload_file():
             cmd = [
                 "demucs",
                 "--name", "htdemucs",
-                "--segment", "0",
+                "--segment", "10",
                 input_path,
                 "-o", out_dir
             ]
