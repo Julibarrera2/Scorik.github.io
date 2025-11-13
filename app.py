@@ -185,62 +185,89 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
-        # --- 1. Tomar usuario del FormData (si no, poné "anon") ---
         usuario = request.form.get('usuario', 'anon') or 'anon'
+        instrumento = request.form.get('instrumento', 'piano')
+
         set_progress(usuario, "Convirtiendo el audio...")
 
+        # Validación
         if 'file' not in request.files:
-            set_progress(usuario, "Error: No se envió archivo")
             return jsonify({"error": "No se envió archivo"}), 400
 
-        file = request.files.get('file')
+        file = request.files['file']
         if not file or not file.filename:
-            set_progress(usuario, "Error: Archivo vacío")
             return jsonify({"error": "Archivo vacío"}), 400
 
-        # === subcarpeta de trabajo por request ===
-        req_id   = f"{usuario}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
+        # Carpeta de trabajo
+        req_id = f"{usuario}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
         work_dir = os.path.join(STATIC_TEMP_FOLDER, req_id)
         os.makedirs(work_dir, exist_ok=True)
 
-        # Guardar el MP3 en uploads (opcional) o en work_dir
+        # Guardar archivo original
         filename = file.filename
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        set_progress(usuario, "Audio cargado correctamente.")
-        set_progress(usuario, "Detectando notas...")
+        # ---------------------------------------------------------------------
+        # DEMUCS
+        # ---------------------------------------------------------------------
+        set_progress(usuario, "Separando instrumentos con Demucs...")
 
-        # Acá deberías modificar LeerArchivoYnota.py (o llamar por partes) para poder actualizar la barra entre pasos,
-        # pero si no lo podés dividir, simplemente llamá el script externo y actualizá después:
-        # Ejecutar script y capturar salida
-        # Ejecutar tu script apuntando la salida a work_dir
-        def separate_with_spleeter(input_path: str, out_dir: str) -> str:
+        def separate_with_demucs(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
-            spleeter_bin = os.environ.get("SPLEETER_BIN", "spleeter")  # <— usa la ENV
-            cmd = [spleeter_bin, "separate", "-p", "spleeter:2stems", "-o", out_dir, input_path]
-            subprocess.run(cmd, check=True)
-            base = os.path.splitext(os.path.basename(input_path))[0]
-            instrumental = os.path.join(out_dir, base, "accompaniment.wav")
-            return instrumental if os.path.exists(instrumental) else input_path
-    
-        set_progress(usuario, "Separando instrumentos...")
-        try:
-            stem_path = separate_with_spleeter(filepath, work_dir)
-            print("Usando stem:", stem_path, file=sys.stderr)
-        except Exception as e:
-            print("Fallo separacion, uso original:", e, file=sys.stderr)
-            stem_path = filepath
 
+            cmd = [
+                "demucs",
+                "--name", "htdemucs",
+                "--segment", "0",
+                input_path,
+                "-o", out_dir
+            ]
+            subprocess.run(cmd, check=True)
+
+            base = os.path.splitext(os.path.basename(input_path))[0]
+            stem_dir = os.path.join(out_dir, "htdemucs", base)
+
+            return {
+                "vocals": os.path.join(stem_dir, "vocals.wav"),
+                "bass": os.path.join(stem_dir, "bass.wav"),
+                "drums": os.path.join(stem_dir, "drums.wav"),
+                "other": os.path.join(stem_dir, "other.wav")
+            }
+
+        stems = separate_with_demucs(filepath, work_dir)
+
+        # Elegir stem correcto según instrumento
+        if instrumento == "piano":
+            stem_wav = stems["other"]
+            script = "./ParteDeJuli/LeerArchivoYnota_piano.py"
+
+        elif instrumento == "guitarra":
+            stem_wav = stems["other"]
+            script = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
+
+        elif instrumento == "violin":
+            stem_wav = stems["other"]
+            script = "./ParteDeJuli/LeerArchivoYnota_violin.py"
+
+        else:
+            return jsonify({"error": "Instrumento inválido"}), 400
+
+        # ---------------------------------------------------------------------
+        # DETECCIÓN DE NOTAS (llamar script correcto)
+        # ---------------------------------------------------------------------
         set_progress(usuario, "Detectando notas...")
+
         proc = subprocess.run(
-            [PYTHON_EXEC, "./ParteDeJuli/LeerArchivoYnota.py", stem_path, work_dir],
+            [PYTHON_EXEC, script, stem_wav, work_dir],
             check=True, capture_output=True, text=True
         )
-        set_progress(usuario, "Generando imagen ...")
 
-        # Buscar PNG y XML en toda la carpeta (subcarpetas incl.)
-        # --- helper para encontrar la salida (con subcarpetas) ---
+        set_progress(usuario, "Generando imagen...")
+
+        # ---------------------------------------------------------------------
+        # BUSCAR PNG + XML
+        # ---------------------------------------------------------------------
         IMG_EXTS = ('.png', '.jpg', '.jpeg', '.svg')
         XML_EXTS = ('.xml', '.musicxml')
 
@@ -249,16 +276,16 @@ def upload_file():
             for root, _, files in os.walk(base_dir):
                 for f in files:
                     fl = f.lower()
-                    if (not img) and fl.endswith(IMG_EXTS):
+                    if not img and fl.endswith(IMG_EXTS):
                         img = os.path.join(root, f)
-                    if (not xml) and fl.endswith(XML_EXTS):
+                    if not xml and fl.endswith(XML_EXTS):
                         xml = os.path.join(root, f)
                 if img and xml:
                     return img, xml
             return img, xml
 
-        # Reintentar hasta 8s por si el script escribe al final
         img_path, xml_path = None, None
+
         for _ in range(16):
             img_path, xml_path = find_outputs(work_dir)
             if img_path:
@@ -266,33 +293,26 @@ def upload_file():
             time.sleep(0.5)
 
         if not img_path:
-            tree = []
-            for root, _, files in os.walk(work_dir):
-                tree.append({"dir": root, "files": files})
-            print("Contenido de work_dir:", tree)
-            set_progress(usuario, "Error: No se generó imagen")
-            return jsonify({"error": "No se generó imagen", "tree": tree}), 500
+            return jsonify({"error": "No se generó imagen"}), 500
 
-        # NO mover los archivos fuera: servilos desde la subcarpeta
-        # /static/temp/<req_id>/<archivo>
+        # Generar URL pública
         def to_url(p):
             rel = os.path.relpath(p, STATIC_TEMP_FOLDER).replace("\\", "/")
             return "/static/temp/" + rel
 
-        img_url = to_url(img_path)
-        xml_url = to_url(xml_path) if xml_path else None
+        set_progress(usuario, "Completado")
 
-        set_progress(usuario, "Imagen generada")
-        return jsonify({"imagen": img_url, "xml": xml_url})
+        return jsonify({
+            "imagen": to_url(img_path),
+            "xml": to_url(xml_path) if xml_path else None
+        })
 
     except subprocess.CalledProcessError as e:
-        print("ERROR ejecutando script:\n", e.stdout, "\nSTDERR:\n", e.stderr, file=sys.stderr)
-        set_progress(usuario, "Error: procesamiento")
-        return jsonify({"error": "Fallo el script de conversión", "stdout": e.stdout, "stderr": e.stderr}), 500
-    except Exception:
-        app.logger.exception("Fallo en /upload")
-        set_progress(request.form.get('usuario','anon'), "Error: procesamiento")
-        return jsonify({"error": "fallo servidor"}), 500
+        return jsonify({"error": "Fallo el script", "stderr": e.stderr}), 500
+
+    except Exception as e:
+        app.logger.exception("Error en /upload")
+        return jsonify({"error": "Falló el servidor"}), 500
     
 @app.route('/save_partitura', methods=['POST'])
 def save_partitura():

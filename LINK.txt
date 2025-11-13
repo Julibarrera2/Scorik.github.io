@@ -18,3 +18,6 @@ gcloud builds submit --no-cache  --tag southamerica-east1-docker.pkg.dev/scorik-
 gcloud config set builds/use_kaniko False
 
 gcloud run deploy scorik-web --image southamerica-east1-docker.pkg.dev/scorik-mscore3-ar-20250717/scorik-repo/scorik-web  --region southamerica-east1   --platform managed   --allow-unauthenticated
+
+
+gcloud builds submit --tag southamerica-east1-docker.pkg.dev/<ID>/scorik-repo/scorik-web

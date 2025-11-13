@@ -1,23 +1,20 @@
-FROM ubuntu:22.04
+FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
+# ========= DEPENDENCIAS DEL SISTEMA =========
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common curl ca-certificates gnupg \
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    python3.9 python3.9-venv python3-pip \
+    ffmpeg \
     musescore3 \
-    ffmpeg libsndfile1 \
-    xvfb fontconfig fonts-dejavu-core fonts-freefont-ttf \
-    libfreetype6 libxrender1 libxext6 libsm6 libglib2.0-0 \
+    libsndfile1 \
+    xvfb \
+    fontconfig \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -sf /usr/bin/python3.9 /usr/bin/python && ln -sf /usr/bin/pip3 /usr/bin/pip
-
-# Wrapper headless para MuseScore
+# ---------- WRAPPER HEADLESS PARA MUSESCORE ----------
 RUN printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -e' \
@@ -26,25 +23,24 @@ RUN printf '%s\n' \
     > /usr/local/bin/mscore3-cli \
     && chmod +x /usr/local/bin/mscore3-cli
 
+# ========== DEPENDENCIAS PYTHON ==========
 WORKDIR /app
-
-# ---------- Deps APP ----------
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# ---------- venv aislado para Spleeter ----------
-COPY requirements-spleeter.txt .
-RUN python3.9 -m venv /opt/spleenv \
-    && /opt/spleenv/bin/pip install --no-cache-dir -r requirements-spleeter.txt
-ENV SPLEETER_BIN=/opt/spleenv/bin/spleeter
+# ---------- Instalar DEMUCS ----------
+RUN pip install --no-cache-dir demucs
 
-# ---------- Código ----------
+# ---------- Copiar código ----------
 COPY . .
 
-ENV FFMPEG_BINARY=ffmpeg \
-    MUSESCORE_PATH=/usr/local/bin/mscore3-cli \
-    PORT=8080
+# Variables de entorno
+ENV FFMPEG_BINARY=ffmpeg
+ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
+ENV PORT=8080
 
 EXPOSE 8080
+
+# Gunicorn para servir Flask en Cloud Run
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]
