@@ -6,6 +6,7 @@
 <title>Editor de Partitura</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.6.9/build/opensheetmusicdisplay.min.js"></script>
 <style>
     html, body {
         height: 100%;
@@ -171,5 +172,236 @@ function logout() {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+    // === Inicializar editor ===
+    const container = document.createElement("div");
+    container.id = "osmd-container";
+    container.style.width = "100%";
+    container.style.height = "100%";
+    container.style.overflow = "auto";
+    container.style.background = "white";
+
+    // Inserta el contenedor en el lugar donde va el pentagrama
+    const target = document.querySelector(".create-container");
+    target.appendChild(container);
+
+    // === Instanciar OSMD ===
+    const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
+        drawTitle: false,
+        drawComposer: false,
+        drawCredits: false
+    });
+
+    // Crear una partitura vacía
+    let xml = `
+        <?xml version="1.0" encoding="UTF-8"?>
+        <score-partwise version="3.1">
+            <part-list>
+                <score-part id="P1"><part-name>Music</part-name></score-part>
+            </part-list>
+            <part id="P1">
+                <measure number="1">
+                    <attributes>
+                        <divisions>1</divisions>
+                        <key><fifths>0</fifths></key>
+                        <time><beats>4</beats><beat-type>4</beat-type></time>
+                        <clef><sign>G</sign><line>2</line></clef>
+                    </attributes>
+                </measure>
+            </part>
+        </score-partwise>
+    `;
+
+    await osmd.load(xml);
+    osmd.render();
+
+    // === ESTADO ===
+    let notaSeleccionada = null;
+
+    // --- FIGURAS ---
+    const figuras = {
+        "redonda": "whole",
+        "blanca": "half",
+        "negra": "quarter",
+        "corchea": "eighth"
+    };
+
+    // --- Asignar eventos a los botones de las figuras ---
+    document.querySelectorAll(".grid div").forEach((btn, index) => {
+        btn.addEventListener("click", () => {
+            // Solo 4 figuras soportadas (si tenés más, las agrego)
+            const tipos = ["whole", "half", "quarter", "eighth"];
+            notaSeleccionada = tipos[index % tipos.length];
+            console.log("Figura seleccionada:", notaSeleccionada);
+        });
+    });
+
+    // === Click en pentagrama → Agregar nota ===
+    container.addEventListener("click", () => {
+        if (!notaSeleccionada) {
+            alert("Seleccioná una figura primero");
+            return;
+        }
+
+        // Añadir nota simple a la última medida
+        let newNoteXML = `
+        <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>${notaSeleccionada}</type>
+        </note>`;
+
+        // Insertarlo justo antes del </measure>
+        xml = xml.replace("</measure>", newNoteXML + "</measure>");
+
+        osmd.load(xml).then(() => osmd.render());
+    });
+
+    // === Dinámica (mf, f, pp...) ===
+    const dinBtns = document.querySelectorAll(".dynamics-panel button");
+    dinBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const dyn = btn.dataset.value;
+            const dynXML = `<direction><direction-type><dynamics><${dyn}/></dynamics></direction-type></direction>`;
+            xml = xml.replace("</measure>", dynXML + "</measure>");
+            osmd.load(xml).then(() => osmd.render());
+        });
+    });
+
+    // === Cambiar armadura ===
+    document.querySelector(".select-armadura")?.addEventListener("change", e => {
+        const fifths = e.target.value;
+        xml = xml.replace(/<fifths>.*?<\/fifths>/, `<fifths>${fifths}</fifths>`);
+        osmd.load(xml).then(() => osmd.render());
+    });
+
+    // === Cambiar compás ===
+    document.querySelector(".select-compas")?.addEventListener("change", e => {
+        const [beats, beatType] = e.target.value.split("/");
+        xml = xml
+            .replace(/<beats>.*?<\/beats>/, `<beats>${beats}</beats>`)
+            .replace(/<beat-type>.*?<\/beat-type>/, `<beat-type>${beatType}</beat-type>`);
+        osmd.load(xml).then(() => osmd.render());
+    });
+
+    // === Botón SAVE → Exportar como PNG + XML ===
+    document.querySelector(".save-btn").addEventListener("click", async () => {
+        const svg = container.querySelector("svg");
+
+        if (!svg) return alert("No hay nada para guardar");
+
+        // Convertir SVG → PNG
+        const xmlSerializer = new XMLSerializer();
+        const svgString = xmlSerializer.serializeToString(svg);
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const img = new Image();
+        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = function () {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            canvas.toBlob(blob => {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "partitura.png";
+                a.click();
+            });
+        };
+        img.src = url;
+
+        // Guardar XML
+        const xmlBlob = new Blob([xml], { type: "application/xml" });
+        const a2 = document.createElement("a");
+        a2.href = URL.createObjectURL(xmlBlob);
+        a2.download = "partitura.musicxml";
+        a2.click();
+
+        alert("Partitura guardada.");
+    });
+
+});
+
+//la estructura HTML tiene que incluir ESTOS ELEMENTOS con estos IDs/clases, porque el JS depende de esto.
+// 1. CONTENEDOR PRINCIPAL DEL PENTAGRAMA
+// <div id="osmd-container"></div>
+// Acá OpenSheetMusicDisplay dibuja la partitura.
+// 2. BARRA IZQUIERDA DE FIGURAS MUSICALES
+// cada figura debe ser un botón así
+//<div class="note-btn" data-figura="whole"></div>
+//<div class="note-btn" data-figura="half"></div>
+//<div class="note-btn" data-figura="quarter"></div>
+//<div class="note-btn" data-figura="eighth"></div>
+//<div class="note-btn" data-figura="sixteenth"></div>
+//PERO deben tener:
+// class="note-btn"
+// data-figura="..." 
+//3. PANEL DERECHO: Dinámica, Armadura, Compás
+//Dinámica (pp, p, mf, f, ff…)
+// Cada botón debe ser:
+// <div class="din-btn" data-din="mf">mf</div>
+// Armadura
+//<select id="armadura-select">
+    //<option value="0">0</option>
+    //<option value="1">1#</option>
+    //<option value="-1">1♭</option>
+//</select>
+// Índice de Compás
+// <select id="compas-select">
+// <option value="4/4">4/4</option>
+// <option value="3/4">3/4</option>
+// </select>
+//4. NOMBRE DEL DOCUMENTO
+// <input id="titulo-doc" placeholder="Nombre del documento...">
+//5. SELECTOR DE INSTRUMENTO
+// <select id="instrumento-select">
+//     <option value="piano">Piano</option>
+//     <option value="violin">Violín</option>
+//    <option value="guitarra">Guitarra</option>
+//</select>
+//6. BOTÓN DE GUARDADO
+// <button id="save-btn">save</button>
+// ESTRUCTURA MÍNIMA
+//<div id="editor">
+
+//    <!-- barra izquierda -->
+//    <div id="left-panel">
+//        <div class="note-btn" data-figura="whole"></div>
+//        <div class="note-btn" data-figura="half"></div>
+//        <div class="note-btn" data-figura="quarter"></div>
+//        <!-- ... -->
+//    </div>
+//    <!-- centro -->
+//    <div id="center-panel">
+//        <input id="titulo-doc" placeholder="Nombre del documento...">
+//        <div id="osmd-container"></div>
+//        <button id="save-btn">save</button>
+//    </div>
+
+//    <!-- derecha -->
+//    <div id="right-panel">
+//        <select id="instrumento-select"></select>
+
+//        <div id="dinamicas">
+//            <div class="din-btn" data-din="pp">pp</div>
+//            <div class="din-btn" data-din="mf">mf</div>
+//            <div class="din-btn" data-din="f">f</div>
+//        </div>
+
+//        <select id="armadura-select"></select>
+//        <select id="compas-select"></select>
+//    </div>
+//</div>
+
+</script>
 </body>
 </html>
