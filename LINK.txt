@@ -25,11 +25,16 @@ gcloud builds submit --tag southamerica-east1-docker.pkg.dev/<ID>/scorik-repo/sc
 
 gcloud beta run jobs create exploration   --image gcr.io/scorik-mscore3-ar-20250717/scorik-web   --command ls  --args=-R,/app
 
+
+
+
+
+
+
+
+
+
+
+gcloud container images list --repository=gcr.io/scorik-mscore3-ar-20250717
+gcloud container images list-tags gcr.io/scorik-mscore3-ar-20250717/scorik-web
 ls -R /app
-
-
-
-gcloud beta run jobs create exploration   --image gcr.io/scorik-mscore3-ar-20250717/scorik-web   --command ls   --args=-R,/app
-
-
-
