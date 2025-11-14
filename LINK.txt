@@ -21,3 +21,6 @@ gcloud run deploy scorik-web --image southamerica-east1-docker.pkg.dev/scorik-ms
 
 
 gcloud builds submit --tag southamerica-east1-docker.pkg.dev/<ID>/scorik-repo/scorik-web
+
+
+gcloud beta run jobs create exploration --image <tu-imagen> --command "ls -R /app"

@@ -308,6 +308,7 @@ def upload_file():
         })
 
     except subprocess.CalledProcessError as e:
+        print("SCRIPT ERROR:", e.stderr, file=sys.stderr)
         return jsonify({"error": "Fallo el script", "stderr": e.stderr}), 500
 
     except Exception as e:
