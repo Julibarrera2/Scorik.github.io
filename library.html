@@ -312,18 +312,90 @@ document.addEventListener('DOMContentLoaded', async () => {
             partituras.forEach(p => {
                 const card = document.createElement('div');
                 card.className = 'card';
+
+                const nombreLindo = p.nombre.replaceAll('_', ' ');
+
                 card.innerHTML = `
                     <img src="${p.imagen}" alt="partitura" style="width:60px;height:60px;border-radius:7px;">
-                    <span style="font-size:14px;margin-top:5px;">${p.nombre.replaceAll('_', ' ')}</span>
+                    <span style="font-size:14px;margin-top:5px;">${nombreLindo}</span>
+
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px; width:90px;">
+                        
+                        <button class="btn btn-sm btn-secondary"
+                            onclick="event.stopPropagation(); verPartitura('${p.imagen}')">
+                            Ver
+                        </button>
+
+                        <button class="btn btn-sm btn-primary" style="background:#9B00F6;border:none;"
+                            onclick="event.stopPropagation(); editarPartitura('${usuario}', '${p.nombre}')">
+                            Editar
+                        </button>
+
+                        <button class="btn btn-sm btn-warning"
+                            onclick="event.stopPropagation(); descargarXML('${p.xml}')">
+                            XML
+                        </button>
+
+                        <button class="btn btn-sm btn-info"
+                            onclick="event.stopPropagation(); descargarPNG('${p.imagen}')">
+                            PNG
+                        </button>
+
+                        <button class="btn btn-sm btn-danger"
+                            onclick="event.stopPropagation(); borrarPartitura('${usuario}', '${p.nombre}', this)">
+                            Borrar
+                        </button>
+                    </div>
                 `;
-                card.onclick = () => {
-                    document.getElementById('modal-img').src = p.imagen;
-                    document.getElementById('partitura-modal').style.display = 'flex';
-                }
+
                 cardsContainer.appendChild(card);
             });
+
+
+            // --- FUNCIONES AUXILIARES ---
+
+            window.editarPartitura = function(usuario, nombre) {
+                location.href = `edit.html?usuario=${encodeURIComponent(usuario)}&nombre=${encodeURIComponent(nombre)}`;
+            };
+
+            window.verPartitura = function(imagen) {
+                document.getElementById('modal-img').src = imagen;
+                document.getElementById('partitura-modal').style.display = 'flex';
+            };
+
+            window.descargarXML = function(xmlUrl) {
+                if (!xmlUrl) return alert("No hay XML disponible");
+                window.open(xmlUrl, "_blank");
+            };
+
+            window.descargarPNG = function(imgUrl) {
+                if (!imgUrl) return;
+                window.open(imgUrl, "_blank");
+            };
+
+            window.borrarPartitura = async function(usuario, nombre, btn) {
+                if (!confirm(`¿Eliminar "${nombre.replaceAll('_', ' ')}"?`)) return;
+
+                const res = await fetch("/api/editor/delete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ usuario, nombre })
+                });
+
+                const out = await res.json();
+
+                if (out.success) {
+                    alert("Partitura eliminada.");
+
+                    // eliminar visualmente la card
+                    btn.closest(".card").remove();
+                } else {
+                    alert("Error: " + out.error);
+                }
+            };
         });
 });
+
 async function logout() {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     location.href = 'index.html';

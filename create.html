@@ -275,54 +275,22 @@
         <canvas id="staffCanvas"></canvas>
     </div>
 
-    <script>
-    function creatorApp() {
-        return {
-            sidebarOpen: false,
-
-            panel: {
-                notas: false,
-                silencios: false,
-                claves: false,
-                dinamica: false,
-                armadura: false,
-                compas: false
-            },
-
-            togglePanel(p) {
-                this.panel[p] = !this.panel[p];
-            },
-
-            startDrag(event) {
-                const img = event.target.cloneNode(true);
-                img.classList.add("draggable");
-                document.body.appendChild(img);
-
-                const move = e => {
-                    img.style.left = e.pageX - 30 + "px";
-                    img.style.top = e.pageY - 30 + "px";
-                };
-
-                const stop = () => {
-                    document.removeEventListener("mousemove", move);
-                    document.removeEventListener("mouseup", stop);
-                };
-
-                document.addEventListener("mousemove", move);
-                document.addEventListener("mouseup", stop);
-            },
-
-            saveCanvas() {
-                html2canvas(document.querySelector(".canvas-area")).then(canvas => {
-                    const link = document.createElement("a");
-                    link.download = "music_sheet.png";
-                    link.href = canvas.toDataURL();
-                    link.click();
-                });
-            }
-        }
+<script>
+async function checkAuth() {
+    try {
+    const r = await fetch('/api/session');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    if (!d.logged_in) throw 0;
+    } catch {
+    window.location.href = 'login.html';
     }
-    </script>
+}
+async function logout() {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = 'index.html';
+}
+</script>
 
     <!-- HTML2CANVAS for saving -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
