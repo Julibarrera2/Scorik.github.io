@@ -1,180 +1,332 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ sidebarOpen: false, grid: Array(24).fill(false) }" x-init="checkAuth()">
+<html lang="en" x-data="creatorApp()">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Editor de Partitura</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-<style>
-    html, body {
-        height: 100%;
-        margin: 0;
-        background-color: white;
-        font-family: Arial, sans-serif;
-        overflow: hidden;
-    }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Creator</title>
 
-    /* Sidebar */
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 250px;
-        height: 100%;
-        background-color: #6b2bd97c;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 100px;
-    }
-    .sidebar.open {
-        transform: translateX(0);
-    }
-    .menu-button {
-        background-color: #ffffff;
-        color: #8300f6cf;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 20px;
-        margin: 15px 0;
-        width: 150px;
-        cursor: pointer;
-    }
-    .menu-button:hover {
-        background-color: #e0d7f8;
-        transform: scale(1.05);
-    }
-    .bottom-icon {
-        position: absolute;
-        bottom: 20px;
-        cursor: pointer;
-    }
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    /* Top bar */
-    .top-bar {
-        height: 100px;
-        width: 100%;
-        background-color:#5AE9DD;
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        box-sizing: border-box;
-    }
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.2/dist/cdn.min.js" defer></script>
 
-    .menu-btn {
-        background: none;
-        border: none;
-        font-size: 32px;
-        cursor: pointer;
-        color: #6b00d6;
-    }
+    <style>
+        body {
+            background: #ffffff;
+            overflow-x: hidden;
+            font-family: Arial, sans-serif;
+        }
 
-    /* create content */
-    .create-container {
-        height: calc(100% - 70px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: start;
-        padding: 20px;
-    }
-    .create-title {
-        color: #6b00d6;
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-    
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        grid-template-rows: repeat(4, 40px);
-        gap: 5px;
-        background-color: #9B00F6;
-        padding: 10px;
-        border-radius: 20px;
-        width: 300px;
-        height: auto;
-        margin-bottom: 30px;
-    }
-    .grid div {
-        background-color: #c18cff;
-        border: 2px solid #6b00d6;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    .grid div.active {
-        background-color: #6b00d6;
-    }
-    .save-btn {
-        background-color: #5AE9DD;
-        color: #6b00d6;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 30px;
-        cursor: pointer;
-    }
-    .save-btn:hover {
-        background-color: #3cd8ca;
-    }
-</style>
+        /* TOP BAR */
+        .topbar {
+            width: 100%;
+            height: 70px;
+            background: #B573FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            z-index: 20;
+        }
+
+        .hamburger {
+            position: absolute;
+            left: 20px;
+            top: 12px;
+            background: #8B35FF;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        .hamburger div {
+            width: 28px;
+            height: 4px;
+            background: white;
+            margin: 4px 0;
+            border-radius: 5px;
+        }
+
+        .title {
+            font-size: 28px;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* SIDEBAR ORIGINAL */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 270px;
+            height: 100vh;
+            background: #6B2BD9;
+            transform: translateX(-100%);
+            transition: 0.25s;
+            z-index: 30;
+            padding-top: 90px;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-btn {
+            background: white;
+            color: #8300F6;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            width: 160px;
+            padding: 8px 20px;
+            margin: 15px auto;
+            display: block;
+        }
+
+        /* LEFT TOOLBAR */
+        .tool-column {
+            position: fixed;
+            top: 80px;
+            left: 10px;
+            width: 70px;
+            background: #eaeaea;
+            border-radius: 15px;
+            padding: 10px;
+        }
+
+        .tool-btn {
+            width: 55px;
+            height: 55px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            border: 2px solid #b370ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tool-btn img {
+            width: 40px;
+        }
+
+        /* RIGHT PANEL */
+        .right-panel {
+            position: fixed;
+            right: 0;
+            top: 80px;
+            width: 260px;
+            background: #B573FF;
+            padding: 15px;
+            border-radius: 15px 0 0 15px;
+            color: white;
+        }
+
+        .panel-block {
+            background: #8B35FF;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .panel-content {
+            background: white;
+            border-radius: 10px;
+            padding: 8px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .panel-content.open {
+            display: block;
+        }
+
+        .panel-content img {
+            width: 100%;
+            cursor: grab;
+            margin: 4px 0;
+        }
+
+        /* MAIN STAFF */
+        .canvas-area {
+            margin-top: 100px;
+            margin-left: 110px;
+            margin-right: 300px;
+        }
+
+        #staffCanvas {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        /* DRAGGING ICONS */
+        .draggable {
+            position: absolute;
+            width: 60px;
+            cursor: grab;
+        }
+    </style>
+
 </head>
 <body>
 
-<!-- Top bar -->
-<div class="top-bar">
-    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">≡</button>
-</div>
-
-<!-- Sidebar -->
-<div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-    <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-    <button class="menu-button" onclick="location.href='library.html'">Library</button>
-    <button class="menu-button" onclick="location.href='create.html'">Create</button>
-    <button class="btn btn-danger logout-btn" @click="logout">Logout</button>
-    <div class="bottom-icon" @click="sidebarOpen = false">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+    <!-- SIDEBAR -->
+    <div class="sidebar" :class="{ 'open': sidebarOpen }">
+        <button class="sidebar-btn" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+        <button class="sidebar-btn" onclick="location.href='library.html'">Library</button>
+        <button class="sidebar-btn" onclick="location.href='create.html'">Create</button>
+        <button class="sidebar-btn" @click="logout()">Logout</button>
     </div>
-</div>
 
-<!-- Main content -->
-<div class="create-container">
-    <div class="create-title">Create</div>
-    <img src="Img/partituras.png" alt="">
-    <div class="grid">
-        <template x-for="(active, index) in grid" :key="index">
-            <div :class="{ 'active': active }" @click="grid[index] = !grid[index]"></div>
-        </template>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="hamburger" @click="sidebarOpen=!sidebarOpen">
+            <div></div><div></div><div></div>
+        </div>
+        <div class="title">creator</div> 
     </div>
-    <button class="save-btn">save</button>
-</div>
 
-<script>
-async function checkAuth() {
-    try {
-    const r = await fetch('/api/session');
-    if (!r.ok) throw 0;
-    const d = await r.json();
-    if (!d.logged_in) throw 0;
-    } catch {
-    window.location.href = 'login.html';
+    <!-- LEFT TOOLBAR -->
+    <div class="tool-column">
+        <div class="tool-btn" @click="togglePanel('notas')">
+            <img src="notas/negra.png">
+        </div>
+        <div class="tool-btn" @click="togglePanel('silencios')">
+            <img src="silencios/silencio_negra.png">
+        </div>
+        <div class="tool-btn" @click="togglePanel('claves')">
+            <img src="claves/sol.png">
+        </div>
+        <div class="tool-btn" @click="togglePanel('dinamica')">
+            <img src="dinamica/dinamica.png">
+        </div>
+        <div class="tool-btn" @click="togglePanel('armadura')">
+            <img src="armadura/armadura.png">
+        </div>
+        <div class="tool-btn" @click="togglePanel('compas')">
+            <img src="compas/compas.png">
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+        <!-- NOTAS -->
+        <div class="panel-block" @click="panel.notas=!panel.notas">
+            Notas
+            <div class="panel-content" :class="{ 'open': panel.notas }">
+                <img src="notas/redonda.png" @mousedown="startDrag($event)">
+                <img src="notas/blanca.png" @mousedown="startDrag($event)">
+                <img src="notas/negra.png" @mousedown="startDrag($event)">
+                <img src="notas/corchea.png" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
+        <!-- SILENCIOS -->
+        <div class="panel-block" @click="panel.silencios=!panel.silencios">
+            Silencios
+            <div class="panel-content" :class="{ 'open': panel.silencios }">
+                <img src="silencios/silencio_redonda.png" @mousedown="startDrag($event)">
+                <img src="silencios/silencio_blanca.png" @mousedown="startDrag($event)">
+                <img src="silencios/silencio_negra.png" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
+        <!-- CLAVES -->
+        <div class="panel-block" @click="panel.claves=!panel.claves">
+            Claves
+            <div class="panel-content" :class="{ 'open': panel.claves }">
+                <img src="claves/sol.png" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
+        <!-- DINÁMICA -->
+        <div class="panel-block" @click="panel.dinamica=!panel.dinamica">
+            Dinámica
+            <div class="panel-content" :class="{ 'open': panel.dinamica }">
+                <img src="dinamica/dinamica.png" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
+        <!-- ARMADURA -->
+        <div class="panel-block" @click="panel.armadura=!panel.armadura">
+            Armadura
+            <div class="panel-content" :class="{ 'open': panel.armadura }">
+                <img src="armadura/armadura.png" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
+        <!-- COMPÁS -->
+        <div class="panel-block" @click="panel.compas=!panel.compas">
+            Compás
+            <div class="panel-content" :class="{ 'open': panel.compas }">
+                <img src="compas/compas.png" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
+        <button class="btn btn-success w-100 mt-2" @click="saveCanvas()">Save</button>
+    </div>
+
+    <!-- MAIN CANVAS -->
+    <div class="canvas-area">
+        <canvas id="staffCanvas"></canvas>
+    </div>
+
+    <script>
+    function creatorApp() {
+        return {
+            sidebarOpen: false,
+
+            panel: {
+                notas: false,
+                silencios: false,
+                claves: false,
+                dinamica: false,
+                armadura: false,
+                compas: false
+            },
+
+            togglePanel(p) {
+                this.panel[p] = !this.panel[p];
+            },
+
+            startDrag(event) {
+                const img = event.target.cloneNode(true);
+                img.classList.add("draggable");
+                document.body.appendChild(img);
+
+                const move = e => {
+                    img.style.left = e.pageX - 30 + "px";
+                    img.style.top = e.pageY - 30 + "px";
+                };
+
+                const stop = () => {
+                    document.removeEventListener("mousemove", move);
+                    document.removeEventListener("mouseup", stop);
+                };
+
+                document.addEventListener("mousemove", move);
+                document.addEventListener("mouseup", stop);
+            },
+
+            saveCanvas() {
+                html2canvas(document.querySelector(".canvas-area")).then(canvas => {
+                    const link = document.createElement("a");
+                    link.download = "music_sheet.png";
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            }
+        }
     }
-}
-async function logout() {
-    await fetch('/api/logout', { method: 'POST' });
-    window.location.href = 'index.html';
-}
-</script>
+    </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- HTML2CANVAS for saving -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 </body>
 </html>
+

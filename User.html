@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es" x-data="appUsuario()" x-init="init()">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pantalla Usuario </title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    background: white;
+    font-family: Arial, sans-serif;
+}
+
+/* ======= TOP BAR ======= */
+.topbar {
+    width: 100%;
+    height: 75px;
+    background: #5AE9DD;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.menu-btn {
+    position: absolute;
+    left: 20px;
+    top: 18px;
+    width: 45px;
+    height: 45px;
+    background: white;
+    border-radius: 10px;
+    border: 3px solid #8300F6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+.menu-btn div {
+    width: 25px;
+    height: 3px;
+    background: #8300F6;
+    margin: 3px 0;
+}
+
+.title-pill {
+    background: #9B00F6;
+    padding: 8px 40px;
+    border-radius: 25px;
+    font-size: 20px;
+    color: white;
+    font-weight: bold;
+}
+
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 270px;
+    height: 100vh;
+    background: #6B2BD9;
+    transform: translateX(-100%);
+    transition: 0.25s;
+    z-index: 30;
+}
+.sidebar.open { transform: translateX(0); }
+
+.sidebar-btn {
+    background: white;
+    color: #8300F6;
+    font-weight: bold;
+    border: none;
+    border-radius: 15px;
+    width: 160px;
+    padding: 8px 20px;
+    margin: 15px auto;
+    display: block;
+}
+
+
+/* ===== MAIN CONTENT (PICTURE + FORM) ===== */
+main {
+    width: 100%;
+    text-align: center;
+    margin-top: 35px;
+}
+
+.section-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #8300F6;
+    margin-bottom: 15px;
+}
+
+.img-box {
+    width: 230px;
+    height: 230px;
+    border-radius: 30px;
+    border: 4px solid #8300F6;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #8300F6;
+    font-size: 18px;
+    background: white;
+}
+
+/* INPUTS */
+.input-wrap {
+    width: 330px;
+    height: 55px;
+    border: 3px solid #8300F6;
+    border-radius: 25px;
+    margin: 20px auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+.input-wrap input {
+    border: none;
+    font-size: 18px;
+    width: 100%;
+    outline: none;
+}
+.input-icon {
+    font-size: 28px;
+    color: #8300F6;
+}
+
+/* LOG OUT BUTTON */
+.logout-btn {
+    background: #9B00F6;
+    color: white;
+    border: none;
+    padding: 10px 40px;
+    border-radius: 25px;
+    margin-top: 20px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ================ TOP BAR ================ -->
+<div class="topbar">
+    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">
+        <div></div>
+        <div></div>
+        <div></div>
+    </button>
+
+    <div class="title-pill">Usuario</div>
+</div>
+
+<!-- ================ SIDEBAR ================ -->
+<div class="sidebar" :class="{ 'open': sidebarOpen }">
+    <button class="sidebar-btn" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+    <button class="sidebar-btn" onclick="location.href='library.html'">Library</button>
+    <button class="sidebar-btn" onclick="location.href='create.html'">Create</button>
+    <button class="sidebar-btn" @click="logout()">Logout</button>
+</div>
+
+<!-- ================ MAIN CONTENT ================ -->
+<main>
+    <div class="section-title">Imagen</div>
+
+    <div class="img-box">cargar imagen</div>
+
+    <div class="input-wrap">
+        <input type="text" placeholder="Nombre..." />
+        <span class="input-icon">◉</span>
+    </div>
+
+    <div class="input-wrap">
+        <input type="email" placeholder="aa@gmail.com" />
+        <span class="input-icon">◉</span>
+    </div>
+
+    <div class="input-wrap">
+        <input type="password" placeholder="************" />
+        <span class="input-icon">◉</span>
+    </div>
+
+    <button class="logout-btn" @click="logout()">Log out</button>
+</main>
+
+<script>
+function appUsuario(){
+    return{
+        sidebarOpen:false,
+        usuario:"",
+        async init(){
+            try{
+                let r = await fetch('/api/session',{credentials:'include'});
+                let d = await r.json();
+                this.usuario = d.email || "";
+            }catch{}
+        },
+        async logout(){
+            await fetch('/api/logout',{method:'POST',credentials:'include'});
+            window.location.href="index.html";
+        }
+    }
+}
+</script>
+
+</body>
+</html>
