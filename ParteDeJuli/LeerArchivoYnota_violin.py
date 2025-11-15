@@ -235,6 +235,45 @@ def main(filepath: str, carpeta_destino="static/temp"):
     tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
     notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
 
+    valid_notes = set([
+        "C","C#","D","D#","E","F","F#","G","G#","A","A#","B"
+    ])
+
+    notas_filtradas = []
+
+    for n in notas_json:
+        nombre = n["nota"].strip().upper()
+
+        # 1) Base de nota inválida (ej: H, J#, Z)
+        base = ''.join([c for c in nombre if not c.isdigit()])
+        if base not in valid_notes:
+            print("❌ Nota descartada (no existe):", nombre)
+            continue
+
+        # 2) Octava inexistente para music21
+        num = ''.join([c for c in nombre if c.isdigit()])
+        if num == "" or not num.isdigit():
+            print("❌ Nota descartada (sin octava):", nombre)
+            continue
+        if not (0 <= int(num) <= 7):
+            print("❌ Nota descartada (octava fuera de rango):", nombre)
+            continue
+
+        # 3) Duración inválida
+        if float(n["duracion"]) <= 0:
+            print("❌ Nota descartada (duración <= 0):", nombre)
+            continue
+
+        # 4) Figura inválida
+        if n["figura"].lower() not in ["corchea", "negra", "blanca", "redonda", "semicorchea"]:
+            print("❌ Nota descartada (figura inválida):", nombre, n["figura"])
+            continue
+
+        notas_filtradas.append(n)
+
+    notas_json = notas_filtradas
+    print(f"✅ {len(notas_json)} notas válidas después del filtrado.")
+
     # Guardar JSON en la carpeta destino:
     write_notes_to_json(notas_json, carpeta_destino)
     print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
@@ -310,6 +349,15 @@ def main(filepath: str, carpeta_destino="static/temp"):
     print("\n Generando imagen...")
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_violin.py")
+    json_file = os.path.join(carpeta_destino, "notas_detectadas.json")
+    if not os.path.exists(json_file):
+        print("❌ JSON no creado, abortando conversión")
+        return
+    with open(json_file, "r") as f:
+        data = json.load(f)
+    if not data:
+        print("❌ JSON vacío, abortando conversión")
+        return
     subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
 # ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========

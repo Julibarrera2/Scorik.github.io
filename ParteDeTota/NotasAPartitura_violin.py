@@ -101,9 +101,13 @@ def main():
                     if dur <= 0:
                         continue
 
-                    nn = note.Note(nombre)
-                    nn.quarterLength = dur
-                    m.append(nn)
+                    try:
+                        nn = note.Note(nombre)
+                        nn.quarterLength = dur
+                        m.append(nn)
+                    except Exception as e:
+                        safe_print("SKIP_INVALID_NOTE:", nombre, repr(e))
+                        continue
                     tC += dur
                 except Exception as e:
                     safe_print("WARN: nota inválida:", n, repr(e))
