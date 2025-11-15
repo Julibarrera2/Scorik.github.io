@@ -220,7 +220,7 @@ def upload_file():
                 "demucs",
                 "--name=htdemucs_ft",
                 "--jobs=2",
-                "--segment=8",
+                "--segment=6",
                 "--shifts=0",
                 input_path,
                 "--out", out_dir
