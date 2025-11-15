@@ -222,13 +222,14 @@ def upload_file():
                 "--jobs=2",
                 "--segment=8",
                 "--shifts=0",
-                input_file
+                input_path,
+                "--out", out_dir
             ]
             subprocess.run(cmd, check=True)
 
 
             base = os.path.splitext(os.path.basename(input_path))[0]
-            stem_dir = os.path.join(out_dir, "htdemucs", base)
+            stem_dir = os.path.join(out_dir, "separated", "htdemucs_ft", base)
 
             return {
                 "vocals": os.path.join(stem_dir, "vocals.wav"),
@@ -236,8 +237,7 @@ def upload_file():
                 "drums": os.path.join(stem_dir, "drums.wav"),
                 "other": os.path.join(stem_dir, "other.wav")
             }
-        stems = {"other": filepath}
-        #stems = separate_with_demucs(filepath, work_dir)
+        stems = separate_with_demucs(filepath, work_dir)
 
         # Elegir stem correcto según instrumento
         if instrumento == "piano":
