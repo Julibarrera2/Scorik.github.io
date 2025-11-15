@@ -26,13 +26,21 @@ RUN printf '%s\n' \
 # ========== DEPENDENCIAS PYTHON ==========
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# ---------- Instalar DEMUCS ----------
-RUN pip install --no-cache-dir demucs
+# ========= INSTALAR SOLO DEMUCS + MODELO Htdemucs =========
+RUN pip install --no-cache-dir demucs==4.0.0 && \
+    mkdir -p /root/.cache/torch/hub/checkpoints && \
+    curl -L -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
+      https://dl.fbaipublicfiles.com/demucs/v4/htdemucs/htdemucs.th
 
-# ---------- Copiar código ----------
+# ========= BLOQUEAR DESCARGA DE MODELOS EXTRA =========
+ENV DEMUCS_CACHE=/root/.cache/torch/hub/checkpoints
+ENV DEMUCS_DISABLE_AUTO_DOWNLOAD=1
+ENV TORCH_HOME=/root/.cache/torch
+
+# ========= COPIAR CÓDIGO =========
 COPY . .
 
 # Variables de entorno
