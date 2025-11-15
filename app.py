@@ -218,12 +218,14 @@ def upload_file():
 
             cmd = [
                 "demucs",
-                "--name", "htdemucs",
-                "--segment", "10",
-                input_path,
-                "-o", out_dir
+                "--name=htdemucs_ft",
+                "--jobs=2",
+                "--segment=8",
+                "--shifts=0",
+                input_file
             ]
             subprocess.run(cmd, check=True)
+
 
             base = os.path.splitext(os.path.basename(input_path))[0]
             stem_dir = os.path.join(out_dir, "htdemucs", base)
