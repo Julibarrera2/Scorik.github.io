@@ -36,3 +36,10 @@ gcloud beta run jobs describe execution exploration --region=southamerica-east1
 
 
 ls -R /app
+
+
+gcloud beta run jobs create exploration   --image=gcr.io/scorik-mscore3-ar-20250717/scorik-web   --region=southamerica-east1   --command="ls"   --args="-R,/app"
+
+
+
+gcloud run deploy scorik-web   --image=gcr.io/TU_PROYECTO/scorik-web   --region=us-central1   --gpu=1   --accelerator="nvidia-tesla-t4"   --memory=8Gi   --cpu=4
