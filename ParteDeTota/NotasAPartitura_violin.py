@@ -134,7 +134,7 @@ def main():
         try:
             safe_print("WRITE_XML ->", xml_path)
             # 👇 Desactivar makeNotation interno de music21
-            score.write('musicxml', fp=xml_path, makeNotation=False)
+            score.write('musicxml', fp=xml_path, makeNotation=True)
         except Exception as e:
             safe_print("XML_WRITE_ERROR:", repr(e))
             traceback.print_exc()
