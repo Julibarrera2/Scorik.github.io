@@ -33,7 +33,7 @@ RUN pip install --upgrade pip \
 RUN pip install --no-cache-dir demucs==4.0.0 && \
     mkdir -p /root/.cache/torch/hub/checkpoints && \
     curl -L -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
-      https://dl.fbaipublicfiles.com/demucs/v4/htdemucs/htdemucs.th
+        https://dl.fbaipublicfiles.com/demucs/v4/htdemucs/htdemucs.th
 
 # ========= BLOQUEAR DESCARGA DE MODELOS EXTRA =========
 ENV DEMUCS_CACHE=/root/.cache/torch/hub/checkpoints
