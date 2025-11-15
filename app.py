@@ -234,8 +234,8 @@ def upload_file():
                 "drums": os.path.join(stem_dir, "drums.wav"),
                 "other": os.path.join(stem_dir, "other.wav")
             }
-
-        stems = separate_with_demucs(filepath, work_dir)
+        stems = {"other": filepath}
+        #stems = separate_with_demucs(filepath, work_dir)
 
         # Elegir stem correcto según instrumento
         if instrumento == "piano":
