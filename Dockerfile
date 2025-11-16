@@ -33,7 +33,7 @@ RUN pip install --upgrade pip && \
 
 # ====== DEMUCS OPTIMIZADO ======
 RUN pip install --no-cache-dir demucs==4.0.0 && \
-    apt-get update && apt-get install -y curl && \
+    pip install --no-cache-dir torchcodec-cpu && \
     mkdir -p /root/.cache/torch/hub/checkpoints && \
     curl -L -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
         https://dl.fbaipublicfiles.com/demucs/v4/htdemucs/htdemucs.th && \
