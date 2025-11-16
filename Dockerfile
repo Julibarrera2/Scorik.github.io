@@ -42,6 +42,7 @@ RUN pip install --no-cache-dir demucs==4.0.0 && \
 # ====== COPIAR CÓDIGO ======
 COPY . .
 
+ENV DEMUCS_ONLY_HTDEMUCS=1
 ENV FFMPEG_BINARY=ffmpeg
 ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
 ENV PORT=8080

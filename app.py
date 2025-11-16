@@ -215,21 +215,20 @@ def upload_file():
 
         def separate_with_demucs(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
-
             cmd = [
-                "demucs",
-                "--name=htdemucs_ft",
-                "--jobs=2",
-                "--segment=6",
-                "--shifts=0",
-                input_path,
-                "--out", out_dir
-            ]
+                    "demucs",
+                    "--name=htdemucs",
+                    "--jobs=1",
+                    "--segment=12",
+                    "--shifts=1",
+                    "--out", out_dir,
+                    input_path
+                ] 
             subprocess.run(cmd, check=True)
 
 
             base = os.path.splitext(os.path.basename(input_path))[0]
-            stem_dir = os.path.join(out_dir, "separated", "htdemucs_ft", base)
+            stem_dir = os.path.join(out_dir, "separated", "htdemucs", base)
 
             return {
                 "vocals": os.path.join(stem_dir, "vocals.wav"),
