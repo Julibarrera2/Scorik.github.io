@@ -31,17 +31,15 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ====== DEMUCS OPTIMIZADO ======
-RUN pip install --no-cache-dir demucs==4.0.0 && \
+# ====== DEMUCS v3 (sin torchcodec, compatible con Cloud Run) ======
+RUN pip install --no-cache-dir demucs==3.0.6 && \
     mkdir -p /root/.cache/torch/hub/checkpoints && \
     curl -L -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
-        https://dl.fbaipublicfiles.com/demucs/v4/htdemucs/htdemucs.th && \
-    rm -rf /var/lib/apt/lists/*
+        https://dl.fbaipublicfiles.com/demucs/v3.0.6/htdemucs.th
 
 # ====== COPIAR CÓDIGO ======
 COPY . .
 
-ENV TORCHAUDIO_USE_BACKEND="sox_io"
 ENV DEMUCS_ONLY_HTDEMUCS=1
 ENV FFMPEG_BINARY=ffmpeg
 ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
