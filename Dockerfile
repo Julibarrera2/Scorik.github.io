@@ -33,7 +33,6 @@ RUN pip install --upgrade pip && \
 
 # ====== DEMUCS OPTIMIZADO ======
 RUN pip install --no-cache-dir demucs==4.0.0 && \
-    pip install --no-cache-dir torchcodec-cpu && \
     mkdir -p /root/.cache/torch/hub/checkpoints && \
     curl -L -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
         https://dl.fbaipublicfiles.com/demucs/v4/htdemucs/htdemucs.th && \
@@ -42,6 +41,7 @@ RUN pip install --no-cache-dir demucs==4.0.0 && \
 # ====== COPIAR CÓDIGO ======
 COPY . .
 
+ENV TORCHAUDIO_USE_BACKEND="sox_io"
 ENV DEMUCS_ONLY_HTDEMUCS=1
 ENV FFMPEG_BINARY=ffmpeg
 ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
