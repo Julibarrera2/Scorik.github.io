@@ -48,7 +48,5 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-# Copiar el modelo Demucs manualmente
-COPY ParteDeJuli/models/htdemucs.th /root/.cache/torch/hub/checkpoints/htdemucs.th
 
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]
