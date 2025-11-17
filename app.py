@@ -217,7 +217,7 @@ def upload_file():
             os.makedirs(out_dir, exist_ok=True)
             cmd = [
                     "demucs",
-                    "-n", "htdemucs",
+                    "-n", "demucs",
                     "--jobs", "1",
                     "--segment", "4",
                     "--shifts", "1",
