@@ -10,6 +10,10 @@ from google.cloud import storage
 from urllib.parse import quote, unquote
 from datetime import timedelta
 from werkzeug.utils import secure_filename
+from music21 import environment
+us = environment.UserSettings()
+us['musicxmlPath'] = '/usr/bin/mscore3'
+us['musescoreDirectPNGPath'] = '/usr/bin/mscore3'
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
