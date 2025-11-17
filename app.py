@@ -188,6 +188,8 @@ def upload_file():
         usuario = request.form.get('usuario', 'anon') or 'anon'
         instrumento = request.form.get('instrumento', 'piano')
 
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        
         set_progress(usuario, "Convirtiendo el audio...")
 
         # Validación
