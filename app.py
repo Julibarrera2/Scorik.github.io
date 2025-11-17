@@ -558,6 +558,14 @@ def delete_partitura():
 def healthz():
     return "ok", 200
 
+@app.route('/<pagina>.html')
+def paginas_html(pagina):
+    filename = pagina + ".html"
+    if os.path.exists(filename):
+        return send_from_directory('.', filename)
+    return "Página no encontrada", 404
+
+
 # --- ESTA RUTA VA ÚLTIMA ---
 #@app.route('/<path:filename>')
 #def root_files(filename):
