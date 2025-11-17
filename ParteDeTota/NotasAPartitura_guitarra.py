@@ -27,6 +27,14 @@ def quantize_duration(d: float, step: float = 0.25) -> float:
         return 0.0
     return q
 
+# === Carpeta destino por argumento (default static/temp) ===
+out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join("static", "temp")
+os.makedirs(out_dir, exist_ok=True)
+safe_print("OUT_DIR:", out_dir)
+safe_print("MUSESCORE_PATH:", MUSESCORE_PATH)
+
+JSON_PATH = os.path.join(out_dir, "notas_detectadas.json")
+
 figura_a_duracion = {
     'redonda': 4.0,
     'blanca': 2.0,
@@ -39,15 +47,6 @@ figura_a_duracion = {
 
 def main():
     try:
-        # === Carpeta destino por argumento (default static/temp) ===
-        out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join("static", "temp")
-        os.makedirs(out_dir, exist_ok=True)
-
-        safe_print("OUT_DIR:", out_dir)
-        safe_print("MUSESCORE_PATH:", MUSESCORE_PATH)
-
-        JSON_PATH = os.path.join(out_dir, "notas_detectadas.json")
-
         if not os.path.exists(JSON_PATH):
             safe_print("ERROR: No se encontró notas JSON:", JSON_PATH)
             return sys.exit(1)
@@ -82,7 +81,7 @@ def main():
             safe_print("ERROR: No hay compases válidos.")
             return sys.exit(1)
 
-        # --- Métrica heurística usando el primer compás ---
+        # --- Métrica heurística ---
         primer_compas = compases[sorted(compases.keys())[0]]
         suma = sum(
             figura_a_duracion.get(n.get('figura', 'negra').lower(), 1.0)
@@ -102,10 +101,10 @@ def main():
 
         part.append(meter.TimeSignature(tsig))
 
-        # === Construir cada compás con las figuras del JSON ===
+        # === Construir compases ===
         for num_compas in sorted(compases.keys()):
             m = stream.Measure(number=num_compas)
-            tC = 0.0  # tiempo acumulado dentro del compás
+            tC = 0.0
 
             for n in compases[num_compas]:
                 try:
@@ -117,14 +116,21 @@ def main():
                     if dur <= 0:
                         continue
 
-                    nn = note.Note(nombre)
-                    nn.quarterLength = dur
-                    m.append(nn)
+                    # ✔ MANEJO ROBUSTO DE NOTAS INVÁLIDAS (como en violín)
+                    try:
+                        nn = note.Note(nombre)
+                        nn.quarterLength = dur
+                        m.append(nn)
+                    except Exception as e:
+                        safe_print("SKIP_INVALID_NOTE:", nombre, repr(e))
+                        continue
+
                     tC += dur
+
                 except Exception as e:
                     safe_print("WARN: nota inválida:", n, repr(e))
 
-            # Rellenar con silencio hasta completar compás
+            # --- Rellenar con silencio ---
             resto_raw = max(0.0, dur_compas - tC)
             resto = quantize_duration(resto_raw)
             if resto > 0:
@@ -145,20 +151,20 @@ def main():
         # --- Escribir MusicXML ---
         try:
             safe_print("WRITE_XML ->", xml_path)
-            score.write('musicxml', fp=xml_path, makeNotation=False)
+            score.write('musicxml', fp=xml_path, makeNotation=True)
         except Exception as e:
             safe_print("XML_WRITE_ERROR:", repr(e))
             traceback.print_exc()
             return sys.exit(1)
 
-        # A veces music21 escribe .xml aunque pidas .musicxml
+        # Compat con music21
         if not os.path.exists(xml_path) and os.path.exists(xml_path2):
             xml_path = xml_path2
         if not os.path.exists(xml_path):
             safe_print("ERROR: No se generó MusicXML en", xml_path, "ni", xml_path2)
             return sys.exit(1)
 
-        # --- Llamar a MuseScore para generar PNG ---
+        # --- Llamar a MuseScore ---
         cmd = [MUSESCORE_PATH, xml_path, "-o", png_path]
         safe_print("RUN_MUSESCORE:", cmd)
 
@@ -172,7 +178,7 @@ def main():
                 safe_print("HINT: MUSESCORE_PATH no existe:", MUSESCORE_PATH)
             return sys.exit(1)
 
-        # Verificar PNG generado
+        # --- Verificar PNG ---
         pngs = [f for f in os.listdir(out_dir) if f.startswith(base) and f.endswith(".png")]
         if not pngs:
             safe_print("ERROR: MuseScore no produjo PNG en", out_dir)
