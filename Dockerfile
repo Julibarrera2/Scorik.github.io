@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# ========= DEPENDENCIAS DEL SISTEMA =========
+# ====== SISTEMA ======
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     musescore3 \
@@ -12,9 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
     fontconfig \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------- WRAPPER HEADLESS PARA MUSESCORE ----------
+# ====== WRAPPER PARA MUSESCORE ======
 RUN printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -e' \
@@ -23,24 +24,27 @@ RUN printf '%s\n' \
     > /usr/local/bin/mscore3-cli \
     && chmod +x /usr/local/bin/mscore3-cli
 
-# ========== DEPENDENCIAS PYTHON ==========
 WORKDIR /app
+
 COPY requirements.txt .
+
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ---------- Instalar DEMUCS ----------
-RUN pip install --no-cache-dir demucs
+# ====== DEMUCS v3 (sin torchcodec, compatible con Cloud Run) ======
+RUN pip install --no-cache-dir demucs==3.0.6 && \
+    mkdir -p /root/.cache/torch/hub/checkpoints && \
+    curl -L -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
+        https://dl.fbaipublicfiles.com/demucs/v3.0.6/htdemucs.th
 
-# ---------- Copiar código ----------
+# ====== COPIAR CÓDIGO ======
 COPY . .
 
-# Variables de entorno
+ENV DEMUCS_ONLY_HTDEMUCS=1
 ENV FFMPEG_BINARY=ffmpeg
 ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
 ENV PORT=8080
 
 EXPOSE 8080
 
-# Gunicorn para servir Flask en Cloud Run
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]

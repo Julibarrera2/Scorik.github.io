@@ -101,9 +101,13 @@ def main():
                     if dur <= 0:
                         continue
 
-                    nn = note.Note(nombre)
-                    nn.quarterLength = dur
-                    m.append(nn)
+                    try:
+                        nn = note.Note(nombre)
+                        nn.quarterLength = dur
+                        m.append(nn)
+                    except Exception as e:
+                        safe_print("SKIP_INVALID_NOTE:", nombre, repr(e))
+                        continue
                     tC += dur
                 except Exception as e:
                     safe_print("WARN: nota inválida:", n, repr(e))
@@ -130,7 +134,7 @@ def main():
         try:
             safe_print("WRITE_XML ->", xml_path)
             # 👇 Desactivar makeNotation interno de music21
-            score.write('musicxml', fp=xml_path, makeNotation=False)
+            score.write('musicxml', fp=xml_path, makeNotation=True)
         except Exception as e:
             safe_print("XML_WRITE_ERROR:", repr(e))
             traceback.print_exc()

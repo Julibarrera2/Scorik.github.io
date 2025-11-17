@@ -180,7 +180,7 @@ def group_pitches_to_notes(pitch_data: List[Tuple[float, float]], tempo: float, 
 
     return notas_json
 
-def write_notes_to_json(notas_json: List[Dict], carpeta_destino="JsonFiles") -> None:
+def write_notes_to_json(notas_json: List[Dict], carpeta_destino="static/temp"):
     os.makedirs(carpeta_destino, exist_ok=True)
     ruta_completa = os.path.join(carpeta_destino, "notas_detectadas.json")
     with open(ruta_completa, "w") as f:
@@ -245,9 +245,9 @@ def main(filepath: str, carpeta_destino="static/temp"):
     total_samples = int(np.ceil(expected_duration * sr_original))
     if audio_original.ndim > 1:
         n_channels = audio_original.shape[1]
-        audio_total = np.zeros((audio_original.shape[0], n_channels), dtype=np.float32)
+        audio_total = np.zeros((total_samples, n_channels), dtype=np.float32)
     else:
-        audio_total = np.zeros((total_samples,), dtype=np.float32)
+        audio_total = np.zeros(total_samples, dtype=np.float32)
 
     end = 0
     start = 0
@@ -282,9 +282,8 @@ def main(filepath: str, carpeta_destino="static/temp"):
         else:
             audio_total[-fs:, :] *= tail[:, None]
 
-    peak = np.max(np.abs(audio_total))
-    if peak > 0:
-        audio_total /= peak
+    peak = np.max(np.abs(audio_total)) + 1e-9
+    audio_total /= peak
 
     sf.write("reconstruccion.wav", audio_total, sr_out)
     print("✅ [Guitarra] 'reconstruccion.wav' generado correctamente.")
