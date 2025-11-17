@@ -13,17 +13,27 @@ import sys
 np.float = float
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-# --- Configuración FFmpeg ---
+# --------------------------
+# CONFIG FFMPEG (igual violín)
+# --------------------------
 FFMPEG_BIN  = os.getenv("FFMPEG_BINARY") or which("ffmpeg") or which("ffmpeg.exe")
 FFPROBE_BIN = os.getenv("FFPROBE_BINARY") or which("ffprobe") or which("ffprobe.exe")
+
+if (not FFMPEG_BIN or not FFPROBE_BIN) and os.name == "nt":
+    FFMPEG_BIN  = FFMPEG_BIN  or r"C:\\Users\\Julia Barrera\\Downloads\\ffmpeg-7.1.1-essentials_build\\bin\\ffmpeg.exe"
+    FFPROBE_BIN = FFPROBE_BIN or r"C:\\Users\\Julia Barrera\\Downloads\\ffmpeg-7.1.1-essentials_build\\bin\\ffprobe.exe"
+
 AudioSegment.converter = FFMPEG_BIN
 AudioSegment.ffprobe   = FFPROBE_BIN
 
-# --- Filtro de energía ---
+# --------------------------
+# FILTRO ENERGÍA
+# --------------------------
 def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-60):
     hop = int(sr_signal * 0.01)
     rms = librosa.feature.rms(y=y_signal, hop_length=hop)[0]
     times = librosa.frames_to_time(np.arange(len(rms)), sr=sr_signal, hop_length=hop)
+
     filtrados = []
     for t, f in pitch_list:
         idx = np.argmin(np.abs(times - t))
@@ -31,36 +41,44 @@ def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-60)
             filtrados.append((t, f))
     return filtrados
 
-# --- Cargar y convertir audio ---
-def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarray, int, str]:
+# --------------------------
+# CARGA AUDIO
+# --------------------------
+def load_and_preprocess_audio(filepath: str, sr: int = 22050):
     if not os.path.exists(filepath):
-        raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
+        raise FileNotFoundError(filepath)
+
     filename, ext = os.path.splitext(filepath)
     if ext.lower() == ".mp3":
-        print("Convirtiendo .mp3 a .wav...")
         audio_mp3 = AudioSegment.from_mp3(filepath)
         filepath_wav = filename + ".wav"
         audio_mp3.export(filepath_wav, format="wav")
         filepath = filepath_wav
+
     y, sr = librosa.load(filepath, sr=sr, mono=True)
-    print("Audio cargado correctamente.")
     return y, sr, filepath
 
-# --- Detección de pitch ---
-def detect_pitch(y: np.ndarray, sr: int, threshold=0.9) -> List[Tuple[float, float]]:
-    print("Detectando pitch (piano)...")
+# --------------------------
+# DETECT PITCH
+# --------------------------
+def detect_pitch(y: np.ndarray, sr: int, threshold=0.90):
     if sr != 16000:
         y = librosa.resample(y, orig_sr=sr, target_sr=16000)
         sr = 16000
+
     if y.ndim == 1:
         y = np.expand_dims(y, axis=1)
-    time, frequency, confidence, _ = crepe.predict(y, sr, step_size=10, viterbi=True)
-    pitches = [(t, f) for t, f, c in zip(time, frequency, confidence)
-                if c >= threshold and 30 < f < 4200]
-    print(f"Se detectaron {len(pitches)} pitches con confianza > {threshold}.")
-    return pitches
 
-# --- Diccionario de notas ---
+    time, frequency, confidence, _ = crepe.predict(
+        y, sr, step_size=10, viterbi=True
+    )
+
+    return [(t, f) for t, f, c in zip(time, frequency, confidence)
+            if c >= threshold and 30 < f < 4200]
+
+# --------------------------
+# DICCIONARIO NOTAS
+# --------------------------
 notas_dict = {
     'C0': 16.35, 'C#0': 17.32, 'D0': 18.35, 'D#0': 19.45, 'E0': 20.60, 'F0': 21.83, 'F#0': 23.12, 
     'G0': 24.50, 'G#0': 25.96, 'A0': 27.50, 'A#0': 29.14, 'B0': 30.87, 'C1': 32.70, 'C#1': 34.65, 
@@ -73,108 +91,135 @@ notas_dict = {
     'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88, 'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 
     'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 
     'A#5': 932.33, 'B5': 987.77, 'C6': 1046.50, 'C#6': 1108.73
-    }
+}
 
-# --- Agrupar notas ---
+# --------------------------
+# AGRUPACIÓN NOTAS
+# --------------------------
 def group_pitches_to_notes(pitch_data, tempo, notas_dict):
     def frecuencia_a_nota(freq):
-        return min(notas_dict.items(), key=lambda item: abs(item[1] - freq))[0]
-    def calcular_figura_y_compas(duracion, tempo, inicio):
+        return min(notas_dict.items(), key=lambda i: abs(i[1] - freq))[0]
+
+    def figura(dur, tempo):
         negra = 60 / tempo
-        if duracion < negra * 0.6: figura = "corchea"
-        elif duracion < negra * 1.2: figura = "negra"
-        elif duracion < negra * 2.2: figura = "blanca"
-        else: figura = "redonda"
-        compas = int(inicio / (negra * 4)) + 1
-        return figura, compas
-    notas_json = []
-    if not pitch_data: return notas_json
+        if dur < negra * 0.6: return "corchea"
+        if dur < negra * 1.2: return "negra"
+        if dur < negra * 2.2: return "blanca"
+        return "redonda"
+
+    if not pitch_data:
+        return []
+
+    notas = []
     inicio = pitch_data[0][0]
-    freq_actual = pitch_data[0][1]
-    nota_actual = frecuencia_a_nota(freq_actual)
+    f_actual = pitch_data[0][1]
+    n_actual = frecuencia_a_nota(f_actual)
+
     for t, f in pitch_data[1:]:
-        if abs(12 * np.log2(f / freq_actual)) > 0.3:
+        if abs(12 * np.log2(f / f_actual)) > 0.3:
             dur = t - inicio
             if dur >= 0.08:
-                fig, comp = calcular_figura_y_compas(dur, tempo, inicio)
-                notas_json.append({
+                notas.append({
                     "instrumento": "piano",
-                    "nota": nota_actual,
+                    "nota": n_actual,
                     "inicio": round(inicio, 3),
                     "duracion": round(dur, 3),
-                    "compas": comp,
-                    "figura": fig,
+                    "compas": int(inicio / (60/tempo*4)) + 1,
+                    "figura": figura(dur, tempo),
                     "tempo": int(tempo)
                 })
             inicio = t
-            freq_actual = f
-            nota_actual = frecuencia_a_nota(f)
+            f_actual = f
+            n_actual = frecuencia_a_nota(f)
         else:
-            freq_actual = (freq_actual + f) / 2
+            f_actual = (f_actual + f) / 2
+
     dur = pitch_data[-1][0] - inicio
     if dur >= 0.08:
-        fig, comp = calcular_figura_y_compas(dur, tempo, inicio)
-        notas_json.append({
+        notas.append({
             "instrumento": "piano",
-            "nota": nota_actual,
+            "nota": n_actual,
             "inicio": round(inicio, 3),
             "duracion": round(dur, 3),
-            "compas": comp,
-            "figura": fig,
+            "compas": int(inicio / (60/tempo*4)) + 1,
+            "figura": figura(dur, tempo),
             "tempo": int(tempo)
         })
-    return notas_json
 
-def write_notes_to_json(notas_json, carpeta_destino="static/temp"):
+    return notas
+
+# --------------------------
+# JSON
+# --------------------------
+def write_notes_to_json(notas_json, carpeta_destino):
     os.makedirs(carpeta_destino, exist_ok=True)
     with open(os.path.join(carpeta_destino, "notas_detectadas.json"), "w") as f:
         json.dump(notas_json, f, indent=2)
 
-# --- Síntesis piano (ataque fuerte + decaimiento) ---
+# --------------------------
+# SÍNTESIS PIANO
+# --------------------------
 def generate_note_wave_piano(freq, dur, sr=16000, volume=1.0):
     t = np.linspace(0, dur, int(sr * dur), endpoint=False)
     wave = np.zeros_like(t)
     for k in range(1, 5):
         wave += (1/k) * np.sin(2*np.pi*freq*k*t)
-    env = np.exp(-t / (dur * 0.4))  # decay rápido
-    env[: int(0.01*sr)] *= np.linspace(0, 1, int(0.01*sr))  # ataque
-    wave = (wave * env)
+    env = np.exp(-t / (dur * 0.4))
+    env[: int(0.01*sr)] *= np.linspace(0, 1, int(0.01*sr))
+    wave = wave * env
     wave /= np.max(np.abs(wave) + 1e-8)
     return (wave * volume).astype(np.float32)
 
-# --- Main ---
+# --------------------------
+# MAIN
+# --------------------------
 def main(filepath, carpeta_destino="static/temp"):
+
     y, sr, filepath = load_and_preprocess_audio(filepath)
+
     pitches = detect_pitch(y, sr)
     pitches = filtrar_pitch_por_energia(pitches, y, sr)
+
+    dur = librosa.get_duration(y=y, sr=sr)
+    pitches = [p for p in pitches if p[0] < dur - 0.2]
+
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    if tempo == 0: tempo = 120
+    if tempo == 0:
+        tempo = 120
+
     notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
     write_notes_to_json(notas_json, carpeta_destino)
 
-    # Reconstrucción
+    # --------------------------
+    # RECONSTRUCCIÓN (tu bloque original)
+    # --------------------------
     audio_original, sr_original = sf.read(filepath)
     expected = len(audio_original) / sr_original
     sr_out = sr_original
+
     total_samples = int(np.ceil(expected * sr_out))
     audio_total = np.zeros(total_samples, dtype=np.float32)
+
     for n in notas_json:
         freq = notas_dict[n["nota"]]
         start = int(n["inicio"] * sr_out)
         end = start + int(n["duracion"] * sr_out)
         wave = generate_note_wave_piano(freq, n["duracion"], sr_out)
         audio_total[start:end] += wave[:min(len(wave), end-start)]
+
     audio_total /= np.max(np.abs(audio_total) + 1e-9)
     sf.write("reconstruccion.wav", audio_total, sr_out)
-    print("✅ Piano reconstruido.")
+    print("⬛ Piano reconstruido.")
 
-    # Llamada a NotasAPartitura
+    # --------------------------
+    # Crear PNG/XML
+    # --------------------------
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_piano.py")
     subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Uso: python LeerArchivoYnota_piano.py <ruta_mp3>")
-        sys.exit(1)
-    main(sys.argv[1])
+    filepath = sys.argv[1]
+    carpeta = sys.argv[2] if len(sys.argv) > 2 else "static/temp"
+    main(filepath, carpeta)

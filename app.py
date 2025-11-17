@@ -9,6 +9,7 @@ import uuid
 from google.cloud import storage
 from urllib.parse import quote, unquote
 from datetime import timedelta
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -38,16 +39,9 @@ USERS_BUCKET = os.environ.get('USERS_BUCKET')
 USERS_BLOB   = os.environ.get('USERS_BLOB', 'usuarios.json')
 
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(STATIC_TEMP_FOLDER, exist_ok=True)
-os.makedirs(PARTITURAS_USER_FOLDER, exist_ok=True)
-os.makedirs(PROGRESS_FOLDER, exist_ok=True) # carpeta de progreso
-
 # Crear solo las carpetas de ESCRITURA
-for p in (TMP_BASE, UPLOAD_FOLDER, STATIC_TEMP_FOLDER, PARTITURAS_USER_FOLDER, PROGRESS_FOLDER):
+for p in [TMP_BASE, UPLOAD_FOLDER, STATIC_TEMP_FOLDER, PARTITURAS_USER_FOLDER, PROGRESS_FOLDER]:
     os.makedirs(p, exist_ok=True)
-
-PYTHON_EXEC = sys.executable
 
 def _gcs_client():
     return storage.Client()
@@ -189,9 +183,9 @@ def upload_file():
         instrumento = request.form.get('instrumento', 'piano')
 
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        
-        set_progress(usuario, "Convirtiendo el audio...")
 
+        set_progress(usuario, "Convirtiendo el audio...")
+    
         # Validación
         if 'file' not in request.files:
             return jsonify({"error": "No se envió archivo"}), 400
@@ -206,7 +200,7 @@ def upload_file():
         os.makedirs(work_dir, exist_ok=True)
 
         # Guardar archivo original
-        filename = file.filename
+        filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
@@ -221,6 +215,8 @@ def upload_file():
                 "demucs",
                 "--name", "htdemucs",
                 "--jobs", "1",
+                "--segment", "6",
+                "--shifts", "1",
                 "--out", out_dir,
                 input_path
                 ] 
@@ -351,11 +347,10 @@ def save_partitura():
             # si quedó la subcarpeta vacía, la limpiamos
             try:
                 subdir = os.path.dirname(src)
-                if subdir.startswith(STATIC_TEMP_FOLDER):
-                    if not os.listdir(subdir):
-                        os.rmdir(subdir)
-            except: pass
-
+                if os.path.isdir(subdir) and not os.listdir(subdir):
+                    os.rmdir(subdir)
+            except:
+                pass
             return dst
         return None
 
@@ -424,11 +419,6 @@ def get_user_partitura(usuario, filename):
 @app.route('/json/<path:filename>')
 def download_json(filename):
     return send_from_directory(JSON_FOLDER, filename)
-
-
-@app.route('/static/<path:filename>')
-def get_image(filename):
-    return send_from_directory(STATIC_TEMP_FOLDER, filename)
 
 # Extra: para servir imágenes de /Img/
 @app.route('/Img/<path:filename>')
@@ -569,16 +559,16 @@ def healthz():
     return "ok", 200
 
 # --- ESTA RUTA VA ÚLTIMA ---
-@app.route('/<path:filename>')
-def root_files(filename):
-    if os.path.exists(filename):
-        return send_from_directory('.', filename)
-    # Si no existe en raíz, probar en subcarpetas:
-    for folder in ['Img', 'static', 'uploads']:
-        folder_path = os.path.join(folder, filename)
-        if os.path.exists(folder_path):
-            return send_from_directory(folder, filename)
-    return "Archivo no encontrado", 404
+#@app.route('/<path:filename>')
+#def root_files(filename):
+#    if os.path.exists(filename):
+#        return send_from_directory('.', filename)
+#    # Si no existe en raíz, probar en subcarpetas:
+#    for folder in ['Img', 'static', 'uploads']:
+#        folder_path = os.path.join(folder, filename)
+#        if os.path.exists(folder_path):
+#            return send_from_directory(folder, filename)
+#    return "Archivo no encontrado", 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
