@@ -216,13 +216,11 @@ def upload_file():
         def separate_with_demucs(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
             cmd = [
-                    "demucs",
-                    "-n", "demucs",
-                    "--jobs", "1",
-                    "--segment", "4",
-                    "--shifts", "1",
-                    "--out", out_dir,
-                    input_path
+                "demucs",
+                "--name", "htdemucs",
+                "--jobs", "1",
+                "--out", out_dir,
+                input_path
                 ] 
             subprocess.run(cmd, check=True)
 
