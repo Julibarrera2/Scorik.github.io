@@ -221,7 +221,7 @@ def upload_file():
 
             cmd = [
                 "demucs",
-                "-n", "htdemucs",
+                "-n", "htdemucs_ft",
                 "--repo", "/app/.cache/torch/hub",
                 "--jobs", "1",
                 "--segment", "6",

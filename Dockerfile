@@ -39,11 +39,11 @@ RUN pip install --no-cache-dir demucs==3.0.6 && \
     mkdir -p /root/.cache/torch/hub/checkpoints && \
     mkdir -p /app/.cache/torch/hub/checkpoints && \
     curl -L --retry 5 --retry-delay 3 \
-        -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
-        https://dl.fbaipublicfiles.com/demucs/v3.0.6/htdemucs.th && \
-    test -s /root/.cache/torch/hub/checkpoints/htdemucs.th && \
-    cp /root/.cache/torch/hub/checkpoints/htdemucs.th \
-        /app/.cache/torch/hub/checkpoints/htdemucs.th
+        -o /root/.cache/torch/hub/checkpoints/htdemucs_ft.th \
+        https://dl.fbaipublicfiles.com/demucs/v3.0.3/htdemucs_ft-3f0c4c1f.th && \
+    test -s /root/.cache/torch/hub/checkpoints/htdemucs_ft.th && \
+    cp /root/.cache/torch/hub/checkpoints/htdemucs_ft.th \
+        /app/.cache/torch/hub/checkpoints/htdemucs_ft.th
 
 ENV TORCH_HOME=/app/.cache/torch
 ENV DEMUCS_ONLY_HTDEMUCS=1
