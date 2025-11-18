@@ -25,11 +25,20 @@ RUN printf '%s\n' \
     && chmod +x /usr/local/bin/mscore3-cli
 
 WORKDIR /app
+# Instalar gcloud dentro del contenedor
+RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
+    curl -sSL https://sdk.cloud.google.com | bash
+ENV PATH="/root/google-cloud-sdk/bin:${PATH}"
 
 COPY requirements.txt .
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+# ====== COPIAR MODELO DESDE GCS ======
+RUN mkdir -p /app/models/HT_Japanese
+RUN gcloud storage cp gs://scorik-models/models/HT_Japanese/HP2_all_vocals.pth /app/models/HT_Japanese/HP2_all_vocals.pth || \
+    echo "WARNING: No se pudo copiar modelo desde GCS"
 
 # ====== UVR MODELO ======
 COPY models/HT_Japanese/ /app/models/HT_Japanese/
