@@ -264,9 +264,9 @@ def upload_file():
         # ---------------------------------------------------------------------
         set_progress(usuario, "Detectando notas...")
 
-        proc = subprocess.run(
+        subprocess.run(
             [PYTHON_EXEC, script, stem_wav, work_dir],
-            check=True, capture_output=True, text=True
+            check=True
         )
 
         set_progress(usuario, "Generando imagen...")
@@ -314,8 +314,8 @@ def upload_file():
         })
 
     except subprocess.CalledProcessError as e:
-        print("SCRIPT ERROR:", e.stderr, file=sys.stderr)
-        return jsonify({"error": "Fallo el script", "stderr": e.stderr}), 500
+        print("SCRIPT ERROR:", e, file=sys.stderr)
+        return jsonify({"error": "Fallo el script", "output": str(e)}), 500
 
     except Exception as e:
         app.logger.exception("Error en /upload")
