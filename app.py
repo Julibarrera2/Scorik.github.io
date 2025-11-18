@@ -215,9 +215,14 @@ def upload_file():
 
         def separate_with_demucs(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
+
+            print("DEBUG DEMUCS PATH:", os.listdir("/app/.cache/torch/hub/checkpoints"))
+            print("DEBUG ROOT CACHE:", os.listdir("/root/.cache/torch/hub/checkpoints"))
+
             cmd = [
                 "demucs",
-                "--name", "htdemucs",
+                "-n", "htdemucs",
+                "--repo", "/app/.cache/torch/hub",
                 "--jobs", "1",
                 "--segment", "6",
                 "--shifts", "1",

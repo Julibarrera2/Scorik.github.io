@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ====== WRAPPER PARA MUSESCORE ======
-# mscore3 existe porque viene instalado con musescore3
 RUN printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -e' \
@@ -32,17 +31,21 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ====== DEMUCS v3 ======
-RUN pip install --no-cache-dir demucs==3.0.6 && \
-    mkdir -p /root/.cache/torch/hub/checkpoints && \
-    curl -L --retry 5 --retry-delay 3 \
-        -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
-        https://dl.fbaipublicfiles.com/demucs/v3.0.6/htdemucs.th && \
-    test -s /root/.cache/torch/hub/checkpoints/htdemucs.th
-
 # ====== COPIAR CÓDIGO ======
 COPY . .
 
+# ====== DEMUCS v3 ======
+RUN pip install --no-cache-dir demucs==3.0.6 && \
+    mkdir -p /root/.cache/torch/hub/checkpoints && \
+    mkdir -p /app/.cache/torch/hub/checkpoints && \
+    curl -L --retry 5 --retry-delay 3 \
+        -o /root/.cache/torch/hub/checkpoints/htdemucs.th \
+        https://dl.fbaipublicfiles.com/demucs/v3.0.6/htdemucs.th && \
+    test -s /root/.cache/torch/hub/checkpoints/htdemucs.th && \
+    cp /root/.cache/torch/hub/checkpoints/htdemucs.th \
+        /app/.cache/torch/hub/checkpoints/htdemucs.th
+
+ENV TORCH_HOME=/app/.cache/torch
 ENV DEMUCS_ONLY_HTDEMUCS=1
 ENV FFMPEG_BINARY=ffmpeg
 ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
