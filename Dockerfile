@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -31,24 +31,14 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# ====== UVR MODELO ======
+COPY models/HT_Japanese/ /app/models/HT_Japanese/
+
+ENV UVR_MODEL_PATH="/app/models/HT_Japanese/HP2_all_vocals.pth"
+
 # ====== COPIAR CÓDIGO ======
 COPY . .
 
-# ====== DEMUCS v3 ======
-RUN pip install --no-cache-dir demucs==3.0.6 && \
-    mkdir -p /root/.cache/torch/hub/checkpoints && \
-    mkdir -p /app/.cache/torch/hub/checkpoints && \
-    curl -L --retry 5 --retry-delay 3 \
-        -o /root/.cache/torch/hub/checkpoints/htdemucs_ft.th \
-        https://dl.fbaipublicfiles.com/demucs/v3.0.3/htdemucs_ft-3f0c4c1f.th && \
-    test -s /root/.cache/torch/hub/checkpoints/htdemucs_ft.th && \
-    cp /root/.cache/torch/hub/checkpoints/htdemucs_ft.th \
-        /app/.cache/torch/hub/checkpoints/htdemucs_ft.th
-
-ENV TORCH_HOME=/app/.cache/torch
-ENV DEMUCS_ONLY_HTDEMUCS=1
-ENV FFMPEG_BINARY=ffmpeg
-ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
 ENV PORT=8080
 
 EXPOSE 8080

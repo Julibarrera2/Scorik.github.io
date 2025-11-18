@@ -11,9 +11,55 @@ from urllib.parse import quote, unquote
 from datetime import timedelta
 from werkzeug.utils import secure_filename
 from music21 import environment
+import soundfile as sf
+import numpy as np
+import torch
+from uvr.models import MDXNet
+
 us = environment.UserSettings()
 us['musicxmlPath'] = '/usr/local/bin/mscore3-cli'
 us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
+
+class SimpleUVRModel:
+    """
+    Carga un modelo MDX simplificado y ejecuta separación.
+    Esta clase está pensada para integración rápida en Cloud Run.
+    """
+    def __init__(self, model_path):
+        print(f"Cargando modelo UVR: {model_path}")
+        self.model = torch.load(model_path, map_location="cpu")
+
+    def separate(self, audio_path, out_path):
+        print(f"Procesando archivo con UVR: {audio_path}")
+
+        # Leer WAV
+        audio, sr = sf.read(audio_path)
+        audio = torch.tensor(audio, dtype=torch.float32).unsqueeze(0)  # shape: (1, samples, channels)
+
+        # Inference simplificada
+        with torch.no_grad():
+            result = self.model(audio).squeeze(0).detach().cpu().numpy()
+
+        # Guardar WAV procesado
+        sf.write(out_path, result, sr)
+        print(f"Archivo UVR generado: {out_path}")
+
+
+def separate_with_uvr(model_path, input_path, out_dir):
+    """
+    Corre un modelo UVR MDXNet específico para un instrumento.
+    Devuelve el WAV separado.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    print(f"== UVR separando usando modelo: {model_path} ==")
+
+    model = SimpleUVRModel(model_path)
+
+    output = os.path.join(out_dir, "instrument.wav")
+    model.separate(input_path, output)
+
+    return output
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -211,37 +257,44 @@ def upload_file():
         # ---------------------------------------------------------------------
         # DEMUCS
         # ---------------------------------------------------------------------
-        set_progress(usuario, "Separando instrumentos con Demucs...")
+        set_progress(usuario, "Separando instrumentos con UVR...")
 
-        def separate_with_demucs(input_path, out_dir):
+        def separate_with_uvr(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
 
-            print("DEBUG DEMUCS PATH:", os.listdir("/app/.cache/torch/hub/checkpoints"))
-            print("DEBUG ROOT CACHE:", os.listdir("/root/.cache/torch/hub/checkpoints"))
+            MODEL_PATH = "/app/models/uvr_insthq.pth"
+            
+            if not os.path.exists(MODEL_PATH):
+                raise RuntimeError("Modelo UVR no encontrado en /app/models/")
+            
+            model = torch.load(MODEL_PATH, map_location="cpu")
+            model.eval()
 
-            cmd = [
-                "demucs",
-                "-n", "htdemucs_ft",
-                "--repo", "/app/.cache/torch/hub",
-                "--jobs", "1",
-                "--segment", "6",
-                "--shifts", "1",
-                "--out", out_dir,
-                input_path
-                ] 
-            subprocess.run(cmd, check=True)
+            # Cargar audio
+            audio, sr = sf.read(input_path)
+            if audio.ndim == 1:
+                audio = np.stack([audio, audio])  # forzar estéreo
 
+            audio_tensor = torch.tensor(audio.T).float().unsqueeze(0) 
 
-            base = os.path.splitext(os.path.basename(input_path))[0]
-            stem_dir = os.path.join(out_dir, "separated", "htdemucs", base)
+            with torch.no_grad():
+                separated = model(audio_tensor)
+
+            vocals_path = os.path.join(out_dir, "vocals.wav")
+            other_path  = os.path.join(out_dir, "other.wav")
+
+            sf.write(vocals_path, separated["Vocals"][0].T.cpu().numpy(), sr)
+            sf.write(other_path, separated["Instrumental"][0].T.cpu().numpy(), sr)
 
             return {
-                "vocals": os.path.join(stem_dir, "vocals.wav"),
-                "bass": os.path.join(stem_dir, "bass.wav"),
-                "drums": os.path.join(stem_dir, "drums.wav"),
-                "other": os.path.join(stem_dir, "other.wav")
+                "vocals": vocals_path,
+                "bass": None,
+                "drums": None,
+                "other": other_path
             }
-        stems = separate_with_demucs(filepath, work_dir)
+
+        stems = separate_with_uvr(filepath, work_dir)
+
 
         # Elegir stem correcto según instrumento
         if instrumento == "piano":
