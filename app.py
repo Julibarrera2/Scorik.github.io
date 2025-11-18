@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 from music21 import environment
 us = environment.UserSettings()
 us['musicxmlPath'] = '/usr/local/bin/mscore3-cli'
-us['musescoreDirectPNGPath'] = '/usr/bin/mscore3'
+us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')

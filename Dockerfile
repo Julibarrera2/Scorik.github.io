@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fontconfig \
     git \
     curl \
-    && ln -sf /usr/bin/mscore /usr/bin/mscore3 \
     && rm -rf /var/lib/apt/lists/*
 
 # ====== WRAPPER PARA MUSESCORE ======
+# mscore3 existe porque viene instalado con musescore3
 RUN printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -e' \
@@ -32,7 +32,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ====== DEMUCS v3 (sin torchcodec, compatible con Cloud Run) ======
+# ====== DEMUCS v3 ======
 RUN pip install --no-cache-dir demucs==3.0.6 && \
     mkdir -p /root/.cache/torch/hub/checkpoints && \
     curl -L --retry 5 --retry-delay 3 \
@@ -49,6 +49,5 @@ ENV MUSESCORE_PATH=/usr/local/bin/mscore3-cli
 ENV PORT=8080
 
 EXPOSE 8080
-
 
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]
