@@ -39,17 +39,14 @@ class MDXSeparator:
         # Leer archivo WAV
         audio, sr = sf.read(audio_path)
 
-        # Si es estéreo, convertir a mono
-        if len(audio.shape) == 1:
-            # Estaba en mono → duplicamos en dos canales
-            audio = np.stack([audio, audio], axis=0)  # (2, samples)
-        else:
-            # Estaba en estéreo → tomamos exactamente 2 canales
-            audio = audio.T   # (channels, samples)
-            audio = audio[:2]
+        # Convertir SIEMPRE a mono
+        if audio.ndim > 1:
+            audio = np.mean(audio, axis=1)
 
         audio = audio.astype(np.float32)
-        audio = audio[np.newaxis, :, :, np.newaxis]
+
+        # MDX-HQ1 requiere: (1, 1, samples, 1)
+        audio = audio[np.newaxis, np.newaxis, :, np.newaxis]
 
         output = self.session.run(None, {"input": audio})[0]
 
