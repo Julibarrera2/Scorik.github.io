@@ -41,9 +41,8 @@ RUN gcloud storage cp gs://scorik-models/models/HT_Japanese/HP2_all_vocals.pth /
     echo "WARNING: No se pudo copiar modelo desde GCS"
 
 # ====== UVR MODELO ======
-COPY models/HT_Japanese/ /app/models/HT_Japanese/
 
-ENV UVR_MODEL_PATH="/app/models/HT_Japanese/HP2_all_vocals.pth"
+ENV UVR_MODEL_PATH="gs://scorik-models/models/HT_Japanese/HP2_all_vocals.pth"
 
 # ====== COPIAR CÓDIGO ======
 COPY . .
