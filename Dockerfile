@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fontconfig \
     git \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # ====== WRAPPER PARA MUSESCORE ======
@@ -26,22 +27,15 @@ RUN printf '%s\n' \
 
 WORKDIR /app
 
-# ====== INSTALAR GCLOUD DENTRO DEL CONTENEDOR ======
-RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
-    curl -sSL https://sdk.cloud.google.com | bash
-ENV PATH="/root/google-cloud-sdk/bin:${PATH}"
-
-# ====== DEPENDENCIAS PYTHON ======
+# COPIAR REQUIREMENTS
 COPY requirements.txt .
+
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ====== COPIAR MODELO MDX DESDE GCS ======
-RUN mkdir -p /app/models/MDX
-
-RUN gcloud storage cp gs://scorik-models/models/MDX/UVR_MDXNET_Main.onnx \
-    /app/models/MDX/UVR_MDXNET_Main.onnx \
-    || echo "WARNING: No se pudo copiar el modelo desde GCS"
+# ====== COPIAR MODELOS DESDE TU PC, NO DESDE GCS ======
+# IMPORTANTE: el ONNX debe existir localmente
+COPY models /app/models
 
 # ====== COPIAR CÓDIGO ======
 COPY . .

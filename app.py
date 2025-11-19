@@ -257,7 +257,7 @@ def upload_file():
             """
             os.makedirs(out_dir, exist_ok=True)
 
-            MODEL_PATH = "/app/models/MDX/UVR_MDXNET_Main.onnx"
+            MODEL_PATH = "/app/models/MDX/UVR-MDXNET-Inst-HQ-3.onnx"
 
             if not os.path.exists(MODEL_PATH):
                 raise RuntimeError("Modelo UVR no encontrado en /app/models/MDX/")
