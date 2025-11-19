@@ -40,18 +40,18 @@ class MDXSeparator:
         audio, sr = sf.read(audio_path)
 
         # Si es estéreo, convertir a mono
-        if len(audio.shape) > 1:
-            audio = np.mean(audio, axis=1)
+        if len(audio.shape) == 1:
+            # Estaba en mono → duplicamos en dos canales
+            audio = np.stack([audio, audio], axis=0)  # (2, samples)
+        else:
+            # Estaba en estéreo → tomamos exactamente 2 canales
+            audio = audio.T   # (channels, samples)
+            audio = audio[:2]
 
         audio = audio.astype(np.float32)
-
-        # Convertir a 4D: (batch=1, channels=1, samples, 1)
-        audio = np.expand_dims(audio, axis=0)   # (1, samples)
-        audio = np.expand_dims(audio, axis=0)   # (1, 1, samples)
-        audio = np.expand_dims(audio, axis=-1)  # (1, 1, samples, 1)
+        audio = audio[np.newaxis, :, :, np.newaxis]
 
         output = self.session.run(None, {"input": audio})[0]
-
 
         # Guardar resultado
         sf.write(out_path, output.squeeze(), sr)
