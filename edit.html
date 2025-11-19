@@ -175,199 +175,184 @@ function logout() {
 
 <script>
 
+//EDITOR
+// =============== EDITOR DE PARTITURAS ===============
+// Requiere: OSMD cargado en la página
+// Requiere: elementos #osmd-container, #save-btn, #titulo-doc
+
+let osmd = null;
+let currentXml = null;
+let usuario = null;
+let nombreOriginal = null;
+let part = null;
+
+// ================== CARGA INICIAL ==================
+
 document.addEventListener("DOMContentLoaded", async () => {
-
     const params = new URLSearchParams(window.location.search);
-    const usuario = params.get("usuario");
-    const nombre = params.get("nombre");
-    let xml = null;
+    usuario = params.get("usuario");
+    nombreOriginal = params.get("nombre");
 
-    const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
-        drawTitle: false,
-        drawComposer: false,
-        drawCredits: false
-    });
-
-    // Cargar si existe
-    if (usuario && nombre) {
-        const r = await fetch(`/api/editor/load/${usuario}/${nombre}`);
-        const data = await r.json();
-        xml = data.xml;
-
-        await osmd.load(xml);
-        osmd.render();
-
-        document.getElementById("titulo-doc").value = nombre;
+    if (!usuario || !nombreOriginal) {
+        alert("Faltan parámetros");
+        return;
     }
 
-    // Si no existe → partitura vacía
-    if (!xml) {
-        xml = `
-        <?xml version="1.0" encoding="UTF-8"?>
-        <score-partwise version="3.1">
-            <part-list>
-                <score-part id="P1"><part-name>Music</part-name></score-part>
-            </part-list>
-            <part id="P1">
-                <measure number="1">
-                    <attributes>
-                        <divisions>1</divisions>
-                        <key><fifths>0</fifths></key>
-                        <time><beats>4</beats><beat-type>4</beat-type></time>
-                        <clef><sign>G</sign><line>2</line></clef>
-                    </attributes>
-                </measure>
-            </part>
-        </score-partwise>`;
-
-        await osmd.load(xml);
-        osmd.render();
-    }
-
-    // -------- SAVE ----------
-    document.querySelector(".save-btn").addEventListener("click", async () => {
-
-        const svg = document.querySelector("#osmd-container svg");
-        if (!svg) return alert("No hay nada para guardar");
-
-        const xmlSerializer = new XMLSerializer();
-        const svgString = xmlSerializer.serializeToString(svg);
-
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        const img = new Image();
-        img.src = URL.createObjectURL(new Blob([svgString], {type:"image/svg+xml"}));
-
-        img.onload = async () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-
-            const pngBase64 = canvas.toDataURL("image/png");
-
-            const nombreNuevo = document.getElementById("titulo-doc").value;
-
-            const res = await fetch("/api/editor/save", {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({
-                    usuario,
-                    nombre: nombreNuevo,
-                    xml,
-                    png: pngBase64
-                })
-            });
-
-            const out = await res.json();
-            if (out.success) alert("Partitura guardada.");
-        };
+    // Preparar OSMD
+    osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
+        drawTitle: true,
+        drawComposer: false
     });
+
+    // Cargar XML
+    const r = await fetch(`/api/editor/load/${usuario}/${nombreOriginal}`);
+    const data = await r.json();
+    currentXml = data.xml;
+
+    document.getElementById("titulo-doc").value = nombreOriginal;
+
+    await osmd.load(currentXml);
+    osmd.render();
+
+    part = osmd.sheet.Instruments[0].getVoices()[0].Notes;
+
+    setupEditorEvents();
 });
 
-//la estructura HTML tiene que incluir ESTOS ELEMENTOS con estos IDs/clases, porque el JS depende de esto.
-// 1. Contenedor donde OSMD dibuja la partitura
-// <div id="osmd-container"></div>
-// OSMD renderiza el pentagrama acá.
 
-// 2. BARRA IZQUIERDA DE FIGURAS MUSICALES
-// cada figura debe ser un botón así
-//<div class="note-btn" data-figura="whole"></div>
-//<div class="note-btn" data-figura="half"></div>
-//<div class="note-btn" data-figura="quarter"></div>
-//<div class="note-btn" data-figura="eighth"></div>
-//<div class="note-btn" data-figura="sixteenth"></div>
-//PERO deben tener:
-// class="note-btn"
-// data-figura="whole|half|quarter|eighth|sixteenth"
+// ====================================================
+//           AÑADIR NOTAS AL XML
+// ====================================================
 
-//3. PANEL DERECHO: Dinámica, Armadura, Compás
-//Cada dinámica debe ser un botón así:
-// <div class="din-btn" data-din="pp">pp</div>
-// <div class="din-btn" data-din="p">p</div>
-// <div class="din-btn" data-din="mf">mf</div>
-// <div class="din-btn" data-din="f">f</div>
-// <div class="din-btn" data-din="ff">ff</div>
-//class="din-btn"
-// data-din="pp|p|mf|f|ff"
+function addNoteToMeasure(pitch = "C4", duration = "quarter") {
+    const xml = new DOMParser().parseFromString(currentXml, "text/xml");
 
-// Armadura
-//<select id="armadura-select">
-//     <option value="0">0 (C)</option>
-//     <option value="1">1# (G)</option>
-//     <option value="2">2# (D)</option>
-//     <option value="-1">1♭ (F)</option>
-//     <option value="-2">2♭ (B♭)</option>
-// </select>
-// ID obligatorio: armadura-select
+    // Obtener el primer <measure>
+    const measure = xml.getElementsByTagName("measure")[0];
 
-// Índice de Compás
-// <select id="compas-select">
-//     <option value="4/4">4/4</option>
-//     <option value="3/4">3/4</option>
-//     <option value="2/4">2/4</option>
-//     <option value="6/8">6/8</option>
-// </select>
-//ID obligatorio: compas-select
+    // Crear <note>
+    const note = xml.createElement("note");
 
-//4. NOMBRE DEL DOCUMENTO
-// <input id="titulo-doc" placeholder="Nombre del documento...">
-// ID obligatorio: titulo-doc
+    const pitchEl = xml.createElement("pitch");
+    const stepEl = xml.createElement("step");
+    const octaveEl = xml.createElement("octave");
 
-//5. SELECTOR DE INSTRUMENTO
-// <select id="instrumento-select">
-//     <option value="piano">Piano</option>
-//     <option value="violin">Violín</option>
-//     <option value="guitarra">Guitarra</option>
-// </select>
-// ID obligatorio: instrumento-select
+    stepEl.textContent = pitch[0];       // C, D, E...
+    octaveEl.textContent = pitch[1];     // 4, 5...
 
-//6. BOTÓN DE GUARDADO
-// <button id="save-btn">save</button>
-// ID obligatorio: save-btn
+    pitchEl.appendChild(stepEl);
+    pitchEl.appendChild(octaveEl);
 
-// ESTRUCTURA MÍNIMA
-//<div id="editor">
+    const durationEl = xml.createElement("duration");
+    durationEl.textContent = 1; // Simple
 
-//    <!-- Panel izquierdo (notas / figuras) -->
-//    <div id="left-panel">
-//        <div class="note-btn" data-figura="whole"></div>
-//        <div class="note-btn" data-figura="half"></div>
-//        <div class="note-btn" data-figura="quarter"></div>
-//        <div class="note-btn" data-figura="eighth"></div>
-//        <div class="note-btn" data-figura="sixteenth"></div>
-//    </div>
+    const typeEl = xml.createElement("type");
+    typeEl.textContent = duration;
 
-//    <!-- Panel central (nombre + pentagrama + save) -->
-//    <div id="center-panel">
-//        <input id="titulo-doc" placeholder="Nombre del documento...">
-//        <div id="osmd-container"></div>
-//        <button id="save-btn">save</button>
-//    </div>
+    note.appendChild(pitchEl);
+    note.appendChild(durationEl);
+    note.appendChild(typeEl);
 
-//    <!-- Panel derecho (dinámicas + armadura + compás + instrumento) -->
-//    <div id="right-panel">
+    measure.appendChild(note);
 
-//        <div id="dinamicas">
-//            <div class="din-btn" data-din="pp">pp</div>
-//            <div class="din-btn" data-din="p">p</div>
-//            <div class="din-btn" data-din="mf">mf</div>
-//            <div class="din-btn" data-din="f">f</div>
-//            <div class="din-btn" data-din="ff">ff</div>
-//        </div>
+    // Serializar XML
+    currentXml = new XMLSerializer().serializeToString(xml);
 
-//        <select id="armadura-select"></select>
+    // Re-render
+    osmd.load(currentXml).then(() => osmd.render());
+}
 
-//        <select id="compas-select"></select>
 
-//       <select id="instrumento-select">
-//            <option value="piano">Piano</option>
-//            <option value="violin">Violín</option>
-//            <option value="guitarra">Guitarra</option>
-//        </select>
+// ====================================================
+//               BORRAR NOTA HACIENDO CLICK
+// ====================================================
 
-//    </div>
-//</div>
+function setupEditorEvents() {
+    // Click sobre nota → borrar
+    document.getElementById("osmd-container").addEventListener("click", (ev) => {
+        if (!osmd.Drawer) return;
+
+        const svg = document.querySelector("#osmd-container svg");
+        const target = ev.target;
+
+        // OSMD etiqueta las notas con "vf-notehead"
+        if (target.classList.contains("vf-notehead")) {
+            deleteNoteFromXml();
+        }
+    });
+
+    // Click en botones de figura
+    document.querySelectorAll(".note-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const figura = btn.dataset.figure;
+            addNoteToMeasure("C4", figura);
+        });
+    });
+
+    // Guardar
+    document.getElementById("save-btn").addEventListener("click", saveScore);
+}
+
+
+// ====================================================
+//             BORRAR NOTA DEL XML (simplificado)
+// ====================================================
+
+function deleteNoteFromXml() {
+    const xml = new DOMParser().parseFromString(currentXml, "text/xml");
+    const notes = xml.getElementsByTagName("note");
+
+    if (notes.length > 0) {
+        notes[notes.length - 1].remove(); // borrar última simplificado
+    }
+
+    currentXml = new XMLSerializer().serializeToString(xml);
+    osmd.load(currentXml).then(() => osmd.render());
+}
+
+
+// ====================================================
+//                  GUARDAR PARTITURA
+// ====================================================
+
+async function saveScore() {
+    const svg = document.querySelector("#osmd-container svg");
+    if (!svg) return alert("Nada que guardar");
+
+    const xmlSerializer = new XMLSerializer();
+    const svgString = xmlSerializer.serializeToString(svg);
+
+    // Convertir a PNG
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const img = new Image();
+    img.src = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml" }));
+
+    img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const pngBase64 = canvas.toDataURL("image/png");
+
+        const nombreNuevo = document.getElementById("titulo-doc").value;
+
+        const res = await fetch("/api/editor/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                usuario,
+                nombre: nombreNuevo,
+                xml: currentXml,
+                png: pngBase64
+            })
+        });
+
+        const out = await res.json();
+        if (out.success) alert("Partitura guardada.");
+    };
+}
 
 
 </script>
