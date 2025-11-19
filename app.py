@@ -44,10 +44,14 @@ class MDXSeparator:
             audio = np.mean(audio, axis=1)
 
         audio = audio.astype(np.float32)
-        audio = np.expand_dims(audio, axis=0)  # shape: (1, samples)
 
-        # Ejecutar inferencia
+        # Convertir a 4D: (batch=1, channels=1, samples, 1)
+        audio = np.expand_dims(audio, axis=0)   # (1, samples)
+        audio = np.expand_dims(audio, axis=0)   # (1, 1, samples)
+        audio = np.expand_dims(audio, axis=-1)  # (1, 1, samples, 1)
+
         output = self.session.run(None, {"input": audio})[0]
+
 
         # Guardar resultado
         sf.write(out_path, output.squeeze(), sr)
