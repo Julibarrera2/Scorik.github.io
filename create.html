@@ -290,6 +290,154 @@ async function logout() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = 'index.html';
 }
+
+
+
+
+
+//CREADOR 
+function creatorApp() {
+    return {
+        sidebarOpen: false,
+
+        panel: {
+            notas: false,
+            silencios: false,
+            claves: false,
+            dinamica: false,
+            armadura: false,
+            compas: false
+        },
+
+        dragging: null,
+        xmlDoc: null,
+        osmd: null,
+
+        async init() {
+            // Cargar XML vacío
+            const blankXml = `
+            <?xml version="1.0" encoding="UTF-8"?>
+            <score-partwise version="3.1">
+                <part-list>
+                    <score-part id="P1"><part-name>Music</part-name></score-part>
+                </part-list>
+                <part id="P1">
+                    <measure number="1">
+                        <attributes>
+                            <divisions>1</divisions>
+                            <key><fifths>0</fifths></key>
+                            <time><beats>4</beats><beat-type>4</beat-type></time>
+                            <clef><sign>G</sign><line>2</line></clef>
+                        </attributes>
+                    </measure>
+                </part>
+            </score-partwise>`;
+
+            const parser = new DOMParser();
+            this.xmlDoc = parser.parseFromString(blankXml, "application/xml");
+
+            this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("staffCanvas", {
+                drawTitle: false,
+                drawComposer: false,
+                drawCredits: false
+            });
+
+            await this.osmd.load(blankXml);
+            this.osmd.render();
+        },
+
+        togglePanel(name) {
+            this.panel[name] = !this.panel[name];
+        },
+
+        startDrag(event) {
+            const img = event.target;
+            this.dragging = {
+                img,
+                offsetX: event.offsetX,
+                offsetY: event.offsetY
+            };
+
+            document.addEventListener("mousemove", this.dragMove);
+            document.addEventListener("mouseup", this.dragStop);
+        },
+
+        dragMove: (event) => {
+            if (!creatorAppInstance.dragging) return;
+        },
+
+        dragStop: async (event) => {
+            document.removeEventListener("mousemove", creatorAppInstance.dragMove);
+            document.removeEventListener("mouseup", creatorAppInstance.dragStop);
+
+            const x = event.clientX;
+            const y = event.clientY;
+
+            // Convert drop position → Nota en MusicXML
+            creatorAppInstance.addNoteToXml("C", 4, "quarter");
+
+            creatorAppInstance.dragging = null;
+
+            // Volver a renderizar
+            const xmlString = new XMLSerializer().serializeToString(creatorAppInstance.xmlDoc);
+            await creatorAppInstance.osmd.load(xmlString);
+            creatorAppInstance.osmd.render();
+        },
+
+        addNoteToXml(step, octave, type) {
+            const note = this.xmlDoc.createElement("note");
+
+            const pitch = this.xmlDoc.createElement("pitch");
+            pitch.innerHTML = `<step>${step}</step><octave>${octave}</octave>`;
+            note.appendChild(pitch);
+
+            const duration = this.xmlDoc.createElement("duration");
+            duration.textContent = "1";
+            note.appendChild(duration);
+
+            const typeEl = this.xmlDoc.createElement("type");
+            typeEl.textContent = type;
+            note.appendChild(typeEl);
+
+            const measure = this.xmlDoc.querySelector("measure");
+            measure.appendChild(note);
+        },
+
+        async saveCanvas() {
+            const xml = new XMLSerializer().serializeToString(this.xmlDoc);
+
+            const svg = document.querySelector("#staffCanvas svg");
+            const serializer = new XMLSerializer();
+            const svgString = serializer.serializeToString(svg);
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const img = new Image();
+            img.src = URL.createObjectURL(new Blob([svgString], {type:"image/svg+xml"}));
+
+            img.onload = async () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                const png = canvas.toDataURL("image/png");
+
+                const nombre = prompt("Nombre de la partitura:");
+                const usuario = JSON.parse(localStorage.getItem("currentUser")).email;
+
+                await fetch("/api/editor/save", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ usuario, nombre, xml, png })
+                });
+
+                window.location.href = "library.html";
+            };
+        }
+    };
+}
+
+const creatorAppInstance = creatorApp();
+
 </script>
 
     <!-- HTML2CANVAS for saving -->
