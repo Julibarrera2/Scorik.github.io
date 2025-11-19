@@ -25,30 +25,28 @@ RUN printf '%s\n' \
     && chmod +x /usr/local/bin/mscore3-cli
 
 WORKDIR /app
-# Instalar gcloud dentro del contenedor
+
+# ====== INSTALAR GCLOUD DENTRO DEL CONTENEDOR ======
 RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
     curl -sSL https://sdk.cloud.google.com | bash
 ENV PATH="/root/google-cloud-sdk/bin:${PATH}"
 
+# ====== DEPENDENCIAS PYTHON ======
 COPY requirements.txt .
-
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ====== COPIAR MODELO DESDE GCS ======
-RUN mkdir -p /app/models/HT_Japanese
-RUN gcloud storage cp gs://scorik-models/models/HT_Japanese/HP2_all_vocals.pth /app/models/HT_Japanese/HP2_all_vocals.pth || \
-    echo "WARNING: No se pudo copiar modelo desde GCS"
+# ====== COPIAR MODELO MDX DESDE GCS ======
+RUN mkdir -p /app/models/MDX
 
-# ====== UVR MODELO ======
-
-ENV UVR_MODEL_PATH="gs://scorik-models/models/HT_Japanese/HP2_all_vocals.pth"
+RUN gcloud storage cp gs://scorik-models/models/MDX/UVR_MDXNET_Main.onnx \
+    /app/models/MDX/UVR_MDXNET_Main.onnx \
+    || echo "WARNING: No se pudo copiar el modelo desde GCS"
 
 # ====== COPIAR CÓDIGO ======
 COPY . .
 
 ENV PORT=8080
-
 EXPOSE 8080
 
 CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app --timeout 0"]

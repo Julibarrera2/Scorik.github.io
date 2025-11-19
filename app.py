@@ -13,53 +13,45 @@ from werkzeug.utils import secure_filename
 from music21 import environment
 import soundfile as sf
 import numpy as np
-import torch
-from uvr.models import MDXNet
+import onnxruntime as ort
+
+
 
 us = environment.UserSettings()
 us['musicxmlPath'] = '/usr/local/bin/mscore3-cli'
 us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
 
-class SimpleUVRModel:
+class MDXSeparator:
     """
-    Carga un modelo MDX simplificado y ejecuta separación.
-    Esta clase está pensada para integración rápida en Cloud Run.
+    Carga un modelo ONNX MDX y ejecuta separación.
+    Este modelo es compatible con CPU y Cloud Run.
     """
     def __init__(self, model_path):
-        print(f"Cargando modelo UVR: {model_path}")
-        self.model = torch.load(model_path, map_location="cpu")
+        print(f"Cargando modelo MDX ONNX: {model_path}")
+        self.session = ort.InferenceSession(
+            model_path,
+            providers=["CPUExecutionProvider"]
+        )
 
     def separate(self, audio_path, out_path):
-        print(f"Procesando archivo con UVR: {audio_path}")
+        print(f"Procesando audio con modelo ONNX: {audio_path}")
 
-        # Leer WAV
+        # Leer archivo WAV
         audio, sr = sf.read(audio_path)
-        audio = torch.tensor(audio, dtype=torch.float32).unsqueeze(0)  # shape: (1, samples, channels)
 
-        # Inference simplificada
-        with torch.no_grad():
-            result = self.model(audio).squeeze(0).detach().cpu().numpy()
+        # Si es estéreo, convertir a mono
+        if len(audio.shape) > 1:
+            audio = np.mean(audio, axis=1)
 
-        # Guardar WAV procesado
-        sf.write(out_path, result, sr)
-        print(f"Archivo UVR generado: {out_path}")
+        audio = audio.astype(np.float32)
+        audio = np.expand_dims(audio, axis=0)  # shape: (1, samples)
 
+        # Ejecutar inferencia
+        output = self.session.run(None, {"input": audio})[0]
 
-def separate_with_uvr(model_path, input_path, out_dir):
-    """
-    Corre un modelo UVR MDXNet específico para un instrumento.
-    Devuelve el WAV separado.
-    """
-    os.makedirs(out_dir, exist_ok=True)
-
-    print(f"== UVR separando usando modelo: {model_path} ==")
-
-    model = SimpleUVRModel(model_path)
-
-    output = os.path.join(out_dir, "instrument.wav")
-    model.separate(input_path, output)
-
-    return output
+        # Guardar resultado
+        sf.write(out_path, output.squeeze(), sr)
+        print(f"Archivo generado: {out_path}")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -260,39 +252,28 @@ def upload_file():
         set_progress(usuario, "Separando instrumentos con UVR...")
 
         def separate_with_uvr(input_path, out_dir):
+            """
+            Separación usando modelo ONNX MDX.
+            """
             os.makedirs(out_dir, exist_ok=True)
 
-            MODEL_PATH = "/app/models/uvr_insthq.pth"
-            
+            MODEL_PATH = "/app/models/MDX/UVR_MDXNET_Main.onnx"
+
             if not os.path.exists(MODEL_PATH):
-                raise RuntimeError("Modelo UVR no encontrado en /app/models/")
-            
-            model = torch.load(MODEL_PATH, map_location="cpu")
-            model.eval()
+                raise RuntimeError("Modelo UVR no encontrado en /app/models/MDX/")
 
-            # Cargar audio
-            audio, sr = sf.read(input_path)
-            if audio.ndim == 1:
-                audio = np.stack([audio, audio])  # forzar estéreo
+            separator = MDXSeparator(MODEL_PATH)
 
-            audio_tensor = torch.tensor(audio.T).float().unsqueeze(0) 
+            output_wav = os.path.join(out_dir, "instrument.wav")
+            separator.separate(input_path, output_wav)
 
-            with torch.no_grad():
-                separated = model(audio_tensor)
-
-            vocals_path = os.path.join(out_dir, "vocals.wav")
-            other_path  = os.path.join(out_dir, "other.wav")
-
-            sf.write(vocals_path, separated["Vocals"][0].T.cpu().numpy(), sr)
-            sf.write(other_path, separated["Instrumental"][0].T.cpu().numpy(), sr)
-
+            # Por ahora devolvemos un diccionario como antes
             return {
-                "vocals": vocals_path,
+                "other": output_wav,
+                "vocals": None,
                 "bass": None,
                 "drums": None,
-                "other": other_path
             }
-
         stems = separate_with_uvr(filepath, work_dir)
 
 
