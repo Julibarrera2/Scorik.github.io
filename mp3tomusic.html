@@ -191,8 +191,8 @@ async function getSessionEmail() {
 <div class="barra-menu">
     <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">☰</button>
     <div class="tab-buttons">
-        <button :class="{ 'active': activeTab === 'mp3' }" @click="activeTab = 'mp3'">mp3</button>
-        <button :class="{ 'active': activeTab === 'sheet' }" @click="activeTab = 'sheet'">music sheet</button>
+        <button :class="{ 'active': activeTab === 'mp3' }" @click="activeTab = 'mp3'">Mp3</button>
+        <button :class="{ 'active': activeTab === 'sheet' }" @click="activeTab = 'sheet'">Music sheet</button>
     </div>
 </div>
 
@@ -202,7 +202,7 @@ async function getSessionEmail() {
         <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
         <button class="menu-button" onclick="location.href='library.html'">Library</button>
         <button class="menu-button" onclick="location.href='create.html'">Create</button>
-        <button class="sidebar-btn" onclick="location.href='User.html'">User</button>
+        <button class="menu-button" onclick="location.href='User.html'">User</button>
     </div>
     <div class="bottom-icon" @click="sidebarOpen = false">
         <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
@@ -215,14 +215,14 @@ async function getSessionEmail() {
 <main>
     <!-- UPLOAD FORM -->
     <div x-show="activeTab === 'mp3'" x-transition>
-        <p>Please first chose what instrument do you play and then select you audio.</p>
+        <p>Please first choose what instrument do you play and then select your audio.</p>
         <select class="custom-btn" id="instrumentSelect">
             <option value="">Select instrument</option>
             <option value="piano">Piano</option>
             <option value="guitarra">Guitarra</option>
             <option value="violín">Violín</option>
         </select>
-        <label for="mp3-upload" class="custom-file-upload">Seleccionar MP3</label>
+        <label for="mp3-upload" class="custom-file-upload">Select MP3</label>
         <input id="mp3-upload" type="file" accept=".mp3" />
         <button id="convert-btn" class="custom-btn" @click="convertMp3()">Convert</button>
     </div>
@@ -230,8 +230,8 @@ async function getSessionEmail() {
     <div x-show="activeTab === 'sheet'" x-transition>
         <p>partitura</p>
         <img class="sheet-image" :src="lastImage" alt="Imagen partitura generada" style="max-width: 100%; background: #fafafa;">
-        <button class="custom-btn-part" onclick="location.href='edit.html'">edit</button>
-        <button class="custom-btn-part" @click="savePartitura()">save</button>
+        <button class="custom-btn-part" onclick="location.href='edit.html'">Edit</button>
+        <button class="custom-btn-part" @click="savePartitura()">Save</button>
     </div>
 
     <!-- Pantalla de carga oculta por defecto -->
