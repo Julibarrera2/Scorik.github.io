@@ -46,7 +46,7 @@ class MDXSeparator:
         audio = audio.astype(np.float32)
 
         # MDX-HQ1 requiere: (1, 1, samples, 1)
-        audio = audio[np.newaxis, np.newaxis, :, np.newaxis]
+        audio = audio[np.newaxis, np.newaxis, :]
 
         output = self.session.run(None, {"input": audio})[0]
 
