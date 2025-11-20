@@ -30,11 +30,12 @@ WORKDIR /app
 # COPIAR REQUIREMENTS
 COPY requirements.txt .
 
+# Instalar dependencias (incluye PyTorch CPU)
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ====== COPIAR MODELOS DESDE TU PC, NO DESDE GCS ======
-# IMPORTANTE: el ONNX debe existir localmente
+# ====== COPIAR MODELOS DESDE TU PC ======
+# Aquí copiás tu modelo .pth (UVR-MDX-LARGE.pth)
 COPY models /app/models
 
 # ====== COPIAR CÓDIGO ======

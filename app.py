@@ -13,7 +13,6 @@ from werkzeug.utils import secure_filename
 from music21 import environment
 import soundfile as sf
 import numpy as np
-import onnxruntime as ort
 
 
 
@@ -222,14 +221,19 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
+        # ================================================================
+        # 1) Datos del formulario
+        # ================================================================
         usuario = request.form.get('usuario', 'anon') or 'anon'
         instrumento = request.form.get('instrumento', 'piano')
 
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
         set_progress(usuario, "Convirtiendo el audio...")
-    
-        # Validación
+
+        # ================================================================
+        # 2) Validación del archivo
+        # ================================================================
         if 'file' not in request.files:
             return jsonify({"error": "No se envió archivo"}), 400
 
@@ -237,48 +241,48 @@ def upload_file():
         if not file or not file.filename:
             return jsonify({"error": "Archivo vacío"}), 400
 
-        # Carpeta de trabajo
+        # ================================================================
+        # 3) Carpeta temporal de trabajo
+        # ================================================================
         req_id = f"{usuario}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
         work_dir = os.path.join(STATIC_TEMP_FOLDER, req_id)
         os.makedirs(work_dir, exist_ok=True)
 
-        # Guardar archivo original
+        # Guardar MP3/WAV original
         filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        # ---------------------------------------------------------------------
-        # DEMUCS
-        # ---------------------------------------------------------------------
-        set_progress(usuario, "Separando instrumentos con UVR...")
+        # ================================================================
+        # 4) SEPARACIÓN DE INSTRUMENTOS (MDX .pth)
+        # ================================================================
+        set_progress(usuario, "Separando instrumentos (MDX)...")
 
-        def separate_with_uvr(input_path, out_dir):
-            """
-            Separación usando modelo ONNX MDX.
-            """
+        def separate_with_mdx(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
 
-            MODEL_PATH = "/app/models/MDX/UVR_MDXNET_Main.onnx"
-
+            MODEL_PATH = "/app/models/MDX/UVR-MDX-LARGE.pth"
             if not os.path.exists(MODEL_PATH):
-                raise RuntimeError("Modelo UVR no encontrado en /app/models/MDX/")
+                raise RuntimeError("⚠ Modelo MDX no encontrado en /app/models/MDX/")
 
             separator = MDXSeparator(MODEL_PATH)
 
             output_wav = os.path.join(out_dir, "instrument.wav")
             separator.separate(input_path, output_wav)
 
-            # Por ahora devolvemos un diccionario como antes
+            # Por compatibilidad con tu flujo:
             return {
                 "other": output_wav,
                 "vocals": None,
                 "bass": None,
                 "drums": None,
             }
-        stems = separate_with_uvr(filepath, work_dir)
 
+        stems = separate_with_mdx(filepath, work_dir)
 
-        # Elegir stem correcto según instrumento
+        # ================================================================
+        # 5) Seleccionar script según instrumento
+        # ================================================================
         if instrumento == "piano":
             stem_wav = stems["other"]
             script = "./ParteDeJuli/LeerArchivoYnota_piano.py"
@@ -294,9 +298,9 @@ def upload_file():
         else:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # ---------------------------------------------------------------------
-        # DETECCIÓN DE NOTAS (llamar script correcto)
-        # ---------------------------------------------------------------------
+        # ================================================================
+        # 6) DETECCIÓN DE NOTAS
+        # ================================================================
         set_progress(usuario, "Detectando notas...")
 
         subprocess.run(
@@ -306,9 +310,9 @@ def upload_file():
 
         set_progress(usuario, "Generando imagen...")
 
-        # ---------------------------------------------------------------------
-        # BUSCAR PNG + XML
-        # ---------------------------------------------------------------------
+        # ================================================================
+        # 7) Buscar PNG y XML generados
+        # ================================================================
         IMG_EXTS = ('.png', '.jpg', '.jpeg', '.svg')
         XML_EXTS = ('.xml', '.musicxml')
 
@@ -321,22 +325,25 @@ def upload_file():
                         img = os.path.join(root, f)
                     if not xml and fl.endswith(XML_EXTS):
                         xml = os.path.join(root, f)
+
                 if img and xml:
                     return img, xml
             return img, xml
 
         img_path, xml_path = None, None
 
-        for _ in range(16):
+        for _ in range(20):
             img_path, xml_path = find_outputs(work_dir)
             if img_path:
                 break
-            time.sleep(0.5)
+            time.sleep(0.4)
 
         if not img_path:
-            return jsonify({"error": "No se generó imagen"}), 500
+            return jsonify({"error": "No se generó imagen de partitura"}), 500
 
-        # Generar URL pública
+        # ================================================================
+        # 8) Construir URLs públicas
+        # ================================================================
         def to_url(p):
             rel = os.path.relpath(p, STATIC_TEMP_FOLDER).replace("\\", "/")
             return "/static/temp/" + rel
@@ -348,9 +355,12 @@ def upload_file():
             "xml": to_url(xml_path) if xml_path else None
         })
 
+    # ================================================================
+    # MANEJO DE ERRORES
+    # ================================================================
     except subprocess.CalledProcessError as e:
         print("SCRIPT ERROR:", e, file=sys.stderr)
-        return jsonify({"error": "Fallo el script", "output": str(e)}), 500
+        return jsonify({"error": "Fallo el script de detección de notas", "output": str(e)}), 500
 
     except Exception as e:
         app.logger.exception("Error en /upload")
