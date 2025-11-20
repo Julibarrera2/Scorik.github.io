@@ -75,22 +75,6 @@ async function requireSessionOrRedirect() {
         background-color: #e0d7f8;
     }
 
-    .logout-btn {
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        margin-bottom: 20px;
-        width: 100px;
-        cursor: pointer;
-        font-size: 16px;
-        text-align: center;
-    }
-    .logout-btn:hover {
-        background-color: #c82333;
-    }
-
     .bottom-area {
         margin-top: auto;
         display: flex;
@@ -248,7 +232,6 @@ async function requireSessionOrRedirect() {
         <button class="menu-button" onclick="location.href='User.html'">User</button>
     </div>
     <div class="bottom-area">
-        <button class="logout-btn" @click="logout">Logout</button>
         <div class="bottom-icon" @click="sidebarOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
                 <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

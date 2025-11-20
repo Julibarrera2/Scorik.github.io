@@ -56,16 +56,20 @@
 
         /* SIDEBAR ORIGINAL */
         .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 270px;
-            height: 100vh;
-            background: #6B2BD9;
-            transform: translateX(-100%);
-            transition: 0.25s;
-            z-index: 30;
-            padding-top: 90px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #814ac495; /* Morado claro */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 80px;
+        box-sizing: border-box;
         }
 
         .sidebar.open {
@@ -89,8 +93,8 @@
             position: fixed;
             top: 80px;
             left: 10px;
-            width: 70px;
-            background: #eaeaea;
+            width: 100px;
+            background: #b370ff;
             border-radius: 15px;
             padding: 10px;
         }
@@ -110,6 +114,11 @@
 
         .tool-btn img {
             width: 40px;
+        }
+
+        .btn-success {
+            background-color: #1fc3d2;
+            border-color: #6B2BD9;
         }
 
         /* RIGHT PANEL */
@@ -179,6 +188,13 @@
         <button class="sidebar-btn" onclick="location.href='library.html'">Library</button>
         <button class="sidebar-btn" onclick="location.href='create.html'">Create</button>
         <button class="sidebar-btn" onclick="location.href='User.html'">User</button>
+        <div class="bottom-area">
+            <div class="bottom-icon" @click="sidebarOpen = false">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
     </div>
 
     <!-- TOPBAR -->
@@ -209,6 +225,7 @@
         <div class="tool-btn" @click="togglePanel('compas')">
             <img src="compas/compas.png">
         </div>
+        <button class="btn btn-success w-100 mt-2" @click="creatorApp">Create</button>
     </div>
 
     <!-- RIGHT PANEL -->
@@ -223,7 +240,6 @@
                 <img src="notas/negra.png" @mousedown="startDrag($event)">
                 <img src="notas/corchea.png" @mousedown="startDrag($event)">
             </div>
-            <button class="btn btn-success w-100 mt-2" @click="creatorApp">Create</button>
         </div>
 
         <!-- SILENCIOS -->
