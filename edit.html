@@ -7,354 +7,354 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.6.9/build/opensheetmusicdisplay.min.js"></script>
-<style>
-    html, body {
-        height: 100%;
-        margin: 0;
-        background-color: white;
-        font-family: Arial, sans-serif;
-        overflow: hidden;
-    }
+<!DOCTYPE html> 
+<html lang="en" x-data="creatorApp()">
+<head>
+    <style>
+        body {
+            overflow-x: hidden;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #24d9d7 0%, #a3e4e5 40%, #a3e4e5 100%);
+        }
 
-    /* Sidebar */
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 250px;
-        height: 100%;
-        background-color: #6b2bd97c;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 100px;
-    }
-    .sidebar.open {
-        transform: translateX(0);
-    }
-    .menu-button {
-        background-color: #ffffff;
-        color: #8300f6cf;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 20px;
-        margin: 15px 0;
-        width: 150px;
-        cursor: pointer;
-    }
-    .menu-button:hover {
-        background-color: #e0d7f8;
-        transform: scale(1.05);
-    }
-    .bottom-icon {
-        position: absolute;
-        bottom: 20px;
-        cursor: pointer;
-    }
+        /* TOP BAR */
+        .topbar {
+            width: 100%;
+            height: 120px;
+            background: #24d9d7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            z-index: 20;
+        }
 
-    /* Top bar */
-    .top-bar {
-        height: 100px;
-        width: 100%;
-        background-color:#5AE9DD;
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        box-sizing: border-box;
-    }
+        .hamburger {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            width: 60px;
+            height: 60px;
+            background: #7b2cff;
+            border-radius: 20px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
-    .menu-btn {
-        background: none;
-        border: none;
-        font-size: 32px;
-        cursor: pointer;
-        color: #6b00d6;
-    }
+        .hamburger div {
+            width: 32px;
+            height: 5px;
+            background: #4a169b;
+            margin: 4px 0;
+            border-radius: 5px;
+        }
 
-    /* create content */
-    .create-container {
-        height: calc(100% - 70px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: start;
-        padding: 20px;
-    }
-    .create-title {
-        color: #6b00d6;
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
+        .title {
+            font-size: 38px;
+            color: #7b2cff;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
 
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        grid-template-rows: repeat(4, 40px);
-        gap: 5px;
-        background-color: #9B00F6;
-        padding: 10px;
-        border-radius: 20px;
-        width: 300px;
-        height: auto;
-        margin-bottom: 30px;
-    }
-    .grid div {
-        background-color: #c18cff;
-        border: 2px solid #6b00d6;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    .grid div.active {
-        background-color: #6b00d6;
-    }
-    .save-btn {
-        background-color: #5AE9DD;
-        color: #6b00d6;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 30px;
-        cursor: pointer;
-    }
-    .save-btn:hover {
-        background-color: #3cd8ca;
-    }
-</style>
+        .doc-input {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 32px;
+            border-radius: 999px;
+            border: none;
+            padding: 0 16px;
+            font-size: 13px;
+            background: #a23aff;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .doc-input::placeholder {
+            color: #f5e8ff;
+        }
+
+        /* SLIDE SIDEBAR (MENÚ) */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #814ac4;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 90px;
+            box-sizing: border-box;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-btn {
+            background: #ffffff;
+            color: #8300F6;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            width: 160px;
+            padding: 8px 20px;
+            margin: 15px auto;
+            display: block;
+        }
+
+        .bottom-area {
+            margin-top: auto;
+            margin-bottom: 40px;
+        }
+
+        .bottom-icon {
+            cursor: pointer;
+        }
+
+        /* LEFT TOOLBAR */
+        .tool-column {
+            position: fixed;
+            top: 120px;
+            left: 0;
+            width: 110px;
+            background: #a3e4e5;
+            padding: 20px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tool-btn {
+            width: 65px;
+            height: 65px;
+            background: #ffffff;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            border: 2px solid #d3f3f3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tool-btn img {
+            width: 42px;
+        }
+
+        /* RIGHT PANEL (SELECTORES) */
+        .right-panel {
+            position: fixed;
+            right: 0;
+            top: 120px;
+            width: 260px;
+            background: #a3e4e5;
+            padding: 20px 20px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            box-sizing: border-box;
+        }
+
+        .instrument-btn {
+            align-self: flex-end;
+            background: #7b2cff;
+            color: #ffffff;
+            border: none;
+            border-radius: 999px;
+            padding: 8px 22px;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: lowercase;
+        }
+
+        .selector-block {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 14px;
+            color: #3e1588;
+        }
+
+        .selector-label {
+            font-weight: 600;
+        }
+
+        .selector-btn {
+            width: 100%;
+            background: #7b2cff;
+            color: #ffffff;
+            border: none;
+            border-radius: 999px;
+            padding: 9px 16px;
+            text-align: left;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .selector-btn span.arrow {
+            font-size: 11px;
+        }
+
+        .save-btn {
+            margin-top: auto;
+            align-self: center;
+            width: 150px;
+            background: #f0c9ff;
+            color: #7b2cff;
+            border: none;
+            border-radius: 999px;
+            padding: 11px 0;
+            font-weight: 700;
+            text-transform: lowercase;
+            font-size: 16px;
+        }
+
+        /* MAIN SHEET AREA */
+        .canvas-area {
+            margin-top: 140px;
+            margin-left: 120px;
+            margin-right: 280px;
+        }
+
+        #staffCanvas {
+            width: 100%;
+            border-radius: 0;
+            background: #ffffff;
+        }
+
+        .draggable {
+            position: absolute;
+            width: 60px;
+            cursor: grab;
+        }
+    </style>
+
 </head>
 <body>
 
-<!-- Top bar -->
-<div class="top-bar">
-    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">≡</button>
-</div>
-
-<!-- Sidebar -->
-<div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-    <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-    <button class="menu-button" onclick="location.href='library.html'">Library</button>
-    <button class="menu-button" onclick="location.href='create.html'">Create</button>
-    <button class="menu-button" onclick="location.href='User.html'">User</button>
-    <div class="bottom-icon" @click="sidebarOpen = false">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+    <!-- SIDEBAR -->
+    <div class="sidebar" :class="{ 'open': sidebarOpen }">
+        <button class="sidebar-btn" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+        <button class="sidebar-btn" onclick="location.href='library.html'">Library</button>
+        <button class="sidebar-btn" onclick="location.href='create.html'">Create</button>
+        <button class="sidebar-btn" onclick="location.href='User.html'">User</button>
+        <div class="bottom-area">
+            <div class="bottom-icon" @click="sidebarOpen = false">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- Main content -->
-<div class="create-container">
-    <div class="create-title">Edit</div>
-    <img src="Img/partituras.png" alt="">
-    <div class="grid">
-        <template x-for="(active, index) in grid" :key="index">
-            <div :class="{ 'active': active }" @click="grid[index] = !grid[index]"></div>
-        </template>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="hamburger" @click="sidebarOpen=!sidebarOpen">
+            <div></div><div></div><div></div>
+        </div>
+        <div class="title">editor</div>
+        <input class="doc-input" type="text" placeholder="#n">
     </div>
-    <button class="save-btn">save</button>
-</div>
+
+    <!-- LEFT TOOLBAR -->
+    <div class="tool-column">
+        <div class="tool-btn">
+            <img src="notas/negra.png" alt="">
+        </div>
+        <div class="tool-btn">
+            <img src="notas/corchea.png" alt="">
+        </div>
+        <div class="tool-btn">
+            <img src="notas/clave.png" alt="">
+        </div>
+        <div class="tool-btn">
+            <img src="silencios/silencio_negra.png" alt="">
+        </div>
+        <div class="tool-btn">
+            <img src="otros/simbolo1.png" alt="">
+        </div>
+        <div class="tool-btn">
+            <img src="otros/simbolo2.png" alt="">
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+        <button class="instrument-btn">select instrument</button>
+
+        <div class="selector-block">
+            <span class="selector-label">Dinámica</span>
+            <button class="selector-btn">
+                Dinamica
+                <span class="arrow">▼</span>
+            </button>
+        </div>
+
+        <div class="selector-block">
+            <span class="selector-label">Clave</span>
+            <button class="selector-btn">
+                Clave
+                <span class="arrow">▼</span>
+            </button>
+        </div>
+
+        <div class="selector-block">
+            <span class="selector-label">Armadura</span>
+            <button class="selector-btn">
+                Armadura
+                <span class="arrow">▼</span>
+            </button>
+        </div>
+
+        <div class="selector-block">
+            <span class="selector-label">Ind. de Compás</span>
+            <button class="selector-btn">
+                Ind. de Compás
+                <span class="arrow">▼</span>
+            </button>
+        </div>
+
+        <button class="save-btn" @click="saveCanvas()">save</button>
+    </div>
+
+    <!-- MAIN SHEET -->
+    <div class="canvas-area">
+        <!-- Podés seguir usando canvas o poner directamente una imagen de la partitura -->
+        <canvas id="staffCanvas"></canvas>
+        <!-- Ejemplo con imagen:
+        <img src="partituras/ejemplo.png" alt="Partitura" style="width:100%; display:block;">
+        -->
+    </div>
 
 <script>
-function checkAuth() {
-    if (!localStorage.getItem('currentUser')) {
+async function checkAuth() {
+    try {
+        const r = await fetch('/api/session');
+        if (!r.ok) throw 0;
+        const d = await r.json();
+        if (!d.logged_in) throw 0;
+    } catch {
         window.location.href = 'login.html';
     }
 }
-function logout() {
-    localStorage.removeItem('currentUser');
+async function logout() {
+    await fetch('/api/logout', { method: 'POST' });
     window.location.href = 'index.html';
 }
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-
-//EDITOR
-// =============== EDITOR DE PARTITURAS ===============
-// Requiere: OSMD cargado en la página
-// Requiere: elementos #osmd-container, #save-btn, #titulo-doc
-
-let osmd = null;
-let currentXml = null;
-let usuario = null;
-let nombreOriginal = null;
-let part = null;
-
-// ================== CARGA INICIAL ==================
-
-document.addEventListener("DOMContentLoaded", async () => {
-    const params = new URLSearchParams(window.location.search);
-    usuario = params.get("usuario");
-    nombreOriginal = params.get("nombre");
-
-    if (!usuario || !nombreOriginal) {
-        alert("Faltan parámetros");
-        return;
-    }
-
-    // Preparar OSMD
-    osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
-        drawTitle: true,
-        drawComposer: false
-    });
-
-    // Cargar XML
-    const r = await fetch(`/api/editor/load/${usuario}/${nombreOriginal}`);
-    const data = await r.json();
-    currentXml = data.xml;
-
-    document.getElementById("titulo-doc").value = nombreOriginal;
-
-    await osmd.load(currentXml);
-    osmd.render();
-
-    part = osmd.sheet.Instruments[0].getVoices()[0].Notes;
-
-    setupEditorEvents();
-});
-
-
-// ====================================================
-//           AÑADIR NOTAS AL XML
-// ====================================================
-
-function addNoteToMeasure(pitch = "C4", duration = "quarter") {
-    const xml = new DOMParser().parseFromString(currentXml, "text/xml");
-
-    // Obtener el primer <measure>
-    const measure = xml.getElementsByTagName("measure")[0];
-
-    // Crear <note>
-    const note = xml.createElement("note");
-
-    const pitchEl = xml.createElement("pitch");
-    const stepEl = xml.createElement("step");
-    const octaveEl = xml.createElement("octave");
-
-    stepEl.textContent = pitch[0];       // C, D, E...
-    octaveEl.textContent = pitch[1];     // 4, 5...
-
-    pitchEl.appendChild(stepEl);
-    pitchEl.appendChild(octaveEl);
-
-    const durationEl = xml.createElement("duration");
-    durationEl.textContent = 1; // Simple
-
-    const typeEl = xml.createElement("type");
-    typeEl.textContent = duration;
-
-    note.appendChild(pitchEl);
-    note.appendChild(durationEl);
-    note.appendChild(typeEl);
-
-    measure.appendChild(note);
-
-    // Serializar XML
-    currentXml = new XMLSerializer().serializeToString(xml);
-
-    // Re-render
-    osmd.load(currentXml).then(() => osmd.render());
-}
-
-
-// ====================================================
-//               BORRAR NOTA HACIENDO CLICK
-// ====================================================
-
-function setupEditorEvents() {
-    // Click sobre nota → borrar
-    document.getElementById("osmd-container").addEventListener("click", (ev) => {
-        if (!osmd.Drawer) return;
-
-        const svg = document.querySelector("#osmd-container svg");
-        const target = ev.target;
-
-        // OSMD etiqueta las notas con "vf-notehead"
-        if (target.classList.contains("vf-notehead")) {
-            deleteNoteFromXml();
-        }
-    });
-
-    // Click en botones de figura
-    document.querySelectorAll(".note-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const figura = btn.dataset.figure;
-            addNoteToMeasure("C4", figura);
-        });
-    });
-
-    // Guardar
-    document.getElementById("save-btn").addEventListener("click", saveScore);
-}
-
-
-// ====================================================
-//             BORRAR NOTA DEL XML (simplificado)
-// ====================================================
-
-function deleteNoteFromXml() {
-    const xml = new DOMParser().parseFromString(currentXml, "text/xml");
-    const notes = xml.getElementsByTagName("note");
-
-    if (notes.length > 0) {
-        notes[notes.length - 1].remove(); // borrar última simplificado
-    }
-
-    currentXml = new XMLSerializer().serializeToString(xml);
-    osmd.load(currentXml).then(() => osmd.render());
-}
-
-
-// ====================================================
-//                  GUARDAR PARTITURA
-// ====================================================
-
-async function saveScore() {
-    const svg = document.querySelector("#osmd-container svg");
-    if (!svg) return alert("Nada que guardar");
-
-    const xmlSerializer = new XMLSerializer();
-    const svgString = xmlSerializer.serializeToString(svg);
-
-    // Convertir a PNG
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    const img = new Image();
-    img.src = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml" }));
-
-    img.onload = async () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        const pngBase64 = canvas.toDataURL("image/png");
-
-        const nombreNuevo = document.getElementById("titulo-doc").value;
-
-        const res = await fetch("/api/editor/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                usuario,
-                nombre: nombreNuevo,
-                xml: currentXml,
-                png: pngBase64
-            })
-        });
-
-        const out = await res.json();
-        if (out.success) alert("Partitura guardada.");
-    };
-}
-
-
-</script>
 </body>
 </html>
