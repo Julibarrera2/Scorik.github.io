@@ -22,35 +22,53 @@ us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
 
 class MDXSeparator:
     """
-    Carga un modelo ONNX MDX y ejecuta separación.
-    Este modelo es compatible con CPU y Cloud Run.
+    Separador MDX usando PyTorch (.pth)
+    Funciona en CPU y es compatible con Cloud Run.
     """
     def __init__(self, model_path):
-        print(f"Cargando modelo MDX ONNX: {model_path}")
-        self.session = ort.InferenceSession(
-            model_path,
-            providers=["CPUExecutionProvider"]
-        )
+        print(f"Cargando modelo MDX .pth: {model_path}")
+
+        import torch  
+
+        self.device = torch.device("cpu")
+
+        # Cargar el modelo MDX original
+        self.model = torch.load(model_path, map_location="cpu")
+
+        # Algunos modelos vienen envueltos en un objeto
+        if hasattr(self.model, "state_dict"):
+            sd = self.model.state_dict()
+            self.model.load_state_dict(sd)
+
+        self.model.eval()
+        print("Modelo MDX cargado correctamente en CPU.")
 
     def separate(self, audio_path, out_path):
-        print(f"Procesando audio con modelo ONNX: {audio_path}")
+        print(f"Procesando audio con MDX: {audio_path}")
 
-        # Leer archivo WAV
-        audio, sr = sf.read(audio_path)
+        import torch
+        import torchaudio
 
-        # Convertir SIEMPRE a mono
-        if audio.ndim > 1:
-            audio = np.mean(audio, axis=1)
+        # Cargar audio (formato: [channels, samples])
+        audio, sr = torchaudio.load(audio_path)
 
-        audio = audio.astype(np.float32)
+        # Convertir a mono
+        if audio.size(0) > 1:
+            audio = audio.mean(dim=0, keepdim=True)
 
-        # MDX-HQ1 requiere: (1, 1, samples, 1)
-        audio = audio[np.newaxis, np.newaxis, :]
+        # Pasar a forma [1, 1, samples]
+        audio = audio.unsqueeze(0)
 
-        output = self.session.run(None, {"input": audio})[0]
+        audio = audio.to(self.device)
 
-        # Guardar resultado
-        sf.write(out_path, output.squeeze(), sr)
+        # Ejecutar el modelo
+        with torch.no_grad():
+            output = self.model(audio)
+
+        # Sacar a CPU y salvar
+        out_audio = output.squeeze().cpu()
+        torchaudio.save(out_path, out_audio, sr)
+
         print(f"Archivo generado: {out_path}")
 
 app = Flask(__name__)
@@ -618,19 +636,6 @@ def paginas_html(pagina):
     if os.path.exists(filename):
         return send_from_directory('.', filename)
     return "Página no encontrada", 404
-
-
-# --- ESTA RUTA VA ÚLTIMA ---
-#@app.route('/<path:filename>')
-#def root_files(filename):
-#    if os.path.exists(filename):
-#        return send_from_directory('.', filename)
-#    # Si no existe en raíz, probar en subcarpetas:
-#    for folder in ['Img', 'static', 'uploads']:
-#        folder_path = os.path.join(folder, filename)
-#        if os.path.exists(folder_path):
-#            return send_from_directory(folder, filename)
-#    return "Archivo no encontrado", 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
