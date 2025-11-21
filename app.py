@@ -13,6 +13,8 @@ from werkzeug.utils import secure_filename
 from music21 import environment
 import soundfile as sf
 import numpy as np
+import torchaudio
+import torch
 
 
 
@@ -27,8 +29,6 @@ class MDXSeparator:
     """
     def __init__(self, model_path):
         print(f"Cargando modelo MDX .pth: {model_path}")
-
-        import torch  
 
         self.device = torch.device("cpu")
 
@@ -45,9 +45,6 @@ class MDXSeparator:
 
     def separate(self, audio_path, out_path):
         print(f"Procesando audio con MDX: {audio_path}")
-
-        import torch
-        import torchaudio
 
         # Cargar audio (formato: [channels, samples])
         audio, sr = torchaudio.load(audio_path)
@@ -236,6 +233,25 @@ def api_logout():
 def index():
     return send_from_directory('.', 'index.html')
 
+def ensure_mdx_model():
+    local_path = "/tmp/models/MDX/UVR-MDX-LARGE.pth"
+    bucket_name = os.environ.get("MODELS_BUCKET", "scorik-models")
+    blob_path = "models/MDX/UVR-MDX-LARGE.pth"
+
+    if os.path.exists(local_path):
+        return local_path
+
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+    print("⏳ Descargando modelo MDX desde GCS...")
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+    blob.download_to_filename(local_path)
+    print("✅ Modelo MDX descargado.")
+
+    return local_path
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
@@ -279,9 +295,7 @@ def upload_file():
         def separate_with_mdx(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
 
-            MODEL_PATH = "/app/models/MDX/UVR-MDX-LARGE.pth"
-            if not os.path.exists(MODEL_PATH):
-                raise RuntimeError("⚠ Modelo MDX no encontrado en /app/models/MDX/")
+            MODEL_PATH = ensure_mdx_model()
 
             separator = MDXSeparator(MODEL_PATH)
 
