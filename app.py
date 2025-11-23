@@ -49,20 +49,21 @@ class ONNXSeparator:
     def separate(self, audio_path, out_path):
         print(f"Procesando audio con ONNX: {audio_path}")
 
-        # Leer WAV (si es MP3 tu script ya lo convierte antes)
-        audio, sr = sf.read(audio_path)
+        # Leer audio (torchaudio es más estable que soundfile)
+
+        audio, sr = torchaudio.load(audio_path)  # audio: (channels, samples)
 
         # Convertir a mono
-        if audio.ndim > 1:
-            audio = np.mean(audio, axis=1)
+        if audio.size(0) > 1:
+            audio = audio.mean(dim=0, keepdim=True)
 
-        # Normalizar
-        audio = audio.astype(np.float32)
+        audio = audio.squeeze(0).numpy().astype(np.float32)
 
-        # ONNX espera forma [1, 1, samples]
-        audio_in = audio.reshape(1, 1, -1)
+        # 🔥 MODELO MDX-NET EN ONNX REQUIERE FORMA 4D
+        # (batch, channel, samples, 1)
+        audio_in = audio.reshape(1, 1, -1, 1)
 
-        # Ejecutar
+        # Ejecutar el ONNX
         pred = self.session.run(
             [self.output_name],
             {self.input_name: audio_in}
@@ -70,6 +71,7 @@ class ONNXSeparator:
 
         pred = pred.reshape(-1).astype(np.float32)
 
+        # Guardar salida
         sf.write(out_path, pred, sr)
         print(f"Archivo generado: {out_path}")
 
