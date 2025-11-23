@@ -15,6 +15,8 @@ import soundfile as sf
 import numpy as np
 import torchaudio
 import torch
+import onnxruntime as ort
+
 
 
 
@@ -22,51 +24,55 @@ us = environment.UserSettings()
 us['musicxmlPath'] = '/usr/local/bin/mscore3-cli'
 us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
 
-class MDXSeparator:
+import onnxruntime as ort
+import soundfile as sf
+import numpy as np
+
+class ONNXSeparator:
     """
-    Separador MDX usando PyTorch (.pth)
-    Funciona en CPU y es compatible con Cloud Run.
+    Separador MDX-Net usando ONNX (rápido, CPU friendly y soportado en Cloud Run).
     """
     def __init__(self, model_path):
-        print(f"Cargando modelo MDX .pth: {model_path}")
+        print(f"Cargando modelo ONNX: {model_path}")
 
-        self.device = torch.device("cpu")
+        self.model_path = model_path
+        self.session = ort.InferenceSession(
+            model_path,
+            providers=["CPUExecutionProvider"]
+        )
 
-        # Cargar el modelo MDX original
-        self.model = torch.load(model_path, map_location="cpu")
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
 
-        # Algunos modelos vienen envueltos en un objeto
-        if hasattr(self.model, "state_dict"):
-            sd = self.model.state_dict()
-            self.model.load_state_dict(sd)
-
-        self.model.eval()
-        print("Modelo MDX cargado correctamente en CPU.")
+        print("Modelo ONNX cargado correctamente.")
 
     def separate(self, audio_path, out_path):
-        print(f"Procesando audio con MDX: {audio_path}")
+        print(f"Procesando audio con ONNX: {audio_path}")
 
-        # Cargar audio (formato: [channels, samples])
-        audio, sr = torchaudio.load(audio_path)
+        # Leer WAV (si es MP3 tu script ya lo convierte antes)
+        audio, sr = sf.read(audio_path)
 
         # Convertir a mono
-        if audio.size(0) > 1:
-            audio = audio.mean(dim=0, keepdim=True)
+        if audio.ndim > 1:
+            audio = np.mean(audio, axis=1)
 
-        # Pasar a forma [1, 1, samples]
-        audio = audio.unsqueeze(0)
+        # Normalizar
+        audio = audio.astype(np.float32)
 
-        audio = audio.to(self.device)
+        # ONNX espera forma [1, 1, samples]
+        audio_in = audio.reshape(1, 1, -1)
 
-        # Ejecutar el modelo
-        with torch.no_grad():
-            output = self.model(audio)
+        # Ejecutar
+        pred = self.session.run(
+            [self.output_name],
+            {self.input_name: audio_in}
+        )[0]
 
-        # Sacar a CPU y salvar
-        out_audio = output.squeeze().cpu()
-        torchaudio.save(out_path, out_audio, sr)
+        pred = pred.reshape(-1).astype(np.float32)
 
+        sf.write(out_path, pred, sr)
         print(f"Archivo generado: {out_path}")
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -295,20 +301,20 @@ def upload_file():
         def separate_with_mdx(input_path, out_dir):
             os.makedirs(out_dir, exist_ok=True)
 
-            MODEL_PATH = ensure_mdx_model()
+            MODEL_PATH = "/app/models/UVR_MDXNET_Main.onnx"
 
-            separator = MDXSeparator(MODEL_PATH)
+            separator = ONNXSeparator(MODEL_PATH)
 
             output_wav = os.path.join(out_dir, "instrument.wav")
             separator.separate(input_path, output_wav)
 
-            # Por compatibilidad con tu flujo:
             return {
                 "other": output_wav,
                 "vocals": None,
                 "bass": None,
                 "drums": None,
             }
+
 
         stems = separate_with_mdx(filepath, work_dir)
 

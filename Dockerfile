@@ -37,6 +37,8 @@ RUN pip install --upgrade pip && \
 
 # ====== COPIAR CÓDIGO ======
 COPY . .
+COPY models /app/models
+
 
 ENV PORT=8080
 EXPOSE 8080
