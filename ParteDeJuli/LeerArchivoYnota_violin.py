@@ -49,13 +49,6 @@ def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-60)
 def load_and_preprocess_audio(filepath: str, sr: int = 22050) -> Tuple[np.ndarray, int, str]:
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Archivo no encontrado: {filepath}")
-    filename, ext = os.path.splitext(filepath)
-    if ext.lower() == ".mp3":
-        print("Convirtiendo el audio...")
-        audio_mp3 = AudioSegment.from_mp3(filepath)
-        filepath_wav = filename + ".wav"
-        audio_mp3.export(filepath_wav, format="wav")
-        filepath = filepath_wav
     sr = int(sr)
     y, sr = librosa.load(filepath, sr=sr)
     print("Audio cargado correctamente.")

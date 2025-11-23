@@ -24,9 +24,35 @@ us = environment.UserSettings()
 us['musicxmlPath'] = '/usr/local/bin/mscore3-cli'
 us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
 
-import onnxruntime as ort
-import soundfile as sf
-import numpy as np
+def convert_to_wav_if_needed(filepath):
+    """
+    Convierte un MP3 a WAV usando FFmpeg dentro de Cloud Run.
+    Retorna la ruta del WAV resultante.
+    """
+    base, ext = os.path.splitext(filepath)
+    ext = ext.lower()
+
+    # Si ya es WAV → no hacemos nada
+    if ext == ".wav":
+        return filepath
+
+    wav_path = base + ".wav"
+
+    # Ejecutar FFmpeg en Cloud Run
+    cmd = [
+        "ffmpeg",
+        "-y",           # overwrite
+        "-i", filepath,
+        "-ac", "1",     # mono
+        "-ar", "44100", # sample rate estándar
+        wav_path
+    ]
+
+    print("Convirtiendo a WAV:", filepath, "->", wav_path)
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+
+    return wav_path
+
 
 class ONNXSeparator:
     """
@@ -294,6 +320,9 @@ def upload_file():
         filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
+        # 🔥 Convertir MP3 → WAV antes de pasar a MDX
+        filepath = convert_to_wav_if_needed(filepath)
+
 
         # ================================================================
         # 4) SEPARACIÓN DE INSTRUMENTOS (MDX .pth)
