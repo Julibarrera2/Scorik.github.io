@@ -56,8 +56,9 @@ def convert_to_wav_if_needed(filepath):
 
 class ONNXSeparator:
     """
-    Separador MDX-Net usando ONNX (rápido, CPU friendly y soportado en Cloud Run).
+    Separador MDX-Net ONNX con CHUNKING CORRECTO (compatible con UVR).
     """
+
     def __init__(self, model_path):
         print(f"Cargando modelo ONNX: {model_path}")
 
@@ -70,14 +71,16 @@ class ONNXSeparator:
         self.input_name = self.session.get_inputs()[0].name
         self.output_name = self.session.get_outputs()[0].name
 
+        # MDX estándar usa 256 frames * 44100Hz = ~11.6 segundos por chunk
+        self.chunk_samples = 256 * 44100
+        self.overlap = self.chunk_samples // 2
+
         print("Modelo ONNX cargado correctamente.")
 
     def separate(self, audio_path, out_path):
         print(f"Procesando audio con ONNX: {audio_path}")
 
-        # Leer audio (torchaudio es más estable que soundfile)
-
-        audio, sr = torchaudio.load(audio_path)  # audio: (channels, samples)
+        audio, sr = torchaudio.load(audio_path)  # (channels, samples)
 
         # Convertir a mono
         if audio.size(0) > 1:
@@ -85,20 +88,45 @@ class ONNXSeparator:
 
         audio = audio.squeeze(0).numpy().astype(np.float32)
 
-        # 🔥 MODELO MDX-NET EN ONNX REQUIERE FORMA 4D
-        # (batch, channel, samples, 1)
-        audio_in = audio.reshape(1, 1, -1, 1)
+        # Normalizar audio
+        max_val = np.max(np.abs(audio)) + 1e-9
+        audio_norm = audio / max_val
 
-        # Ejecutar el ONNX
-        pred = self.session.run(
-            [self.output_name],
-            {self.input_name: audio_in}
-        )[0]
+        # Padding para que entre en los chunks
+        pad = self.chunk_samples - (len(audio_norm) % self.chunk_samples)
+        audio_norm = np.pad(audio_norm, (0, pad), mode='constant')
 
-        pred = pred.reshape(-1).astype(np.float32)
+        chunks = []
+        for start in range(0, len(audio_norm), self.overlap):
+            end = start + self.chunk_samples
+            if end > len(audio_norm):
+                break
 
-        # Guardar salida
-        sf.write(out_path, pred, sr)
+            chunk = audio_norm[start:end]
+
+            chunk_in = chunk.reshape(1, 1, -1, 1)
+
+            pred = self.session.run(
+                [self.output_name],
+                {self.input_name: chunk_in}
+            )[0]
+
+            pred = pred.reshape(-1)
+            chunks.append(pred)
+
+        # Overlap-Add reconstruction
+        output = np.zeros_like(audio_norm)
+        for i, chunk in enumerate(chunks):
+            start = i * self.overlap
+            output[start:start+len(chunk)] += chunk
+
+        # Remover padding
+        output = output[:len(audio)]
+
+        # Denormalizar
+        output = output * max_val
+
+        sf.write(out_path, output.astype(np.float32), sr)
         print(f"Archivo generado: {out_path}")
 
 
