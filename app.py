@@ -357,43 +357,47 @@ def upload_file():
         # ================================================================
         set_progress(usuario, "Separando instrumentos (MDX)...")
 
-        def separate_with_mdx(input_path, out_dir):
+        def separate_with_mdx(input_path, out_dir, instrumento):
             os.makedirs(out_dir, exist_ok=True)
 
-            MODEL_PATH = "/app/models/UVR_MDXNET_Main.onnx"
-
-            separator = ONNXSeparator(MODEL_PATH)
-
-            output_wav = os.path.join(out_dir, "instrument.wav")
-            separator.separate(input_path, output_wav)
-
-            return {
-                "other": output_wav,
-                "vocals": None,
-                "bass": None,
-                "drums": None,
+            # ===== SELECCIÓN DE MODELO SEGÚN INSTRUMENTO =====
+            MODEL_MAP = {
+                "piano":   "/app/models/UVR-MDX-NET-Inst_1.onnx",
+                "guitarra": "/app/models/UVR-MDX-NET-Inst_HQ_2.onnx",
+                "violin":  "/app/models/UVR_MDXNET_3_9662.onnx",
             }
 
+            model_path = MODEL_MAP.get(instrumento)
+            if not model_path or not os.path.exists(model_path):
+                raise Exception(f"Modelo no encontrado para instrumento: {instrumento}")
 
-        stems = separate_with_mdx(filepath, work_dir)
+            print(f"🔍 Usando modelo ONNX: {model_path}")
+
+            separator = ONNXSeparator(model_path)
+
+            output_wav = os.path.join(out_dir, f"{instrumento}_stem.wav")
+            separator.separate(input_path, output_wav)
+
+            return output_wav
+
+
+        stem_wav = separate_with_mdx(filepath, work_dir, instrumento)
 
         # ================================================================
         # 5) Seleccionar script según instrumento
         # ================================================================
         if instrumento == "piano":
-            stem_wav = stems["other"]
             script = "./ParteDeJuli/LeerArchivoYnota_piano.py"
 
         elif instrumento == "guitarra":
-            stem_wav = stems["other"]
             script = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
 
         elif instrumento == "violin":
-            stem_wav = stems["other"]
             script = "./ParteDeJuli/LeerArchivoYnota_violin.py"
 
         else:
             return jsonify({"error": "Instrumento inválido"}), 400
+
 
         # ================================================================
         # 6) DETECCIÓN DE NOTAS
