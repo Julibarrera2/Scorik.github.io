@@ -16,9 +16,6 @@ import numpy as np
 import torchaudio
 import torch
 import onnxruntime as ort
-import audio_separator
-from audio_separator import Separator
-
 
 
 us = environment.UserSettings()
@@ -53,6 +50,79 @@ def convert_to_wav_if_needed(filepath):
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
     return wav_path
+
+##############################
+#  🔥  ONNX SEPARATOR
+##############################
+class ONNXSeparator:
+    """
+    Separador MDX-NET ONNX con chunking correcto (compatible con UVR).
+    """
+
+    def __init__(self, model_path):
+        print(f"Cargando modelo ONNX: {model_path}")
+        self.session = ort.InferenceSession(
+            model_path,
+            providers=["CPUExecutionProvider"]
+        )
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+
+        # chunking estándar MDX (256 frames)
+        self.chunk_samples = 256 * 44100
+        self.overlap = self.chunk_samples // 2
+
+        print("Modelo ONNX cargado correctamente.")
+
+    def separate(self, audio_path, out_path):
+        print(f"Procesando audio con ONNX: {audio_path}")
+
+        audio, sr = torchaudio.load(audio_path)
+
+        # Pasar a mono
+        if audio.size(0) > 1:
+            audio = audio.mean(dim=0, keepdim=True)
+
+        audio = audio.squeeze(0).numpy().astype(np.float32)
+
+        # Normalización
+        max_val = np.max(np.abs(audio)) + 1e-9
+        audio_norm = audio / max_val
+
+        # Padding
+        pad = self.chunk_samples - (len(audio_norm) % self.chunk_samples)
+        audio_norm = np.pad(audio_norm, (0, pad))
+
+        chunks = []
+        for start in range(0, len(audio_norm), self.overlap):
+            end = start + self.chunk_samples
+            if end > len(audio_norm):
+                break
+
+            chunk = audio_norm[start:end]
+            chunk_in = chunk.reshape(1, 1, -1, 1)
+
+            pred = self.session.run(
+                [self.output_name],
+                {self.input_name: chunk_in}
+            )[0]
+
+            chunks.append(pred.reshape(-1))
+
+        # reconstrucción overlap-add
+        output = np.zeros_like(audio_norm)
+        for i, chunk in enumerate(chunks):
+            start = i * self.overlap
+            output[start:start + len(chunk)] += chunk
+
+        # quitar padding
+        output = output[:len(audio)]
+
+        # desnormalizar
+        output = output * max_val
+
+        sf.write(out_path, output.astype(np.float32), sr)
+        print(f"Archivo separado: {out_path}")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -294,28 +364,10 @@ def upload_file():
         modelo_path = os.path.join("models", modelo_onnx)
 
         def separate_with_mdx(input_path, out_dir, modelo_path):
-            sep = Separator(
-                model_filename=modelo_path,
-                model_file_dir="models",
-                output_dir=out_dir,
-                output_format="wav",
-                mdx_batch_size=1,
-            )
-            sep.load_model()
-            files = sep.separate(input_path)
-
-            # audio-separator genera algo tipo:
-            # out_dir/stem_vocals.wav
-            # out_dir/stem_other.wav
-            # out_dir/stem_bass.wav
-            # etc
-            # nosotros queremos siempre OTHER
-            for f in files:
-                if "other" in f.lower() or "instrumental" in f.lower():
-                    return f
-
-            # fallback si no encuentra
-            return files[0]
+            sep = ONNXSeparator(modelo_path)
+            output = os.path.join(out_dir, "other.wav")
+            sep.separate(input_path, output)
+            return output
 
         stem_wav = separate_with_mdx(filepath, work_dir, modelo_path)
 
