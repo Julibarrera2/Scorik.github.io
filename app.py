@@ -16,7 +16,8 @@ import numpy as np
 import torchaudio
 import torch
 import onnxruntime as ort
-
+import audio_separator
+from audio_separator import Separator
 
 
 
@@ -52,83 +53,6 @@ def convert_to_wav_if_needed(filepath):
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
     return wav_path
-
-
-class ONNXSeparator:
-    """
-    Separador MDX-Net ONNX con CHUNKING CORRECTO (compatible con UVR).
-    """
-
-    def __init__(self, model_path):
-        print(f"Cargando modelo ONNX: {model_path}")
-
-        self.model_path = model_path
-        self.session = ort.InferenceSession(
-            model_path,
-            providers=["CPUExecutionProvider"]
-        )
-
-        self.input_name = self.session.get_inputs()[0].name
-        self.output_name = self.session.get_outputs()[0].name
-
-        # MDX estándar usa 256 frames * 44100Hz = ~11.6 segundos por chunk
-        self.chunk_samples = 256 * 44100
-        self.overlap = self.chunk_samples // 2
-
-        print("Modelo ONNX cargado correctamente.")
-
-    def separate(self, audio_path, out_path):
-        print(f"Procesando audio con ONNX: {audio_path}")
-
-        audio, sr = torchaudio.load(audio_path)  # (channels, samples)
-
-        # Convertir a mono
-        if audio.size(0) > 1:
-            audio = audio.mean(dim=0, keepdim=True)
-
-        audio = audio.squeeze(0).numpy().astype(np.float32)
-
-        # Normalizar audio
-        max_val = np.max(np.abs(audio)) + 1e-9
-        audio_norm = audio / max_val
-
-        # Padding para que entre en los chunks
-        pad = self.chunk_samples - (len(audio_norm) % self.chunk_samples)
-        audio_norm = np.pad(audio_norm, (0, pad), mode='constant')
-
-        chunks = []
-        for start in range(0, len(audio_norm), self.overlap):
-            end = start + self.chunk_samples
-            if end > len(audio_norm):
-                break
-
-            chunk = audio_norm[start:end]
-
-            chunk_in = chunk.reshape(1, 1, -1, 1)
-
-            pred = self.session.run(
-                [self.output_name],
-                {self.input_name: chunk_in}
-            )[0]
-
-            pred = pred.reshape(-1)
-            chunks.append(pred)
-
-        # Overlap-Add reconstruction
-        output = np.zeros_like(audio_norm)
-        for i, chunk in enumerate(chunks):
-            start = i * self.overlap
-            output[start:start+len(chunk)] += chunk
-
-        # Remover padding
-        output = output[:len(audio)]
-
-        # Denormalizar
-        output = output * max_val
-
-        sf.write(out_path, output.astype(np.float32), sr)
-        print(f"Archivo generado: {out_path}")
-
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -353,35 +277,47 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS (MDX .pth)
+        # 4) SEPARACIÓN DE INSTRUMENTOS (MDX ONNX – audio-separator)
         # ================================================================
         set_progress(usuario, "Separando instrumentos (MDX)...")
 
-        def separate_with_mdx(input_path, out_dir, instrumento):
-            os.makedirs(out_dir, exist_ok=True)
+        MODEL_MAP = {
+            "guitarra": "UVR-MDX-NET-Inst_1.onnx",
+            "piano": "UVR-MDX-NET-Inst_2.onnx",
+            "violin": "UVR-MDX-NET-Inst_3.onnx"
+        }
 
-            # ===== SELECCIÓN DE MODELO SEGÚN INSTRUMENTO =====
-            MODEL_MAP = {
-                "piano":   "/app/models/UVR-MDX-NET-Inst_1.onnx",
-                "guitarra": "/app/models/UVR-MDX-NET-Inst_HQ_2.onnx",
-                "violin":  "/app/models/UVR_MDXNET_3_9662.onnx",
-            }
+        modelo_onnx = MODEL_MAP.get(instrumento)
+        if not modelo_onnx:
+            return jsonify({"error": "Instrumento inválido"}), 400
 
-            model_path = MODEL_MAP.get(instrumento)
-            if not model_path or not os.path.exists(model_path):
-                raise Exception(f"Modelo no encontrado para instrumento: {instrumento}")
+        modelo_path = os.path.join("models", modelo_onnx)
 
-            print(f"🔍 Usando modelo ONNX: {model_path}")
+        def separate_with_mdx(input_path, out_dir, modelo_path):
+            sep = Separator(
+                model_filename=modelo_path,
+                model_file_dir="models",
+                output_dir=out_dir,
+                output_format="wav",
+                mdx_batch_size=1,
+            )
+            sep.load_model()
+            files = sep.separate(input_path)
 
-            separator = ONNXSeparator(model_path)
+            # audio-separator genera algo tipo:
+            # out_dir/stem_vocals.wav
+            # out_dir/stem_other.wav
+            # out_dir/stem_bass.wav
+            # etc
+            # nosotros queremos siempre OTHER
+            for f in files:
+                if "other" in f.lower() or "instrumental" in f.lower():
+                    return f
 
-            output_wav = os.path.join(out_dir, f"{instrumento}_stem.wav")
-            separator.separate(input_path, output_wav)
+            # fallback si no encuentra
+            return files[0]
 
-            return output_wav
-
-
-        stem_wav = separate_with_mdx(filepath, work_dir, instrumento)
+        stem_wav = separate_with_mdx(filepath, work_dir, modelo_path)
 
         # ================================================================
         # 5) Seleccionar script según instrumento
