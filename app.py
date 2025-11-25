@@ -328,16 +328,20 @@ def upload_file():
         model_filename = MODEL_MAP[instrumento]
 
         # Ejecutar audio-separator CLI
-        subprocess.run([
-            PYTHON_EXEC, "-m", "audio_separator",
-            filepath,
-            "--model_filename", model_filename,
-            "--model_file_dir", MODELS_DIR,
-            "--output_dir", work_dir,
-            "--output_format", "wav",
-            "--use_onnxruntime",
-            "--no_pbar"
-        ], check=True)
+        from audio_separator.separator import Separator
+
+        sep = Separator(
+            model_filename=model_filename,
+            model_file_dir=MODELS_DIR,
+            output_format="wav",
+            use_onnxruntime=True,
+        )
+
+        sep.separate(
+            audio_file=filepath,
+            output_dir=work_dir
+        )
+
 
         # Buscar el WAV generado
         candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
