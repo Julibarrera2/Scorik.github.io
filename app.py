@@ -13,8 +13,6 @@ from werkzeug.utils import secure_filename
 from music21 import environment
 import soundfile as sf
 import numpy as np
-import torchaudio
-import torch
 import onnxruntime as ort
 
 
@@ -51,78 +49,41 @@ def convert_to_wav_if_needed(filepath):
 
     return wav_path
 
-##############################
-#  🔥  ONNX SEPARATOR
-##############################
-class ONNXSeparator:
-    """
-    Separador MDX-NET ONNX con chunking correcto (compatible con UVR).
-    """
 
+# ----------------------------------------
+#  ONNX SEPARATOR (TU MODELO PROPIO)
+# ----------------------------------------
+class ONNXSeparator:
     def __init__(self, model_path):
-        print(f"Cargando modelo ONNX: {model_path}")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Modelo ONNX no encontrado: {model_path}")
+
+        print("Cargando modelo ONNX:", model_path)
+
         self.session = ort.InferenceSession(
             model_path,
             providers=["CPUExecutionProvider"]
         )
+
+        # nombre del input
         self.input_name = self.session.get_inputs()[0].name
-        self.output_name = self.session.get_outputs()[0].name
 
-        # chunking estándar MDX (256 frames)
-        self.chunk_samples = 256 * 44100
-        self.overlap = self.chunk_samples // 2
+    def separate(self, input_wav_path, output_wav_path):
+        print("→ Leyendo WAV:", input_wav_path)
+        audio, sr = sf.read(input_wav_path)
 
-        print("Modelo ONNX cargado correctamente.")
+        audio = audio.astype(np.float32)
+        audio = np.expand_dims(audio, axis=0)   # (1, n_samples)
 
-    def separate(self, audio_path, out_path):
-        print(f"Procesando audio con ONNX: {audio_path}")
+        print("→ Ejecutando modelo ONNX...")
+        pred = self.session.run(None, {self.input_name: audio})[0]
 
-        audio, sr = torchaudio.load(audio_path)
+        pred = pred.squeeze()
 
-        # Pasar a mono
-        if audio.size(0) > 1:
-            audio = audio.mean(dim=0, keepdim=True)
+        print("→ Guardando resultado:", output_wav_path)
+        sf.write(output_wav_path, pred, sr)
 
-        audio = audio.squeeze(0).numpy().astype(np.float32)
-
-        # Normalización
-        max_val = np.max(np.abs(audio)) + 1e-9
-        audio_norm = audio / max_val
-
-        # Padding
-        pad = self.chunk_samples - (len(audio_norm) % self.chunk_samples)
-        audio_norm = np.pad(audio_norm, (0, pad))
-
-        chunks = []
-        for start in range(0, len(audio_norm), self.overlap):
-            end = start + self.chunk_samples
-            if end > len(audio_norm):
-                break
-
-            chunk = audio_norm[start:end]
-            chunk_in = chunk.reshape(1, 1, -1, 1)
-
-            pred = self.session.run(
-                [self.output_name],
-                {self.input_name: chunk_in}
-            )[0]
-
-            chunks.append(pred.reshape(-1))
-
-        # reconstrucción overlap-add
-        output = np.zeros_like(audio_norm)
-        for i, chunk in enumerate(chunks):
-            start = i * self.overlap
-            output[start:start + len(chunk)] += chunk
-
-        # quitar padding
-        output = output[:len(audio)]
-
-        # desnormalizar
-        output = output * max_val
-
-        sf.write(out_path, output.astype(np.float32), sr)
-        print(f"Archivo separado: {out_path}")
+        return output_wav_path
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
@@ -289,24 +250,6 @@ def api_logout():
 def index():
     return send_from_directory('.', 'index.html')
 
-def ensure_mdx_model():
-    local_path = "/tmp/models/MDX/UVR-MDX-LARGE.pth"
-    bucket_name = os.environ.get("MODELS_BUCKET", "scorik-models")
-    blob_path = "models/MDX/UVR-MDX-LARGE.pth"
-
-    if os.path.exists(local_path):
-        return local_path
-
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-
-    print("⏳ Descargando modelo MDX desde GCS...")
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(blob_path)
-    blob.download_to_filename(local_path)
-    print("✅ Modelo MDX descargado.")
-
-    return local_path
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -351,23 +294,26 @@ def upload_file():
         # ================================================================
         set_progress(usuario, "Separando instrumentos (MDX)...")
 
+        MODELS_DIR = os.path.join(os.getcwd(), "models")
+
         MODEL_MAP = {
-            "guitarra": "UVR-MDX-NET-Inst_1.onnx",
-            "piano": "UVR-MDX-NET-Inst_2.onnx",
-            "violin": "UVR-MDX-NET-Inst_3.onnx"
+            "guitarra": os.path.join(MODELS_DIR, "UVR-MDX-NET-Inst_1.onnx"),
+            "piano": os.path.join(MODELS_DIR, "UVR-MDX-NET-Inst_HQ_2.onnx"),
+            "violin": os.path.join(MODELS_DIR, "UVR_MDXNET_3_9662.onnx"),
         }
 
-        modelo_onnx = MODEL_MAP.get(instrumento)
-        if not modelo_onnx:
+        modelo_path = MODEL_MAP.get(instrumento)
+        if not modelo_path:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        modelo_path = os.path.join("models", modelo_onnx)
+        def separate_with_mdx(input_path, out_dir, model_path):
+            os.makedirs(out_dir, exist_ok=True)
+            output_wav = os.path.join(out_dir, "separated.wav")
 
-        def separate_with_mdx(input_path, out_dir, modelo_path):
-            sep = ONNXSeparator(modelo_path)
-            output = os.path.join(out_dir, "other.wav")
-            sep.separate(input_path, output)
-            return output
+            separator = ONNXSeparator(model_path)
+            separator.separate(input_path, output_wav)
+
+            return output_wav
 
         stem_wav = separate_with_mdx(filepath, work_dir, modelo_path)
 
