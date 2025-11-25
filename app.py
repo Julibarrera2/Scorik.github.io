@@ -313,32 +313,39 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS (MDX ONNX – audio-separator)
+        # 4) SEPARACIÓN DE INSTRUMENTOS CON AUDIO-SEPARATOR (UVR-MDX)
         # ================================================================
         set_progress(usuario, "Separando instrumentos (MDX)...")
 
         MODELS_DIR = os.path.join(os.getcwd(), "models")
 
         MODEL_MAP = {
-            "guitarra": os.path.join(MODELS_DIR, "UVR-MDX-NET-Inst_1.onnx"),
-            "piano": os.path.join(MODELS_DIR, "UVR-MDX-NET-Inst_HQ_2.onnx"),
-            "violin": os.path.join(MODELS_DIR, "UVR_MDXNET_3_9662.onnx"),
+            "guitarra": "UVR-MDX-NET-Inst_1.onnx",
+            "piano":    "UVR-MDX-NET-Inst_HQ_2.onnx",
+            "violin":   "UVR_MDXNET_3_9662.onnx",
         }
 
-        modelo_path = MODEL_MAP.get(instrumento)
-        if not modelo_path:
-            return jsonify({"error": "Instrumento inválido"}), 400
+        model_filename = MODEL_MAP[instrumento]
 
-        def separate_with_mdx(input_path, out_dir, model_path):
-            os.makedirs(out_dir, exist_ok=True)
-            output_wav = os.path.join(out_dir, "separated.wav")
+        # Ejecutar audio-separator CLI
+        subprocess.run([
+            PYTHON_EXEC, "-m", "audio_separator",
+            filepath,
+            "--model_filename", model_filename,
+            "--model_file_dir", MODELS_DIR,
+            "--output_dir", work_dir,
+            "--output_format", "wav",
+            "--use_onnxruntime",
+            "--no_pbar"
+        ], check=True)
 
-            separator = ONNXSeparator(model_path)
-            separator.separate(input_path, output_wav)
+        # Buscar el WAV generado
+        candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
+        if not candidates:
+            return jsonify({"error": "No se generó WAV separado"}), 500
 
-            return output_wav
+        stem_wav = os.path.join(work_dir, candidates[0])
 
-        stem_wav = separate_with_mdx(filepath, work_dir, modelo_path)
 
         # ================================================================
         # 5) Seleccionar script según instrumento
