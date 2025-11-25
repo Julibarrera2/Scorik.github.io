@@ -72,13 +72,36 @@ class ONNXSeparator:
         print("→ Leyendo WAV:", input_wav_path)
         audio, sr = sf.read(input_wav_path)
 
+        # Asegurar float32
         audio = audio.astype(np.float32)
-        audio = np.expand_dims(audio, axis=0)   # (1, n_samples)
+
+        # Si es mono → duplicar canal
+        if audio.ndim == 1:
+            audio = np.stack([audio, audio], axis=0)        # (2, N)
+        else:
+            audio = audio.T                                 # (channels, N)
+            if audio.shape[0] == 1:
+                audio = np.repeat(audio, 2, axis=0)
+
+        # Formato requerido por UVR-MDX
+        inp = np.expand_dims(audio, axis=0)                 # (1, 2, N)
+
+        # Detectar si el modelo quiere 4D
+        expected_rank = len(self.session.get_inputs()[0].shape)
+        if expected_rank == 4:
+            inp = np.expand_dims(inp, axis=-1)              # (1, 2, N, 1)
+
+        print("→ Shape final enviado al modelo:", inp.shape)
 
         print("→ Ejecutando modelo ONNX...")
-        pred = self.session.run(None, {self.input_name: audio})[0]
+        pred = self.session.run(None, {self.input_name: inp})[0]
 
-        pred = pred.squeeze()
+        # Salida puede venir en 4D → bajar a 2D
+        pred = np.squeeze(pred)
+
+        # Si el modelo devuelve (2, N), mezclamos canales
+        if pred.ndim == 2:
+            pred = np.mean(pred, axis=0)
 
         print("→ Guardando resultado:", output_wav_path)
         sf.write(output_wav_path, pred, sr)
