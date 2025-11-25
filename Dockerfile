@@ -35,9 +35,9 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 
-# ====== COPIAR CÓDIGO ======
-COPY . .
+# ====== COPIAR CÓDIGO ====
 COPY models /app/models
+COPY . /app
 
 
 ENV PORT=8080

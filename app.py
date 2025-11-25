@@ -331,8 +331,8 @@ def upload_file():
         from audio_separator.separator import Separator
 
         sep = Separator(
-            model_file_dir=MODELS_DIR,       # carpeta /models
-            models=[model_filename],         # LISTA con tu modelo
+            model_file_dir=MODELS_DIR,
+            model=model_filename,          # ← ESTE es el parámetro correcto
             output_format="wav",
             use_onnxruntime=True
         )
@@ -341,7 +341,6 @@ def upload_file():
             audio_file=filepath,
             output_dir=work_dir
         )
-
 
         # Buscar el WAV generado
         candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
