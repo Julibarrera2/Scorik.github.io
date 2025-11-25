@@ -331,10 +331,10 @@ def upload_file():
         from audio_separator.separator import Separator
 
         sep = Separator(
-            model_filename=model_filename,
-            model_file_dir=MODELS_DIR,
+            model_file_dir=MODELS_DIR,       # carpeta /models
+            models=[model_filename],         # LISTA con tu modelo
             output_format="wav",
-            use_onnxruntime=True,
+            use_onnxruntime=True
         )
 
         sep.separate(
