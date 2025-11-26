@@ -49,65 +49,6 @@ def convert_to_wav_if_needed(filepath):
 
     return wav_path
 
-
-# ----------------------------------------
-#  ONNX SEPARATOR (TU MODELO PROPIO)
-# ----------------------------------------
-class ONNXSeparator:
-    def __init__(self, model_path):
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Modelo ONNX no encontrado: {model_path}")
-
-        print("Cargando modelo ONNX:", model_path)
-
-        self.session = ort.InferenceSession(
-            model_path,
-            providers=["CPUExecutionProvider"]
-        )
-
-        # nombre del input
-        self.input_name = self.session.get_inputs()[0].name
-
-    def separate(self, input_wav_path, output_wav_path):
-        print("→ Leyendo WAV:", input_wav_path)
-        audio, sr = sf.read(input_wav_path)
-
-        # Asegurar float32
-        audio = audio.astype(np.float32)
-
-        # Si es mono → duplicar canal
-        if audio.ndim == 1:
-            audio = np.stack([audio, audio], axis=0)        # (2, N)
-        else:
-            audio = audio.T                                 # (channels, N)
-            if audio.shape[0] == 1:
-                audio = np.repeat(audio, 2, axis=0)
-
-        # Formato requerido por UVR-MDX
-        inp = np.expand_dims(audio, axis=0)                 # (1, 2, N)
-
-        # Detectar si el modelo quiere 4D
-        expected_rank = len(self.session.get_inputs()[0].shape)
-        if expected_rank == 4:
-            inp = np.expand_dims(inp, axis=-1)              # (1, 2, N, 1)
-
-        print("→ Shape final enviado al modelo:", inp.shape)
-
-        print("→ Ejecutando modelo ONNX...")
-        pred = self.session.run(None, {self.input_name: inp})[0]
-
-        # Salida puede venir en 4D → bajar a 2D
-        pred = np.squeeze(pred)
-
-        # Si el modelo devuelve (2, N), mezclamos canales
-        if pred.ndim == 2:
-            pred = np.mean(pred, axis=0)
-
-        print("→ Guardando resultado:", output_wav_path)
-        sf.write(output_wav_path, pred, sr)
-
-        return output_wav_path
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cambia_esta_clave')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -313,8 +254,10 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS CON MODELO ONNX PROPIO (UVR-MDX)
+        # 4) SEPARACIÓN DE INSTRUMENTOS CON AUDIO-SEPARATOR (UVR-MDX)
         # ================================================================
+        from audio_separator.separator import Separator
+
         set_progress(usuario, "Separando instrumentos (MDX)...")
 
         MODELS_DIR = os.path.join(os.getcwd(), "models")
@@ -326,17 +269,26 @@ def upload_file():
         }
 
         model_filename = MODEL_MAP[instrumento]
-        onnx_model_path = os.path.join(MODELS_DIR, model_filename)
 
-        separator = ONNXSeparator(onnx_model_path)
-        output_stem = os.path.join(work_dir, "separated.wav")
+        sep = Separator(
+            model_file_dir=MODELS_DIR,
+            model_filename=model_filename,
+            output_format="wav",
+            use_onnxruntime=True
+        )
 
-        separator.separate(filepath, output_stem)
+        sep.separate(
+            audio_file=filepath,
+            output_dir=work_dir
+        )
 
-        if not os.path.exists(output_stem):
+        # Buscar archivo WAV generado automáticamente
+        candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
+        if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
-        stem_wav = output_stem
+        stem_wav = os.path.join(work_dir, candidates[0])
+
 
         # ================================================================
         # 5) Seleccionar script según instrumento
