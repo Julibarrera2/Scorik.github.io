@@ -313,7 +313,7 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS CON AUDIO-SEPARATOR (UVR-MDX)
+        # 4) SEPARACIÓN DE INSTRUMENTOS CON MODELO ONNX PROPIO (UVR-MDX)
         # ================================================================
         set_progress(usuario, "Separando instrumentos (MDX)...")
 
@@ -326,29 +326,17 @@ def upload_file():
         }
 
         model_filename = MODEL_MAP[instrumento]
+        onnx_model_path = os.path.join(MODELS_DIR, model_filename)
 
-        # Ejecutar audio-separator CLI
-        from audio_separator.separator import Separator
+        separator = ONNXSeparator(onnx_model_path)
+        output_stem = os.path.join(work_dir, "separated.wav")
 
-        sep = Separator(
-            model_file_dir=MODELS_DIR,
-            model=model_filename,          # ← ESTE es el parámetro correcto
-            output_format="wav",
-            use_onnxruntime=True
-        )
+        separator.separate(filepath, output_stem)
 
-        sep.separate(
-            audio_file=filepath,
-            output_dir=work_dir
-        )
-
-        # Buscar el WAV generado
-        candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
-        if not candidates:
+        if not os.path.exists(output_stem):
             return jsonify({"error": "No se generó WAV separado"}), 500
 
-        stem_wav = os.path.join(work_dir, candidates[0])
-
+        stem_wav = output_stem
 
         # ================================================================
         # 5) Seleccionar script según instrumento
