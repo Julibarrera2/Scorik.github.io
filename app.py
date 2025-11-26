@@ -687,5 +687,11 @@ def paginas_html(pagina):
         return send_from_directory('.', filename)
     return "Página no encontrada", 404
 
+@app.route("/debug_separator")
+def debug_separator():
+    import test_separator
+    return "OK", 200
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
