@@ -278,7 +278,7 @@ def upload_file():
         sep.load_model(model_filename=model_filename)
 
         sep.separate(
-            audio_file=filepath,
+            input_audio=filepath,
             output_dir=work_dir
         )
 
