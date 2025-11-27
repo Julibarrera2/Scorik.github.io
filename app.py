@@ -272,12 +272,11 @@ def upload_file():
 
         sep = Separator(
             model_file_dir=MODELS_DIR,
-            model_file=model_filename,
             output_format="wav",
             use_onnxruntime=True
         )
 
-
+        sep.load_model(model_filename=model_filename)
 
         sep.separate(
             audio_file=filepath,
