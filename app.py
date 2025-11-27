@@ -272,8 +272,7 @@ def upload_file():
 
         sep = Separator(
             model_file_dir=MODELS_DIR,
-            output_format="wav",
-            use_onnxruntime=True
+            output_format="wav"
         )
 
         sep.load_model(model_filename=model_filename)
@@ -282,6 +281,7 @@ def upload_file():
             audio_file=filepath,
             output_dir=work_dir
         )
+
 
         # Buscar archivo WAV generado automáticamente
         candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
