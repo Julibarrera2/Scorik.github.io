@@ -268,28 +268,55 @@ def upload_file():
             "violin":   "UVR_MDXNET_3_9662.onnx",
         }
 
-        model_filename = MODEL_MAP[instrumento]
+        model_filename = MODEL_MAP.get(instrumento)
+        if not model_filename:
+            return jsonify({"error": "Instrumento inválido"}), 400
 
-        sep = Separator()
+        sep = Separator(
+            model_file_dir=MODELS_DIR,
+            output_format="wav"
+        )
 
+        sep.load_model(model_filename)
 
-        #sep = Separator(
-        #    model_file_dir=MODELS_DIR,
-        #    output_format="wav"
-        #)
+        # Compat shim: probar varias firmas de separate(...) según versión
+        outputs = None
+        try:
+            # firma moderna: separate(input) -> list/str/dict
+            outputs = sep.separate(filepath)
+        except TypeError:
+            try:
+                # firma: separate(input, out_dir)
+                outputs = sep.separate(filepath, work_dir)
+            except TypeError:
+                try:
+                    # firma antigua observada: separate(input, model, outdir)
+                    outputs = sep.separate(filepath, model_filename, work_dir)
+                except TypeError:
+                    try:
+                        # otra variante con nombre de argumento
+                        outputs = sep.separate(filepath, out_dir=work_dir)
+                    except Exception as e:
+                        # si todas fallan, devolver error claro
+                        app.logger.exception("No se pudo llamar a Separator.separate con ninguna firma conocida")
+                        return jsonify({"error": "Incompatibilidad con la librería audio-separator"}), 500
 
-        #sep.load_model(model_filename=model_filename)
-
-        sep.separate(filepath, model_filename, work_dir)
-
-        #sep.separate(
-        #    audio_file=filepath,
-        #    model_filename=model_filename,
-        #    output_dir=work_dir
-        #)
+        # Normalizar outputs a lista de rutas (puede devolver dict, str o list)
+        if isinstance(outputs, dict):
+            files = []
+            for v in outputs.values():
+                if isinstance(v, (list, tuple)):
+                    files.extend(v)
+                else:
+                    files.append(v)
+            outputs = files
+        elif isinstance(outputs, str):
+            outputs = [outputs]
+        elif outputs is None:
+            outputs = []
 
         # Buscar archivo WAV generado automáticamente
-        candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
+        candidates = [p for p in outputs if p.lower().endswith(".wav")]
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
