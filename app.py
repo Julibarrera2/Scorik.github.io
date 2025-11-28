@@ -270,12 +270,14 @@ def upload_file():
 
         model_filename = MODEL_MAP[instrumento]
 
-        sep = Separator(
-            model_file_dir=MODELS_DIR,
-            output_format="wav"
-        )
+        sep = Separator()
 
-        sep.load_model(model_filename=model_filename)
+        #sep = Separator(
+        #    model_file_dir=MODELS_DIR,
+        #    output_format="wav"
+        #)
+
+        _#sep.load_model(model_filename=model_filename)
 
         sep.separate(filepath, model_filename, work_dir)
         
