@@ -272,15 +272,16 @@ def upload_file():
 
         sep = Separator()
 
+
         #sep = Separator(
         #    model_file_dir=MODELS_DIR,
         #    output_format="wav"
         #)
-        
+
         #sep.load_model(model_filename=model_filename)
 
         sep.separate(filepath, model_filename, work_dir)
-        
+
         #sep.separate(
         #    audio_file=filepath,
         #    model_filename=model_filename,
@@ -293,7 +294,6 @@ def upload_file():
             return jsonify({"error": "No se generó WAV separado"}), 500
 
         stem_wav = os.path.join(work_dir, candidates[0])
-
 
         # ================================================================
         # 5) Seleccionar script según instrumento
@@ -631,12 +631,6 @@ def paginas_html(pagina):
     if os.path.exists(filename):
         return send_from_directory('.', filename)
     return "Página no encontrada", 404
-
-@app.route("/debug_separator")
-def debug_separator():
-    import test_separator
-    return "OK", 200
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
