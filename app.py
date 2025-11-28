@@ -272,7 +272,9 @@ def upload_file():
         if not model_filename:
             return jsonify({"error": "Instrumento inválido"}), 400
 
+        # En audio-separator 0.9.0, audio_file_path es argumento obligatorio del constructor
         sep = Separator(
+            audio_file_path=filepath,
             model_file_dir=MODELS_DIR,
             output_format="wav"
         )
@@ -282,26 +284,25 @@ def upload_file():
         # Compat shim: probar varias firmas de separate(...) según versión
         outputs = None
         try:
-            # firma moderna: separate(input) -> list/str/dict
-            outputs = sep.separate(filepath)
+            # firma 0.9.0: separate() sin argumentos (ya pasó filepath al constructor)
+            outputs = sep.separate()
         except TypeError:
             try:
-                # firma: separate(input, out_dir)
-                outputs = sep.separate(filepath, work_dir)
+                # firma moderna: separate(input)
+                outputs = sep.separate(filepath)
             except TypeError:
                 try:
-                    # firma antigua observada: separate(input, model, outdir)
-                    outputs = sep.separate(filepath, model_filename, work_dir)
+                    # firma: separate(input, out_dir)
+                    outputs = sep.separate(filepath, work_dir)
                 except TypeError:
                     try:
                         # otra variante con nombre de argumento
-                        outputs = sep.separate(filepath, out_dir=work_dir)
+                        outputs = sep.separate(out_dir=work_dir)
                     except Exception as e:
-                        # si todas fallan, devolver error claro
                         app.logger.exception("No se pudo llamar a Separator.separate con ninguna firma conocida")
                         return jsonify({"error": "Incompatibilidad con la librería audio-separator"}), 500
 
-        # Normalizar outputs a lista de rutas (puede devolver dict, str o list)
+        # Normalizar outputs a lista de rutas
         if isinstance(outputs, dict):
             files = []
             for v in outputs.values():
