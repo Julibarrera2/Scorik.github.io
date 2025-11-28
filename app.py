@@ -273,10 +273,13 @@ def upload_file():
             return jsonify({"error": "Instrumento inválido"}), 400
 
         # En audio-separator 0.9.0, audio_file_path es argumento obligatorio del constructor
+        # Forzar CPU backend (deshabilitar Apple Silicon CoreML en Cloud Run)
         sep = Separator(
             audio_file_path=filepath,
             model_file_dir=MODELS_DIR,
-            output_format="wav"
+            output_format="wav",
+            use_cuda=False,
+            use_coreml=False
         )
 
         sep.load_model(model_filename)
