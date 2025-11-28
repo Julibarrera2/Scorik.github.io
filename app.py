@@ -278,10 +278,10 @@ def upload_file():
         sep.load_model(model_filename=model_filename)
 
         sep.separate(
-            input_audio=filepath,
+            audio_file=filepath,
+            model_filename=model_filename,
             output_dir=work_dir
         )
-
 
         # Buscar archivo WAV generado automáticamente
         candidates = [f for f in os.listdir(work_dir) if f.lower().endswith(".wav")]
