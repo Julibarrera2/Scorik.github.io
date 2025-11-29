@@ -254,7 +254,7 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS CON AUDIO-SEPARATOR (UVR-MDX)
+        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.9.0 (compat)
         # ================================================================
         from audio_separator.separator import Separator
 
@@ -272,41 +272,51 @@ def upload_file():
         if not model_filename:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # En audio-separator 0.9.0, audio_file_path es argumento obligatorio del constructor
-        # Los parámetros use_cuda y use_coreml NO existen en esta versión
+        # ⚠️ audio-separator 0.9.0: constructor OBLIGATORIO con audio_file_path
         sep = Separator(
             audio_file_path=filepath,
             model_file_dir=MODELS_DIR,
-            output_format="wav",
-            use_cuda=False,
-            use_coreml=False,
-            use_mps=False
+            output_format="wav"
         )
 
+        # cargar modelo
         sep.load_model(model_filename)
 
-        # Compat shim: probar varias firmas de separate(...) según versión
+        # =======================
+        # compatibilidad complete
+        # =======================
         outputs = None
-        try:
-            # firma 0.9.0: separate() sin argumentos (ya pasó filepath al constructor)
-            outputs = sep.separate()
-        except TypeError:
-            try:
-                # firma moderna: separate(input)
-                outputs = sep.separate(filepath)
-            except TypeError:
-                try:
-                    # firma: separate(input, out_dir)
-                    outputs = sep.separate(filepath, work_dir)
-                except TypeError:
-                    try:
-                        # otra variante con nombre de argumento
-                        outputs = sep.separate(out_dir=work_dir)
-                    except Exception as e:
-                        app.logger.exception("No se pudo llamar a Separator.separate con ninguna firma conocida")
-                        return jsonify({"error": "Incompatibilidad con la librería audio-separator"}), 500
 
-        # Normalizar outputs a lista de rutas
+        # 1) forma oficial 0.9.0 → sin argumentos
+        try:
+            outputs = sep.separate()
+        except Exception:
+            pass
+
+        # 2) forma alternativa — versiones donde separate(input)
+        if not outputs:
+            try:
+                outputs = sep.separate(filepath)
+            except Exception:
+                pass
+
+        # 3) forma con output dir
+        if not outputs:
+            try:
+                outputs = sep.separate(filepath, work_dir)
+            except Exception:
+                pass
+
+        # 4) último intento
+        if not outputs:
+            try:
+                outputs = sep.separate(out_dir=work_dir)
+            except Exception:
+                app.logger.exception("No hay ninguna forma válida de llamar a separate()")
+                return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
+
+
+        # NORMALIZAR OUTPUTS
         if isinstance(outputs, dict):
             files = []
             for v in outputs.values():
@@ -315,17 +325,21 @@ def upload_file():
                 else:
                     files.append(v)
             outputs = files
+
         elif isinstance(outputs, str):
             outputs = [outputs]
+
         elif outputs is None:
             outputs = []
 
-        # Buscar archivo WAV generado automáticamente
+
+        # BUSCAR EL WAV RESULTADO
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
+
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
-        stem_wav = os.path.join(work_dir, candidates[0])
+        stem_wav = os.path.join(work_dir, os.path.basename(candidates[0]))
 
         # ================================================================
         # 5) Seleccionar script según instrumento
