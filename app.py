@@ -277,35 +277,48 @@ def upload_file():
 
         # inicializar audio-separator 0.7.3
         sep = Separator(
-            input_file=filepath,
             model_file=model_path,
-            output_format="wav",
+            output_format="wav"
         )
 
-        # esta versión SIEMPRE necesita input
+        outputs = None
+
+        # primero intentar: separate(filepath)
         try:
-            outputs = sep.separate()
-        except Exception as e:
-            app.logger.exception("Error en separate()")
+            outputs = sep.separate(filepath)
+        except Exception:
+            pass
+
+        # segundo intento: separate(filepath, work_dir)
+        if not outputs:
+            try:
+                outputs = sep.separate(filepath, work_dir)
+            except Exception:
+                pass
+
+        if not outputs:
+            app.logger.exception("No hay forma válida de llamar a separate()")
             return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
 
 
         # normalizar outputs
         if isinstance(outputs, dict):
-            files = []
+            flat = []
             for v in outputs.values():
                 if isinstance(v, (list, tuple)):
-                    files.extend(v)
+                    flat.extend(v)
                 else:
-                    files.append(v)
-            outputs = files
+                    flat.append(v)
+            outputs = flat
         elif isinstance(outputs, str):
             outputs = [outputs]
         elif outputs is None:
             outputs = []
 
-        # buscar WAV
+
+        # buscar WAV resultante
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
+
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
