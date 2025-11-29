@@ -258,65 +258,53 @@ def upload_file():
         # ================================================================
         from audio_separator.separator import Separator
 
-        set_progress(usuario, "Separando instrumentos (MDX)...")
+        set_progress(usuario, "Separando instrumentos (MDX 0.7.3)...")
 
-        MODELS_DIR = os.path.join(os.getcwd(), "models")
-
+        # nombres EXACTOS de modelos de audio-separator 0.7.3
         MODEL_MAP = {
-            "guitarra": "UVR-MDX-NET-Inst_1.onnx",
-            "piano":    "UVR-MDX-NET-Inst_HQ_2.onnx",
-            "violin":   "UVR_MDXNET_3_9662.onnx",
+            "guitarra": "UVR-MDX-NET-Inst_1",
+            "piano":    "UVR-MDX-NET-Inst_HQ_2",
+            "violin":   "UVR_MDXNET_3_9662",
         }
 
-        model_filename = MODEL_MAP.get(instrumento)
-        if not model_filename:
+        model_name = MODEL_MAP.get(instrumento)
+        if not model_name:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # ruta completa al modelo
-        model_path = os.path.join(MODELS_DIR, model_filename)
+        # Crear carpeta de salida
+        os.makedirs(work_dir, exist_ok=True)
 
-        # inicializar audio-separator 0.7.3
+        # Inicializar separator (NO acepta model_file, NO acepta rutas)
         sep = Separator(
-            model_file=model_path,
-            output_format="wav"
+            input_file=filepath,
+            output_dir=work_dir
         )
 
-        outputs = None
-
-        # primero intentar: separate(filepath)
+        # Ejecutar separación con el modelo seleccionado
         try:
-            outputs = sep.separate(filepath)
-        except Exception:
-            pass
-
-        # segundo intento: separate(filepath, work_dir)
-        if not outputs:
-            try:
-                outputs = sep.separate(filepath, work_dir)
-            except Exception:
-                pass
-
-        if not outputs:
-            app.logger.exception("No hay forma válida de llamar a separate()")
+            outputs = sep.separate(
+                model_name=model_name,
+                denoise=True
+            )
+        except Exception as e:
+            app.logger.exception("Error ejecutando audio-separator 0.7.3")
             return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
 
-
-        # normalizar outputs
+        # Normalizar outputs
         if isinstance(outputs, dict):
-            flat = []
+            files = []
             for v in outputs.values():
                 if isinstance(v, (list, tuple)):
-                    flat.extend(v)
+                    files.extend(v)
                 else:
-                    flat.append(v)
-            outputs = flat
+                    files.append(v)
+            outputs = files
         elif isinstance(outputs, str):
             outputs = [outputs]
         elif outputs is None:
             outputs = []
 
-
-        # buscar WAV resultante
+        # Buscar WAV resultante
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
 
         if not candidates:
