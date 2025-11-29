@@ -272,39 +272,23 @@ def upload_file():
         if not model_filename:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # ⚠️ audio-separator 0.7.3 → SE PASA EL MODELO EN EL CONSTRUCTOR
+        # ruta completa al modelo
+        model_path = os.path.join(MODELS_DIR, model_filename)
+
+        # inicializar audio-separator 0.7.3
         sep = Separator(
-            audio_file_path=filepath,
-            model_name=model_filename,     # << ESTA ES LA CLAVE
+            input_file=filepath,
+            model_file=model_path,
             output_format="wav",
         )
 
-        # =======================
-        # ejecutar separacion
-        # =======================
-        outputs = None
-
+        # esta versión SIEMPRE necesita input
         try:
-            # forma oficial: separate() sin argumentos
             outputs = sep.separate()
-        except Exception:
-            pass
-
-        if not outputs:
-            try:
-                outputs = sep.separate(input_audio=filepath)
-            except Exception:
-                pass
-
-        if not outputs:
-            try:
-                outputs = sep.separate(input_audio=filepath, output_dir=work_dir)
-            except Exception:
-                pass
-
-        if not outputs:
-            app.logger.exception("No hay forma válida de llamar a separate()")
+        except Exception as e:
+            app.logger.exception("Error en separate()")
             return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
+
 
         # normalizar outputs
         if isinstance(outputs, dict):
@@ -320,11 +304,13 @@ def upload_file():
         elif outputs is None:
             outputs = []
 
+        # buscar WAV
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
-        stem_wav = os.path.join(work_dir, os.path.basename(candidates[0]))
+        stem_wav = candidates[0]
+
 
         # ================================================================
         # 5) Seleccionar script según instrumento
