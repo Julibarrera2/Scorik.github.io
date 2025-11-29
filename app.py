@@ -254,53 +254,47 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator (tu versión real)
+        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
         # ================================================================
-        from audio_separator.separator import Separator
+        from audio_separator import Separator
 
-        set_progress(usuario, "Separando instrumentos...")
-
-        MODELS_DIR = os.path.join(os.getcwd(), "models")
+        set_progress(usuario, "Separando instrumentos (MDX 0.7.3)...")
 
         MODEL_MAP = {
-            "guitarra": "UVR-MDX-NET-Inst_1.onnx",
-            "piano":    "UVR-MDX-NET-Inst_HQ_2.onnx",
-            "violin":   "UVR_MDXNET_3_9662.onnx",
+            "guitarra": "UVR-MDX-NET-Inst_1",
+            "piano":    "UVR-MDX-NET-Inst_HQ_2",
+            "violin":   "UVR_MDXNET_3_9662",
         }
 
-        model_filename = MODEL_MAP.get(instrumento)
-        if not model_filename:
+        model_name = MODEL_MAP.get(instrumento)
+        if not model_name:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # constructor correcto de TU versión
+        # Crear carpeta de salida
+        os.makedirs(work_dir, exist_ok=True)
+
+        # Constructor correcto (audio_file obligatorio)
         sep = Separator(
-            audio_file_path=filepath,
-            model_file_dir=MODELS_DIR,
-            output_format="wav"
+            audio_file_path=filepath,   # ← obligatorio
+            model_name=model_name,      # ← válido acá
+            model_file_dir="/tmp/audio-separator-models",  # opcional pero recomendado
+            output_format="wav",
+            use_cuda=False
         )
 
-        # carga de modelo correcta
-        # (solo existe load_model() en la API que requiere audio_file_path)
-        sep.load_model(model_filename)
-
-        # compatibilidad con llamadas a separate()
-        outputs = None
+        # Ejecutar separación
         try:
-            outputs = sep.separate()
-        except Exception:
-            try:
-                outputs = sep.separate(filepath)
-            except Exception:
-                try:
-                    outputs = sep.separate(filepath, work_dir)
-                except Exception:
-                    try:
-                        outputs = sep.separate(out_dir=work_dir)
-                    except Exception:
-                        app.logger.exception("No hay forma válida de llamar a separate()")
-                        return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
+            outputs = sep.separate(
+                output_dir=work_dir,
+                denoise_enabled=True,
+                normalization_enabled=True
+            )
+        except Exception as e:
+            app.logger.exception("Error ejecutando audio-separator 0.7.3")
+            return jsonify({"error": str(e)}), 500
 
-        # normalización de outputs
+
+        # Normalizar outputs
         if isinstance(outputs, dict):
             files = []
             for v in outputs.values():
@@ -314,12 +308,13 @@ def upload_file():
         elif outputs is None:
             outputs = []
 
-        # buscar WAV
+
+        # Buscar WAV resultante
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
-        stem_wav = os.path.join(work_dir, os.path.basename(candidates[0]))
+        stem_wav = candidates[0]
 
 
 
