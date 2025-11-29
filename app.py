@@ -254,13 +254,12 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
+        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3 (REAL)
         # ================================================================
         from audio_separator.separator import Separator
 
         set_progress(usuario, "Separando instrumentos (MDX 0.7.3)...")
 
-        # nombres EXACTOS de modelos de audio-separator 0.7.3
         MODEL_MAP = {
             "guitarra": "UVR-MDX-NET-Inst_1",
             "piano":    "UVR-MDX-NET-Inst_HQ_2",
@@ -271,19 +270,18 @@ def upload_file():
         if not model_name:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # Crear carpeta de salida
+        # Crear carpeta para salida
         os.makedirs(work_dir, exist_ok=True)
 
-        # Inicializar separator (NO acepta model_file, NO acepta rutas)
-        sep = Separator(
-            input_file=filepath,
-            output_dir=work_dir
-        )
+        # Constructor VACÍO (OBLIGATORIO en 0.7.3)
+        sep = Separator()
 
-        # Ejecutar separación con el modelo seleccionado
+        # Ahora llamamos separate() con argumentos correctos
         try:
             outputs = sep.separate(
+                input_file=filepath,
                 model_name=model_name,
+                output_dir=work_dir,
                 denoise=True
             )
         except Exception as e:
@@ -306,7 +304,6 @@ def upload_file():
 
         # Buscar WAV resultante
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
-
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
