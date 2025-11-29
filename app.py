@@ -254,7 +254,7 @@ def upload_file():
 
 
         # ================================================================
-        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.9.0 (compat)
+        # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
         # ================================================================
         from audio_separator.separator import Separator
 
@@ -272,51 +272,41 @@ def upload_file():
         if not model_filename:
             return jsonify({"error": "Instrumento inválido"}), 400
 
-        # ⚠️ audio-separator 0.9.0: constructor OBLIGATORIO con audio_file_path
+        # ⚠️ audio-separator 0.7.3 → SE PASA EL MODELO EN EL CONSTRUCTOR
         sep = Separator(
             audio_file_path=filepath,
-            model_file_dir=MODELS_DIR,
-            output_format="wav"
+            model_name=model_filename,     # << ESTA ES LA CLAVE
+            output_format="wav",
         )
 
-        # cargar modelo
-        sep.load_model(model_filename)
-
         # =======================
-        # compatibilidad complete
+        # ejecutar separacion
         # =======================
         outputs = None
 
-        # 1) forma oficial 0.9.0 → sin argumentos
         try:
+            # forma oficial: separate() sin argumentos
             outputs = sep.separate()
         except Exception:
             pass
 
-        # 2) forma alternativa — versiones donde separate(input)
         if not outputs:
             try:
-                outputs = sep.separate(filepath)
+                outputs = sep.separate(input_audio=filepath)
             except Exception:
                 pass
 
-        # 3) forma con output dir
         if not outputs:
             try:
-                outputs = sep.separate(filepath, work_dir)
+                outputs = sep.separate(input_audio=filepath, output_dir=work_dir)
             except Exception:
                 pass
 
-        # 4) último intento
         if not outputs:
-            try:
-                outputs = sep.separate(out_dir=work_dir)
-            except Exception:
-                app.logger.exception("No hay ninguna forma válida de llamar a separate()")
-                return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
+            app.logger.exception("No hay forma válida de llamar a separate()")
+            return jsonify({"error": "Incompatibilidad con audio-separator"}), 500
 
-
-        # NORMALIZAR OUTPUTS
+        # normalizar outputs
         if isinstance(outputs, dict):
             files = []
             for v in outputs.values():
@@ -325,17 +315,12 @@ def upload_file():
                 else:
                     files.append(v)
             outputs = files
-
         elif isinstance(outputs, str):
             outputs = [outputs]
-
         elif outputs is None:
             outputs = []
 
-
-        # BUSCAR EL WAV RESULTADO
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
-
         if not candidates:
             return jsonify({"error": "No se generó WAV separado"}), 500
 
