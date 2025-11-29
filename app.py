@@ -278,6 +278,9 @@ def upload_file():
             audio_file_path=filepath,
             model_file_dir=MODELS_DIR,
             output_format="wav"
+            use_cuda=False,
+            use_coreml=False,
+            use_mps=False
         )
 
         sep.load_model(model_filename)
