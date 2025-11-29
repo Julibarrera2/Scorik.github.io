@@ -277,7 +277,7 @@ def upload_file():
         sep = Separator(
             audio_file_path=filepath,
             model_file_dir=MODELS_DIR,
-            output_format="wav"
+            output_format="wav",
             use_cuda=False,
             use_coreml=False,
             use_mps=False
