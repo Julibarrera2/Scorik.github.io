@@ -140,14 +140,6 @@ def guardar_usuarios(usuarios):
     with open(USERS_FILE, 'w', encoding='utf-8') as f:
         json.dump(usuarios, f, indent=2)
 
-# Función para establecer el progreso del usuario
-def set_progress(usuario, msg):
-    if not usuario:
-        usuario = "anon"
-    path = os.path.join(PROGRESS_FOLDER, f"{usuario}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump({"msg": msg}, f)
-
 #Lo de registrer y login
 @app.route('/api/register', methods=['POST'])
 def api_register():
@@ -248,9 +240,16 @@ def upload_file():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
+        # Actualizar SOLO el mensaje en el meta del job
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        meta["msg"] = "Convirtiendo audio a WAV..."
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f)
+
         # Convertir MP3 → WAV
-        set_progress(job_id, "Convirtiendo audio a WAV...")
         filepath = convert_to_wav_if_needed(filepath)
+
 
         # ================================================================
         # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
