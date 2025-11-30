@@ -11,6 +11,9 @@
     <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.2/dist/cdn.min.js" defer></script>
 
+    <!-- OpenSheetMusicDisplay -->
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.0/build/opensheetmusicdisplay.min.js"></script>
+
     <style>
         body {
             background: #ffffff;
@@ -54,22 +57,22 @@
             font-weight: bold;
         }
 
-        /* SIDEBAR ORIGINAL */
+        /* SIDEBAR */
         .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 250px;
-        height: 100%;
-        background-color: #814ac495; /* Morado claro */
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 80px;
-        box-sizing: border-box;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #814ac495;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 80px;
+            box-sizing: border-box;
         }
 
         .sidebar.open {
@@ -114,6 +117,8 @@
 
         .tool-btn img {
             width: 40px;
+            height: 40px;
+            object-fit: contain;
         }
 
         .btn-success {
@@ -131,6 +136,8 @@
             padding: 15px;
             border-radius: 15px 0 0 15px;
             color: white;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
         }
 
         .panel-block {
@@ -154,28 +161,40 @@
         }
 
         .panel-content img {
-            width: 100%;
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
             cursor: grab;
-            margin: 4px 0;
+            margin: 4px auto;
+            display: block;
         }
 
-        /* MAIN STAFF */
+        /* ZONA DE PARTITURA */
         .canvas-area {
             margin-top: 100px;
             margin-left: 110px;
             margin-right: 300px;
+            height: calc(100vh - 120px);
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: #f5f5f5;
         }
 
         #staffCanvas {
-            width: 100%;
+            background: white;
             border-radius: 10px;
+            min-width: 700px;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 10px 0;
         }
 
-        /* DRAGGING ICONS */
         .draggable {
             position: absolute;
-            width: 60px;
-            cursor: grab;
+            width: 40px;
+            pointer-events: none;
         }
     </style>
 
@@ -208,24 +227,26 @@
     <!-- LEFT TOOLBAR -->
     <div class="tool-column">
         <div class="tool-btn" @click="togglePanel('notas')">
-            <img src="notas/negra.png">
+            <img src="Img/negra.png">
         </div>
         <div class="tool-btn" @click="togglePanel('silencios')">
-            <img src="silencios/silencio_negra.png">
+            <img src="Img/silencio negra.png">
         </div>
         <div class="tool-btn" @click="togglePanel('claves')">
-            <img src="claves/sol.png">
+            <img src="Img/clave_de_sol.png">
         </div>
         <div class="tool-btn" @click="togglePanel('dinamica')">
-            <img src="dinamica/dinamica.png">
+            <img src="Img/forte.png">
         </div>
         <div class="tool-btn" @click="togglePanel('armadura')">
-            <img src="armadura/armadura.png">
+            <img src="Img/fusa.png">
         </div>
         <div class="tool-btn" @click="togglePanel('compas')">
-            <img src="compas/compas.png">
+            <img src="Img/corchea.png">
         </div>
-        <button class="btn btn-success w-100 mt-2" @click="creatorApp">Create</button>
+
+        <!-- Solo crea la partitura cuando apretás -->
+        <button class="btn btn-success w-100 mt-2" @click="init()">Create</button>
     </div>
 
     <!-- RIGHT PANEL -->
@@ -235,10 +256,10 @@
         <div class="panel-block" @click="panel.notas=!panel.notas">
             Notas
             <div class="panel-content" :class="{ 'open': panel.notas }">
-                <img src="notas/redonda.png" @mousedown="startDrag($event)">
-                <img src="notas/blanca.png" @mousedown="startDrag($event)">
-                <img src="notas/negra.png" @mousedown="startDrag($event)">
-                <img src="notas/corchea.png" @mousedown="startDrag($event)">
+                <img src="Img/redonda.png"  data-kind="note" data-step="C" data-octave="4" data-duration="whole"   @mousedown="startDrag($event)">
+                <img src="Img/blanca.png"   data-kind="note" data-step="C" data-octave="4" data-duration="half"    @mousedown="startDrag($event)">
+                <img src="Img/negra.png"    data-kind="note" data-step="C" data-octave="4" data-duration="quarter" @mousedown="startDrag($event)">
+                <img src="Img/corchea.png"  data-kind="note" data-step="C" data-octave="4" data-duration="eighth"  @mousedown="startDrag($event)">
             </div>
         </div>
 
@@ -246,9 +267,9 @@
         <div class="panel-block" @click="panel.silencios=!panel.silencios">
             Silencios
             <div class="panel-content" :class="{ 'open': panel.silencios }">
-                <img src="silencios/silencio_redonda.png" @mousedown="startDrag($event)">
-                <img src="silencios/silencio_blanca.png" @mousedown="startDrag($event)">
-                <img src="silencios/silencio_negra.png" @mousedown="startDrag($event)">
+                <img src="Img/silencio redonda.png" data-kind="rest" data-duration="whole"   @mousedown="startDrag($event)">
+                <img src="Img/silencio blanca.png"  data-kind="rest" data-duration="half"    @mousedown="startDrag($event)">
+                <img src="Img/silencio negra.png"   data-kind="rest" data-duration="quarter" @mousedown="startDrag($event)">
             </div>
         </div>
 
@@ -256,7 +277,9 @@
         <div class="panel-block" @click="panel.claves=!panel.claves">
             Claves
             <div class="panel-content" :class="{ 'open': panel.claves }">
-                <img src="claves/sol.png" @mousedown="startDrag($event)">
+                <img src="Img/clave_de_sol.png" data-kind="clef" data-sign="G" data-line="2" @mousedown="startDrag($event)">
+                <img src="Img/clave_de_fa.png"  data-kind="clef" data-sign="F" data-line="4" @mousedown="startDrag($event)">
+                <img src="Img/clave_de_do.png"  data-kind="clef" data-sign="C" data-line="3" @mousedown="startDrag($event)">
             </div>
         </div>
 
@@ -264,7 +287,9 @@
         <div class="panel-block" @click="panel.dinamica=!panel.dinamica">
             Dinámica
             <div class="panel-content" :class="{ 'open': panel.dinamica }">
-                <img src="dinamica/dinamica.png" @mousedown="startDrag($event)">
+                <img src="Img/metzoforte.png" data-kind="dynamic" data-text="mf" @mousedown="startDrag($event)">
+                <img src="Img/forte.png"      data-kind="dynamic" data-text="f"  @mousedown="startDrag($event)">
+                <img src="Img/piano.png"      data-kind="dynamic" data-text="p"  @mousedown="startDrag($event)">
             </div>
         </div>
 
@@ -272,15 +297,15 @@
         <div class="panel-block" @click="panel.armadura=!panel.armadura">
             Armadura
             <div class="panel-content" :class="{ 'open': panel.armadura }">
-                <img src="armadura/armadura.png" @mousedown="startDrag($event)">
+                <img src="Img/image 69 (1).png" data-kind="key" data-fifths="0" @mousedown="startDrag($event)">
             </div>
         </div>
 
         <!-- COMPÁS -->
         <div class="panel-block" @click="panel.compas=!panel.compas">
-            Compás
+            Ind. de Compás
             <div class="panel-content" :class="{ 'open': panel.compas }">
-                <img src="compas/compas.png" @mousedown="startDrag($event)">
+                <img src="Img/image 71 (1).png" data-kind="time" data-beats="4" data-beat-type="4" @mousedown="startDrag($event)">
             </div>
         </div>
 
@@ -289,30 +314,10 @@
 
     <!-- MAIN CANVAS -->
     <div class="canvas-area">
-        <canvas id="staffCanvas"></canvas>
+        <div id="staffCanvas"></div>
     </div>
 
 <script>
-async function checkAuth() {
-    try {
-    const r = await fetch('/api/session');
-    if (!r.ok) throw 0;
-    const d = await r.json();
-    if (!d.logged_in) throw 0;
-    } catch {
-    window.location.href = 'login.html';
-    }
-}
-async function logout() {
-    await fetch('/api/logout', { method: 'POST' });
-    window.location.href = 'index.html';
-}
-
-
-
-
-
-//CREADOR 
 function creatorApp() {
     return {
         sidebarOpen: false,
@@ -330,36 +335,62 @@ function creatorApp() {
         xmlDoc: null,
         osmd: null,
 
+        moveHandler: null,
+        upHandler: null,
+
+        // CREA LA PARTITURA EN BLANCO (solo cuando apretás Create)
         async init() {
-            // Cargar XML vacío
-            const blankXml = `
+            const baseXml = `
             <?xml version="1.0" encoding="UTF-8"?>
             <score-partwise version="3.1">
-                <part-list>
-                    <score-part id="P1"><part-name>Music</part-name></score-part>
-                </part-list>
-                <part id="P1">
-                    <measure number="1">
-                        <attributes>
-                            <divisions>1</divisions>
-                            <key><fifths>0</fifths></key>
-                            <time><beats>4</beats><beat-type>4</beat-type></time>
-                            <clef><sign>G</sign><line>2</line></clef>
-                        </attributes>
-                    </measure>
-                </part>
+            <part-list>
+                <score-part id="P1">
+                <part-name>Music</part-name>
+                </score-part>
+            </part-list>
+            <part id="P1">
+                <measure number="1">
+                <attributes>
+                    <divisions>1</divisions>
+                    <key><fifths>0</fifths></key>
+                    <time><beats>4</beats><beat-type>4</beat-type></time>
+                    <clef><sign>G</sign><line>2</line></clef>
+                </attributes>
+                <note>
+                    <rest/>
+                    <duration>4</duration>
+                    <voice>1</voice>
+                    <type>whole</type>
+                </note>
+                </measure>
+            </part>
             </score-partwise>`;
 
             const parser = new DOMParser();
-            this.xmlDoc = parser.parseFromString(blankXml, "application/xml");
+            this.xmlDoc = parser.parseFromString(baseXml, "application/xml");
 
-            this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("staffCanvas", {
-                drawTitle: false,
-                drawComposer: false,
-                drawCredits: false
-            });
+            // crear más compases vacíos (para que parezca hoja entera)
+            const part = this.xmlDoc.querySelector('part[id="P1"]');
+            const measure1 = this.xmlDoc.querySelector('measure[number="1"]');
 
-            await this.osmd.load(blankXml);
+            for (let i = 2; i <= 12; i++) {
+                const clone = measure1.cloneNode(true);
+                clone.setAttribute("number", String(i));
+                part.appendChild(clone);
+            }
+
+            if (!this.osmd) {
+                this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("staffCanvas", {
+                    drawTitle: false,
+                    drawComposer: false,
+                    drawCredits: false
+                });
+                this.osmd.Zoom = 0.9;
+            }
+
+            const serializer = new XMLSerializer();
+            const xmlString = serializer.serializeToString(this.xmlDoc);
+            await this.osmd.load(xmlString);
             this.osmd.render();
         },
 
@@ -367,45 +398,135 @@ function creatorApp() {
             this.panel[name] = !this.panel[name];
         },
 
+        // Inicia el drag y guarda qué símbolo se está moviendo
         startDrag(event) {
             const img = event.target;
+            const dataset = img.dataset;
+
             this.dragging = {
-                img,
-                offsetX: event.offsetX,
-                offsetY: event.offsetY
+                kind: dataset.kind,
+                step: dataset.step,
+                octave: dataset.octave,
+                duration: dataset.duration,
+                sign: dataset.sign,
+                line: dataset.line,
+                beats: dataset.beats,
+                beatType: dataset.beatType,
+                fifths: dataset.fifths,
+                text: dataset.text
             };
 
-            document.addEventListener("mousemove", this.dragMove);
-            document.addEventListener("mouseup", this.dragStop);
+            this.moveHandler = (e) => {
+                // acá podrías dibujar una nota fantasma si querés
+            };
+
+            this.upHandler = async (e) => {
+                document.removeEventListener("mousemove", this.moveHandler);
+                document.removeEventListener("mouseup", this.upHandler);
+
+                if (!this.dragging || !this.xmlDoc) {
+                    this.dragging = null;
+                    return;
+                }
+
+                const staffEl = document.getElementById("staffCanvas");
+                const rect = staffEl.getBoundingClientRect();
+                const x = e.clientX;
+                const y = e.clientY;
+
+                const inside =
+                    x >= rect.left && x <= rect.right &&
+                    y >= rect.top && y <= rect.bottom;
+
+                if (!inside) {
+                    this.dragging = null;
+                    return;
+                }
+
+                this.applySymbolToXml(this.dragging, rect, x, y);
+
+                this.dragging = null;
+
+                const serializer = new XMLSerializer();
+                const xmlString = serializer.serializeToString(this.xmlDoc);
+                await this.osmd.load(xmlString);
+                this.osmd.render();
+            };
+
+            document.addEventListener("mousemove", this.moveHandler);
+            document.addEventListener("mouseup", this.upHandler);
         },
 
-        dragMove: (event) => {
-            if (!creatorAppInstance.dragging) return;
+        // decide compás y altura a partir de x,y
+        applySymbolToXml(symbol, rect, clientX, clientY) {
+            if (!symbol.kind) return;
+
+            const relX = clientX - rect.left;
+            const relY = clientY - rect.top;
+
+            const measures = this.xmlDoc.querySelectorAll('part[id="P1"] > measure');
+            if (!measures.length) return;
+
+            let measureIndex = Math.floor(relX / rect.width * measures.length);
+            if (measureIndex < 0) measureIndex = 0;
+            if (measureIndex >= measures.length) measureIndex = measures.length - 1;
+
+            const measure = measures[measureIndex];
+
+            const pitchMap = [
+                { step: 'E', octave: 4 },
+                { step: 'F', octave: 4 },
+                { step: 'G', octave: 4 },
+                { step: 'A', octave: 4 },
+                { step: 'B', octave: 4 },
+                { step: 'C', octave: 5 },
+                { step: 'D', octave: 5 },
+                { step: 'E', octave: 5 },
+                { step: 'F', octave: 5 },
+                { step: 'G', octave: 5 }
+            ];
+
+            const bandHeight = rect.height / pitchMap.length;
+            let pitchIndex = Math.floor(relY / bandHeight);
+            if (pitchIndex < 0) pitchIndex = 0;
+            if (pitchIndex >= pitchMap.length) pitchIndex = pitchMap.length - 1;
+
+            const mappedPitch = pitchMap[pitchIndex];
+
+            if (symbol.kind === "note") {
+                const step   = symbol.step   || mappedPitch.step;
+                const octave = symbol.octave || mappedPitch.octave;
+                const dur    = symbol.duration || "quarter";
+                this.addNoteToXml(measure, step, octave, dur);
+
+            } else if (symbol.kind === "rest") {
+                const dur = symbol.duration || "quarter";
+                this.addRestToXml(measure, dur);
+
+            } else if (symbol.kind === "clef") {
+                this.setClef(symbol.sign || "G", symbol.line || 2);
+
+            } else if (symbol.kind === "time") {
+                this.setTimeSignature(symbol.beats || 4, symbol.beatType || 4);
+
+            } else if (symbol.kind === "key") {
+                this.setKeySignature(symbol.fifths || 0);
+
+            } else if (symbol.kind === "dynamic") {
+                this.addDynamic(symbol.text || "mf");
+            }
         },
 
-        dragStop: async (event) => {
-            document.removeEventListener("mousemove", creatorAppInstance.dragMove);
-            document.removeEventListener("mouseup", creatorAppInstance.dragStop);
-
-            const x = event.clientX;
-            const y = event.clientY;
-
-            // Convert drop position → Nota en MusicXML
-            creatorAppInstance.addNoteToXml("C", 4, "quarter");
-
-            creatorAppInstance.dragging = null;
-
-            // Volver a renderizar
-            const xmlString = new XMLSerializer().serializeToString(creatorAppInstance.xmlDoc);
-            await creatorAppInstance.osmd.load(xmlString);
-            creatorAppInstance.osmd.render();
-        },
-
-        addNoteToXml(step, octave, type) {
+        addNoteToXml(measure, step, octave, type) {
             const note = this.xmlDoc.createElement("note");
 
             const pitch = this.xmlDoc.createElement("pitch");
-            pitch.innerHTML = `<step>${step}</step><octave>${octave}</octave>`;
+            const stepEl = this.xmlDoc.createElement("step");
+            stepEl.textContent = step;
+            const octaveEl = this.xmlDoc.createElement("octave");
+            octaveEl.textContent = octave;
+            pitch.appendChild(stepEl);
+            pitch.appendChild(octaveEl);
             note.appendChild(pitch);
 
             const duration = this.xmlDoc.createElement("duration");
@@ -416,8 +537,81 @@ function creatorApp() {
             typeEl.textContent = type;
             note.appendChild(typeEl);
 
-            const measure = this.xmlDoc.querySelector("measure");
             measure.appendChild(note);
+        },
+
+        addRestToXml(measure, type) {
+            const note = this.xmlDoc.createElement("note");
+
+            const rest = this.xmlDoc.createElement("rest");
+            note.appendChild(rest);
+
+            const duration = this.xmlDoc.createElement("duration");
+            duration.textContent = "1";
+            note.appendChild(duration);
+
+            const typeEl = this.xmlDoc.createElement("type");
+            typeEl.textContent = type;
+            note.appendChild(typeEl);
+
+            measure.appendChild(note);
+        },
+
+        setClef(sign, line) {
+            let clef = this.xmlDoc.querySelector("clef");
+            if (!clef) {
+                const attributes = this.xmlDoc.querySelector("attributes") || this.xmlDoc.querySelector("measure").appendChild(this.xmlDoc.createElement("attributes"));
+                clef = this.xmlDoc.createElement("clef");
+                attributes.appendChild(clef);
+            }
+            let signEl = clef.querySelector("sign");
+            if (!signEl) { signEl = this.xmlDoc.createElement("sign"); clef.appendChild(signEl); }
+            signEl.textContent = sign;
+
+            let lineEl = clef.querySelector("line");
+            if (!lineEl) { lineEl = this.xmlDoc.createElement("line"); clef.appendChild(lineEl); }
+            lineEl.textContent = line;
+        },
+
+        setTimeSignature(beats, beatType) {
+            let time = this.xmlDoc.querySelector("time");
+            if (!time) {
+                const attributes = this.xmlDoc.querySelector("attributes") || this.xmlDoc.querySelector("measure").appendChild(this.xmlDoc.createElement("attributes"));
+                time = this.xmlDoc.createElement("time");
+                attributes.appendChild(time);
+            }
+            let beatsEl = time.querySelector("beats");
+            if (!beatsEl) { beatsEl = this.xmlDoc.createElement("beats"); time.appendChild(beatsEl); }
+            beatsEl.textContent = beats;
+
+            let beatTypeEl = time.querySelector("beat-type");
+            if (!beatTypeEl) { beatTypeEl = this.xmlDoc.createElement("beat-type"); time.appendChild(beatTypeEl); }
+            beatTypeEl.textContent = beatType;
+        },
+
+        setKeySignature(fifths) {
+            let key = this.xmlDoc.querySelector("key");
+            if (!key) {
+                const attributes = this.xmlDoc.querySelector("attributes") || this.xmlDoc.querySelector("measure").appendChild(this.xmlDoc.createElement("attributes"));
+                key = this.xmlDoc.createElement("key");
+                attributes.appendChild(key);
+            }
+            let fifthsEl = key.querySelector("fifths");
+            if (!fifthsEl) { fifthsEl = this.xmlDoc.createElement("fifths"); key.appendChild(fifthsEl); }
+            fifthsEl.textContent = fifths;
+        },
+
+        addDynamic(text) {
+            const measure = this.xmlDoc.querySelector("measure");
+            const direction = this.xmlDoc.createElement("direction");
+            const dirType = this.xmlDoc.createElement("direction-type");
+            const dynamics = this.xmlDoc.createElement("dynamics");
+            const dynEl = this.xmlDoc.createElement(text);
+
+            dynamics.appendChild(dynEl);
+            dirType.appendChild(dynamics);
+            direction.appendChild(dirType);
+            measure.appendChild(direction);
         },
 
         async saveCanvas() {
@@ -430,7 +624,7 @@ function creatorApp() {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
             const img = new Image();
-            img.src = URL.createObjectURL(new Blob([svgString], {type:"image/svg+xml"}));
+            img.src = URL.createObjectURL(new Blob([svgString], { type:"image/svg+xml" }));
 
             img.onload = async () => {
                 canvas.width = img.width;
@@ -453,13 +647,10 @@ function creatorApp() {
     };
 }
 
-const creatorAppInstance = creatorApp();
-
 </script>
 
-    <!-- HTML2CANVAS for saving -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- HTML2CANVAS opcional -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </body>
 </html>
-
