@@ -48,6 +48,20 @@ def main():
 
     os.makedirs(work_dir, exist_ok=True)
 
+    # ======= PRE-PROCESAMIENTO FFmpeg PARA EVITAR CUELGUES =======
+    pre_wav = os.path.join(work_dir, "pre.wav")
+
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-i", filepath,
+        "-ac", "1",        # 1 canal (mono)
+        "-ar", "44100",    # sample rate estándar
+        pre_wav
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    filepath = pre_wav
+    # ===============================================================
+
     # EXACTO como en app.py
     sep = Separator(
         filepath,          # audio_file
