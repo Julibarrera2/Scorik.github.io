@@ -274,22 +274,13 @@ def upload_file():
 
         # Constructor correcto de audio-separator 0.7.3
         sep = Separator(
-            audio_file_path=filepath,
-            model_name=model_name,
-            model_file_dir="/tmp/audio-separator-models",
-            output_dir=work_dir,
-            output_format="wav",
-            use_cuda=False,
-            denoise_enabled=True,
-            normalization_enabled=True
+            filepath,          # audio_file
+            model_name=model_name
         )
 
-        # Ejecutar separación (solo acepta model_name, output_single_stem, overwrite)
+        # Ejecutar separación SIN parámetros extra
         try:
-            outputs = sep.separate(
-                model_name=model_name,
-                overwrite=True
-            )
+            outputs = sep.separate()
         except Exception as e:
             app.logger.exception("Error ejecutando audio-separator 0.7.3")
             return jsonify({"error": str(e)}), 500
