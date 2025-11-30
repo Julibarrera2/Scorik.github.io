@@ -148,22 +148,6 @@ def set_progress(usuario, msg):
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"msg": msg}, f)
 
-# Ruta para obtener el progreso del usuario
-@app.route('/api/progress/<usuario>')
-def api_progress(usuario):
-    if not usuario:
-        usuario = "anon"
-    path = os.path.join(PROGRESS_FOLDER, f"{usuario}.json")
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as f:
-            return jsonify(json.load(f))
-    return jsonify({"msg": "Convirtiendo el audio..."})
-
-# Progreso SIN usuario → usa "anon"
-@app.route('/api/progress/', defaults={'usuario': 'anon'})
-def api_progress_default(usuario):
-    return api_progress(usuario)
-
 #Lo de registrer y login
 @app.route('/api/register', methods=['POST'])
 def api_register():
@@ -295,6 +279,16 @@ def upload_file():
     except Exception as e:
         app.logger.exception("Error en /upload")
         return jsonify({"error": "Falló el servidor"}), 500
+
+@app.route('/api/progress/<job_id>')
+def api_progress(job_id):
+    path = os.path.join(PROGRESS_FOLDER, f"{job_id}.json")
+    if not os.path.exists(path):
+        return jsonify({"status": "pending", "msg": "Procesando..."})
+
+    with open(path, encoding="utf-8") as f:
+        return jsonify(json.load(f))
+
 
 @app.route('/save_partitura', methods=['POST'])
 def save_partitura():
