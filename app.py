@@ -252,7 +252,6 @@ def upload_file():
         # 🔥 Convertir MP3 → WAV antes de pasar a MDX
         filepath = convert_to_wav_if_needed(filepath)
 
-
         # ================================================================
         # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
         # ================================================================
@@ -273,26 +272,27 @@ def upload_file():
         # Crear carpeta de salida
         os.makedirs(work_dir, exist_ok=True)
 
-        # Constructor correcto (audio_file obligatorio)
+        # Constructor correcto de audio-separator 0.7.3
         sep = Separator(
-            audio_file_path=filepath,   # ← obligatorio
-            model_name=model_name,      # ← válido acá
-            model_file_dir="/tmp/audio-separator-models",  # opcional pero recomendado
+            audio_file_path=filepath,
+            model_name=model_name,
+            model_file_dir="/tmp/audio-separator-models",
+            output_dir=work_dir,
             output_format="wav",
-            use_cuda=False
+            use_cuda=False,
+            denoise_enabled=True,
+            normalization_enabled=True
         )
 
-        # Ejecutar separación
+        # Ejecutar separación (solo acepta model_name, output_single_stem, overwrite)
         try:
             outputs = sep.separate(
-                output_dir=work_dir,
-                denoise_enabled=True,
-                normalization_enabled=True
+                model_name=model_name,
+                overwrite=True
             )
         except Exception as e:
             app.logger.exception("Error ejecutando audio-separator 0.7.3")
             return jsonify({"error": str(e)}), 500
-
 
         # Normalizar outputs
         if isinstance(outputs, dict):
@@ -307,7 +307,6 @@ def upload_file():
             outputs = [outputs]
         elif outputs is None:
             outputs = []
-
 
         # Buscar WAV resultante
         candidates = [p for p in outputs if p.lower().endswith(".wav")]
