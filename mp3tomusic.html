@@ -220,7 +220,7 @@ async function getSessionEmail() {
             <option value="">Select instrument</option>
             <option value="piano">Piano</option>
             <option value="guitarra">Guitarra</option>
-            <option value="violín">Violín</option>
+            <option value="violin">Violín</option>
         </select>
         <label for="mp3-upload" class="custom-file-upload">Select MP3</label>
         <input id="mp3-upload" type="file" accept=".mp3" />
@@ -277,64 +277,40 @@ function appScorik() {
             const instrumentSelect = document.getElementById('instrumentSelect');
             const file = mp3Input.files[0];
             const instrument = instrumentSelect.value;
-            if (!this.usuario) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
 
-            if (!file || !instrument) {
-                alert("Seleccioná instrumento y archivo mp3");
-                return;
-            }
-            // Iniciar pantalla de loading
+            if (!this.usuario) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
+            if (!file || !instrument) { alert("Seleccioná instrumento y archivo mp3"); return; }
+
+            // MOSTRAR CÍRCULO DE CARGA MIENTRAS SE SUBE EL ARCHIVO
             showLoading();
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('usuario', this.usuario || 'anon');
+            formData.append('usuario', this.usuario);
+            formData.append('instrumento', instrument);
 
-            // Lanzar la consulta de progreso en paralelo
-            let keepPolling = true;
-            pollProgress(this.usuario || 'anon', () => keepPolling);
+            // 1) HACER EL UPLOAD
+            const resp = await fetch('/upload', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
 
-            const kill = setTimeout(() => {
-                keepPolling = false;
+            const data = await resp.json();
+
+            if (!resp.ok || !data.job_id) {
                 hideLoading();
-                alert('Tardó demasiado. Revisá tu audio o probá de nuevo.');
-            }, 600000);//3 minutos
+                alert(data.error || "Error en el servidor");
+                return;
+            }
 
-            fetch('/upload', { method: 'POST', body: formData, credentials: 'include'})
-                .then(async resp => {
-                    clearTimeout(kill);
-                    let data;
-                    try { data = await resp.json(); } catch { data = {}; }
-                    
-                    if (!resp.ok) {
-                    keepPolling = false;
-                    hideLoading();
-                    const msg = data?.error || 'Error en el procesamiento.';
-                    const detail = (data?.stderr || '').slice(0, 800);
-                    alert(msg + (detail ? ("\n\nDetalle:\n" + detail) : ""));
-                    return;
-                    }
+            const job_id = data.job_id;
 
-                    keepPolling = false;
-
-                    setTimeout(() => {
-                    hideLoading();
-                    if (data.imagen) {
-                        this.activeTab = 'sheet';
-                        this.lastImage = data.imagen + '?v=' + Date.now();
-                        this.lastXml = data.xml || '';
-                    } else {
-                        alert(data.error || "No se generó imagen.");
-                    }
-                    }, 900);
-                })
-                .catch(() => {
-                    clearTimeout(kill);
-                    keepPolling = false;
-                    hideLoading();
-                    alert("Error en el procesamiento.");
-                });
+            // 2) REDIRIGIR A LOADING.HTML CON EL job_id !!!
+            window.location.href = `loading.html?job_id=${job_id}`;
         },
+
+
 
     async savePartitura() {
         if (!this.usuario) { alert("Tu sesión expiró. Volvé a loguearte."); return; }
@@ -415,33 +391,61 @@ function setProgressUI(pct, msg) {
     msgDiv.textContent = msg;
 }
 
-// Consulta cada 1s el backend y actualiza la barra
-function pollProgress(usuario, keepPollingFunc) {
-    usuario = usuario || 'anon';
-    let lastPct = 0;
-    function buscar() {
-        fetch('/api/progress/' + encodeURIComponent(usuario))
-            .then(r => r.json())
-            .then(data => {
-                const msg = data.msg || "Preparando...";
-                let pct = lastPct;
-                for (const step of PROGRESS_STEPS) {
-                    if (msg.includes(step.txt)) {
-                        pct = step.pct;
-                        break;
-                    }
-                }
-                setProgressUI(pct, msg);
-                lastPct = pct;
-            })
-            .finally(() => {
-                if (keepPollingFunc()) {
-                    setTimeout(buscar, 1000);
-                }
-            });
+function pollJob(job_id) {
+    function loop() {
+        fetch(`/api/progress/${job_id}`)
+        .then(r => r.json())
+        .then(data => {
+            const msg = data.msg || "Procesando...";
+            setProgressUI( calcularProgreso(msg), msg );
+
+            if (data.status === "done") {
+                hideLoading();
+
+                const imgUrl = convertirRutaPublica(data.result_img);
+                const xmlUrl = convertirRutaPublica(data.result_xml);
+
+                // MOSTRAR RESULTADO
+                const app = document.querySelector("html").__x.$data;
+                app.activeTab = 'sheet';
+                app.lastImage = imgUrl;
+                app.lastXml = xmlUrl;
+
+                return;
+            }
+
+            if (data.status === "error") {
+                hideLoading();
+                alert("Error: " + msg);
+                return;
+            }
+
+            setTimeout(loop, 1200);
+        })
+        .catch(() => {
+            setTimeout(loop, 1500);
+        });
     }
-    buscar();
+
+    loop();
 }
+
+function calcularProgreso(msg) {
+    if (msg.includes("Convirtiendo")) return 10;
+    if (msg.includes("Separando")) return 35;
+    if (msg.includes("Detectando")) return 60;
+    if (msg.includes("Generando")) return 85;
+    if (msg.includes("done")) return 100;
+    return 20;
+}
+
+function convertirRutaPublica(ruta) {
+    if (!ruta) return null;
+    const idx = ruta.indexOf("static_temp/");
+    if (idx === -1) return ruta;
+    return "/static/temp/" + ruta.substring(idx + "static_temp/".length);
+}
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

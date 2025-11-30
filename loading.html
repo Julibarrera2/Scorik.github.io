@@ -67,41 +67,64 @@
 </div>
 
 <script>
-    // Obtené el usuario (ej: localStorage, o querystring)
-    let usuario = localStorage.getItem('currentUser') ? JSON.parse(localStorage.getItem('currentUser')).email : '';
-    if (!usuario) usuario = 'anon';
+const params = new URLSearchParams(window.location.search);
+const job_id = params.get("job_id");
 
-    const estados = [
-        { msg: "Convirtiendo el audio...", percent: 10 },
-        { msg: "Audio cargado correctamente.", percent: 25 },
-        { msg: "Detectando notas...", percent: 60 },
-        { msg: "Generando imagen ...", percent: 85 },
-        { msg: "Imagen generada", percent: 100 }
-    ];
+if (!job_id) {
+    document.getElementById('loading-msg').textContent = "Error interno.";
+}
 
-    function setEstado(msg) {
-        document.getElementById('loading-msg').textContent = msg;
-        let p = estados.find(e => msg.startsWith(e.msg));
-        let percent = p ? p.percent : 15;
-        document.getElementById('progress-bar').style.width = percent + "%";
-    }
+const estados = [
+    { msg: "Convirtiendo", percent: 10 },
+    { msg: "Separando",    percent: 35 },
+    { msg: "Detectando",   percent: 60 },
+    { msg: "Generando",    percent: 85 },
+    { msg: "done",         percent: 100 }
+];
 
-    function checkProgress() {
-        fetch(`/api/progress/${encodeURIComponent(usuario)}`)
-        .then(resp => resp.json())
-        .then(data => {
-            setEstado(data.msg || "Cargando...");
-            if ((data.msg || "") === "Imagen generada") {
-            setTimeout(() => {
-                window.location.href = 'mp3tomusic.html#sheet';
-            }, 900);
-            } else {
-            setTimeout(checkProgress, 900);
-            }
-        });
-    }
+function setEstado(msg) {
+    document.getElementById('loading-msg').textContent = msg;
+    let p = estados.find(e => msg.includes(e.msg));
+    let percent = p ? p.percent : 20;
+    document.getElementById('progress-bar').style.width = percent + "%";
+}
 
-    checkProgress();
+function convertirRutaPublica(ruta) {
+    if (!ruta) return null;
+    const idx = ruta.indexOf("static_temp/");
+    if (idx === -1) return ruta;
+    return "/static/temp/" + ruta.substring(idx + "static_temp/".length);
+}
+
+function checkProgress() {
+    fetch(`/api/progress/${job_id}`)
+    .then(resp => resp.json())
+    .then(data => {
+        const msg = data.msg || "Procesando...";
+        setEstado(msg);
+
+        if (data.status === "done") {
+            const img = convertirRutaPublica(data.result_img);
+            const xml = convertirRutaPublica(data.result_xml);
+
+            // GUARDAR EN LOCALSTORAGE PARA MP3TOMUSIC
+            localStorage.setItem("last_image", img);
+            localStorage.setItem("last_xml", xml);
+
+            // IR A SHEET
+            window.location.href = `mp3tomusic.html#sheet`;
+
+        } else if (data.status === "error") {
+            alert("Error: " + msg);
+        } else {
+            setTimeout(checkProgress, 1000);
+        }
+    })
+    .catch(() => setTimeout(checkProgress, 1200));
+}
+
+checkProgress();
 </script>
+
 </body>
 </html>

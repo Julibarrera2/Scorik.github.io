@@ -226,7 +226,22 @@ def upload_file():
 
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        set_progress(usuario, "Convirtiendo el audio...")
+        # Crear ID único para el trabajo
+        job_id = f"{usuario}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
+
+        # Guardar progreso inicial
+        meta_path = os.path.join(PROGRESS_FOLDER, f"{job_id}.json")
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "status": "pending",
+                "msg": "Subiendo archivo...",
+                "usuario": usuario,
+                "instrumento": instrumento,
+                "filepath": None,
+                "work_dir": None,
+                "result_img": None,
+                "result_xml": None
+            }, f)
 
         # ================================================================
         # 2) Validación del archivo
@@ -241,157 +256,46 @@ def upload_file():
         # ================================================================
         # 3) Carpeta temporal de trabajo
         # ================================================================
-        req_id = f"{usuario}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
-        work_dir = os.path.join(STATIC_TEMP_FOLDER, req_id)
+        work_dir = os.path.join(STATIC_TEMP_FOLDER, job_id)
         os.makedirs(work_dir, exist_ok=True)
 
         # Guardar MP3/WAV original
         filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
-        # 🔥 Convertir MP3 → WAV antes de pasar a MDX
+
+        # Convertir MP3 → WAV
+        set_progress(job_id, "Convirtiendo audio a WAV...")
         filepath = convert_to_wav_if_needed(filepath)
 
         # ================================================================
         # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
         # ================================================================
-        from audio_separator import Separator
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
 
-        set_progress(usuario, "Separando instrumentos (MDX 0.7.3)...")
+        meta["filepath"] = filepath
+        meta["work_dir"] = work_dir
+        meta["msg"] = "Procesando..."
 
-        MODEL_MAP = {
-            "guitarra": "UVR-MDX-NET-Inst_1",
-            "piano":    "UVR-MDX-NET-Inst_HQ_2",
-            "violin":   "UVR_MDXNET_3_9662",
-        }
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f)
 
-        model_name = MODEL_MAP.get(instrumento)
-        if not model_name:
-            return jsonify({"error": "Instrumento inválido"}), 400
-
-        # Crear carpeta de salida
-        os.makedirs(work_dir, exist_ok=True)
-
-        # Constructor correcto de audio-separator 0.7.3
-        sep = Separator(
-            filepath,          # audio_file
-            model_name=model_name
-        )
-
-        # Ejecutar separación SIN parámetros extra
-        try:
-            outputs = sep.separate()
-        except Exception as e:
-            app.logger.exception("Error ejecutando audio-separator 0.7.3")
-            return jsonify({"error": str(e)}), 500
-
-        # Normalizar outputs
-        if isinstance(outputs, dict):
-            files = []
-            for v in outputs.values():
-                if isinstance(v, (list, tuple)):
-                    files.extend(v)
-                else:
-                    files.append(v)
-            outputs = files
-        elif isinstance(outputs, str):
-            outputs = [outputs]
-        elif outputs is None:
-            outputs = []
-
-        # Buscar WAV resultante
-        candidates = [p for p in outputs if p.lower().endswith(".wav")]
-        if not candidates:
-            return jsonify({"error": "No se generó WAV separado"}), 500
-
-        stem_wav = candidates[0]
-
-
+        # Lanzar Worker (asincrónico)
+        subprocess.Popen([PYTHON_EXEC, "worker.py", job_id])
 
         # ================================================================
-        # 5) Seleccionar script según instrumento
+        # RESPUESTA INMEDIATA AL FRONTEND
         # ================================================================
-        if instrumento == "piano":
-            script = "./ParteDeJuli/LeerArchivoYnota_piano.py"
-
-        elif instrumento == "guitarra":
-            script = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
-
-        elif instrumento == "violin":
-            script = "./ParteDeJuli/LeerArchivoYnota_violin.py"
-
-        else:
-            return jsonify({"error": "Instrumento inválido"}), 400
-
-
-        # ================================================================
-        # 6) DETECCIÓN DE NOTAS
-        # ================================================================
-        set_progress(usuario, "Detectando notas...")
-
-        subprocess.run(
-            [PYTHON_EXEC, script, stem_wav, work_dir],
-            check=True
-        )
-
-        set_progress(usuario, "Generando imagen...")
-
-        # ================================================================
-        # 7) Buscar PNG y XML generados
-        # ================================================================
-        IMG_EXTS = ('.png', '.jpg', '.jpeg', '.svg')
-        XML_EXTS = ('.xml', '.musicxml')
-
-        def find_outputs(base_dir):
-            img, xml = None, None
-            for root, _, files in os.walk(base_dir):
-                for f in files:
-                    fl = f.lower()
-                    if not img and fl.endswith(IMG_EXTS):
-                        img = os.path.join(root, f)
-                    if not xml and fl.endswith(XML_EXTS):
-                        xml = os.path.join(root, f)
-
-                if img and xml:
-                    return img, xml
-            return img, xml
-
-        img_path, xml_path = None, None
-
-        for _ in range(20):
-            img_path, xml_path = find_outputs(work_dir)
-            if img_path:
-                break
-            time.sleep(0.4)
-
-        if not img_path:
-            return jsonify({"error": "No se generó imagen de partitura"}), 500
-
-        # ================================================================
-        # 8) Construir URLs públicas
-        # ================================================================
-        def to_url(p):
-            rel = os.path.relpath(p, STATIC_TEMP_FOLDER).replace("\\", "/")
-            return "/static/temp/" + rel
-
-        set_progress(usuario, "Completado")
-
         return jsonify({
-            "imagen": to_url(img_path),
-            "xml": to_url(xml_path) if xml_path else None
+            "job_id": job_id,
+            "msg": "Procesando audio en segundo plano..."
         })
-
-    # ================================================================
-    # MANEJO DE ERRORES
-    # ================================================================
-    except subprocess.CalledProcessError as e:
-        print("SCRIPT ERROR:", e, file=sys.stderr)
-        return jsonify({"error": "Fallo el script de detección de notas", "output": str(e)}), 500
 
     except Exception as e:
         app.logger.exception("Error en /upload")
         return jsonify({"error": "Falló el servidor"}), 500
-    
+
 @app.route('/save_partitura', methods=['POST'])
 def save_partitura():
     # ======== NUEVA RUTA PARA GUARDAR DEFINITIVO ========
