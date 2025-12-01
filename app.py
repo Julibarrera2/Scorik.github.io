@@ -15,10 +15,8 @@ import soundfile as sf
 import numpy as np
 import onnxruntime as ort
 
-
 us = environment.UserSettings()
-us['musicxmlPath'] = '/usr/local/bin/mscore3-cli'
-us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore3-cli'
+
 
 def convert_to_wav_if_needed(filepath):
     """
@@ -541,6 +539,11 @@ def paginas_html(pagina):
     if os.path.exists(filename):
         return send_from_directory('.', filename)
     return "Página no encontrada", 404
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
