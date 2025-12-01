@@ -740,35 +740,77 @@ function creatorApp() {
             const xml = new XMLSerializer().serializeToString(this.xmlDoc);
 
             const svg = document.querySelector("#staffCanvas svg");
+            if (!svg) {
+                alert("No hay nada para guardar todavía.");
+                return;
+            }
+
             const serializer = new XMLSerializer();
             const svgString = serializer.serializeToString(svg);
 
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
             const img = new Image();
-            img.src = URL.createObjectURL(new Blob([svgString], { type:"image/svg+xml" }));
+            img.src = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml" }));
 
             img.onload = async () => {
+                // Pasar SVG a PNG
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
                 const png = canvas.toDataURL("image/png");
 
-                const nombre = prompt("Nombre de la partitura:");
-                const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-                const usuario = currentUser ? currentUser.email : "anon";
+                // MISMO sistema de usuario que en library.html
+                let usuario = "";
+                try {
+                    const r = await fetch("/api/session", { credentials: "include" });
+                    if (r.ok) {
+                        const d = await r.json();
+                        if (d.logged_in) {
+                            usuario = d.email;   // igual que requireSessionOrRedirect()
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
 
-                await fetch("/api/editor/save", {
+                if (!usuario) {
+                    alert("Tenés que iniciar sesión para guardar la partitura.");
+                    return;
+                }
+
+                // Pedir nombre
+                let nombre = prompt("Nombre de la partitura:");
+                if (!nombre) return;
+                nombre = nombre.trim();
+                if (!nombre) return;
+
+                // Opcional: mismo formato que la librería (sin espacios)
+                nombre = nombre.replace(/\s+/g, "_");
+
+                // Guardar en el backend
+                const res = await fetch("/api/editor/save", {
                     method: "POST",
-                    headers: {"Content-Type": "application/json"},
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ usuario, nombre, xml, png })
                 });
 
+                try {
+                    const out = await res.json();
+                    if (!out.success) {
+                        alert("Error al guardar: " + (out.error || "desconocido"));
+                        return;
+                    }
+                } catch {
+                    // si el backend no devuelve JSON, por lo menos seguimos
+                }
+
+                // Ir a la biblioteca
                 window.location.href = "library.html";
             };
         }
-    };
-}
+            };
+        }
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
