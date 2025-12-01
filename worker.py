@@ -1,5 +1,13 @@
 import os, sys, json, time, subprocess
+import shutil
+import os
+import json
 from audio_separator import Separator
+
+# --- DEBUG PARA VER SI MUSESCORE EXISTE EN EL CONTENEDOR ---
+print("CHECK mscore3:", shutil.which("mscore3"))
+print("CHECK mscore3-cli:", shutil.which("mscore3-cli"))
+print("CHECK MuseScore3:", shutil.which("MuseScore3"))
 
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
