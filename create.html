@@ -445,38 +445,44 @@ function creatorApp() {
             };
 
             this.upHandler = async (e) => {
-                document.removeEventListener("mousemove", this.moveHandler);
-                document.removeEventListener("mouseup", this.upHandler);
+            document.removeEventListener("mousemove", this.moveHandler);
+            document.removeEventListener("mouseup", this.upHandler);
 
-                if (this.dragging && this.dragging.ghost) {
-                    this.dragging.ghost.remove();
-                }
+            if (this.dragging && this.dragging.ghost) {
+                this.dragging.ghost.remove();
+            }
 
-                if (!this.dragging || !this.xmlDoc) {
-                    this.dragging = null;
-                    return;
-                }
-
-                const staffEl = document.getElementById("staffCanvas");
-                const rect = staffEl.getBoundingClientRect();
-                const x = e.clientX;
-                const y = e.clientY;
-
-                const inside =
-                    x >= rect.left && x <= rect.right &&
-                    y >= rect.top && y <= rect.bottom;
-
-                if (inside) {
-                    this.applySymbolToXml(this.dragging, rect, x, y);
-
-                    const serializer = new XMLSerializer();
-                    const xmlString = serializer.serializeToString(this.xmlDoc);
-                    await this.osmd.load(xmlString);
-                    this.osmd.render();
-                }
-
+            if (!this.dragging || !this.xmlDoc) {
                 this.dragging = null;
-            };
+                return;
+            }
+
+            // acá usamos el SVG del pentagrama, no el div blanco
+            const svgEl = document.querySelector("#staffCanvas svg");
+            if (!svgEl) {
+                this.dragging = null;
+                return;
+            }
+
+            const rect = svgEl.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+
+            const inside =
+                x >= rect.left && x <= rect.right &&
+                y >= rect.top && y <= rect.bottom;
+
+            if (inside) {
+                this.applySymbolToXml(this.dragging, rect, x, y);
+
+                const serializer = new XMLSerializer();
+                const xmlString = serializer.serializeToString(this.xmlDoc);
+                await this.osmd.load(xmlString);
+                this.osmd.render();
+            }
+
+            this.dragging = null;
+        };
 
             document.addEventListener("mousemove", this.moveHandler);
             document.addEventListener("mouseup", this.upHandler);
@@ -486,6 +492,7 @@ function creatorApp() {
         applySymbolToXml(symbol, rect, clientX, clientY) {
             if (!symbol.kind) return;
 
+            // X → qué compás
             const relX = clientX - rect.left;
             const relY = clientY - rect.top;
 
@@ -498,8 +505,9 @@ function creatorApp() {
 
             const measure = measures[measureIndex];
 
+            // Mapeo de alturas de grave (abajo) a agudo (arriba)
             const pitchMap = [
-                { step: 'E', octave: 4 },
+                { step: 'E', octave: 4 }, // línea 1
                 { step: 'F', octave: 4 },
                 { step: 'G', octave: 4 },
                 { step: 'A', octave: 4 },
@@ -508,19 +516,30 @@ function creatorApp() {
                 { step: 'D', octave: 5 },
                 { step: 'E', octave: 5 },
                 { step: 'F', octave: 5 },
-                { step: 'G', octave: 5 }
+                { step: 'G', octave: 5 }  // parte más arriba
             ];
 
-            const bandHeight = rect.height / pitchMap.length;
-            let pitchIndex = Math.floor(relY / bandHeight);
+            // Usamos la franja central del SVG (evitando blanco)
+            const topLimit    = rect.height * 0.25;
+            const bottomLimit = rect.height * 0.75;
+            let y = relY;
+
+            if (y < topLimit) y = topLimit;
+            if (y > bottomLimit) y = bottomLimit;
+
+            const usableHeight = bottomLimit - topLimit;
+            const t = (y - topLimit) / usableHeight; // 0 = arriba, 1 = abajo
+
+            // Invertimos: mover el mouse hacia ARRIBA → nota más aguda
+            let pitchIndex = Math.round((1 - t) * (pitchMap.length - 1));
             if (pitchIndex < 0) pitchIndex = 0;
             if (pitchIndex >= pitchMap.length) pitchIndex = pitchMap.length - 1;
 
             const mappedPitch = pitchMap[pitchIndex];
 
             if (symbol.kind === "note") {
-                const step   = symbol.step   || mappedPitch.step;
-                const octave = symbol.octave || mappedPitch.octave;
+                const step   = mappedPitch.step;
+                const octave = mappedPitch.octave;
                 const dur    = symbol.duration || "quarter";
                 this.addNoteToXml(measure, step, octave, dur);
 
