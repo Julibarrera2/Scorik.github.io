@@ -11,8 +11,14 @@ import json
 import warnings
 import subprocess
 import sys
-np.float = float
+import scipy.signal
+from scipy.signal import windows
 
+# FIX: SciPy >=1.11 eliminó signal.hann, pero librosa todavía lo usa
+if not hasattr(scipy.signal, "hann"):
+    scipy.signal.hann = windows.hann
+
+np.float = float
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # 1) Primero: variables de entorno (Dockerfile ya exporta FFMPEG_BINARY=ffmpeg)
