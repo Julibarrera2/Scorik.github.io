@@ -5,11 +5,17 @@ from time import time as timestamp
 # MuseScore: en Cloud Run viene por ENV como /usr/local/bin/mscore3-cli
 MUSESCORE_PATH = os.environ.get(
     "MUSESCORE_PATH",
-    r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe" if os.name == "nt" else "mscore3-cli"
+    r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe" if os.name == "nt" else "mscore3"
 )
-
 def safe_print(*a, **kw):
     print(*a, file=sys.stderr, **kw)
+# Si nos pasaron el wrapper mscore3-cli (que usa xvfb-run), lo reemplazamos por mscore3
+if MUSESCORE_PATH.endswith("mscore3-cli"):
+    # Usamos directamente el binario estándar; el sistema lo busca en el PATH
+    MUSESCORE_PATH = "mscore3"
+
+safe_print("MUSESCORE_PATH_RESOLVED:", MUSESCORE_PATH)
+
 
 def sanitize(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-_." else "_" for c in s)
