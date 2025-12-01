@@ -80,52 +80,61 @@
 
     /* Sidebar */
     .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 250px;
-    height: 100%;
-    background-color: #6b2bd97c;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    z-index: 20;
-    padding-top: 60px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #814ac495; /* Morado claro */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 80px;
+        box-sizing: border-box;
     }
-
     .sidebar.open {
-    transform: translateX(0);
+        transform: translateX(0);
     }
 
     .menu {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-grow: 1;
     }
 
     .menu-button {
-    background-color: #ffffff;
-    color: #8300f6cf;
-    font-weight: bold;
-    border: none;
-    border-radius: 20px;
-    padding: 10px 20px;
-    margin: 15px 0;
-    width: 150px;
-    cursor: pointer;
+        background-color: #ffffff;
+        color: #8300F6;
+        font-weight: bold;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 20px;
+        margin: 15px 0;
+        width: 170px;
+        cursor: pointer;
+        font-size: 16px;
+        text-align: center;
+    }
+    .menu-button:hover {
+        background-color: #e0d7f8;
     }
 
-    .menu-button:hover {
-    background-color: #e0d7f8;
-    transform: scale(1.05);
+    .bottom-area {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     .bottom-icon {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    cursor: pointer;
+        margin-bottom: 20px;
+        cursor: pointer;
     }
+    
 </style>
 </head>
 <body x-data="{ sidebarOpen: false }">
