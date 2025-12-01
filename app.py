@@ -263,7 +263,13 @@ def upload_file():
             json.dump(meta, f)
 
         # Lanzar Worker (asincrónico)
-        subprocess.Popen([PYTHON_EXEC, "worker.py", job_id])
+        subprocess.Popen(
+            [PYTHON_EXEC, "worker.py", job_id],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            close_fds=True
+        )
 
         # ================================================================
         # RESPUESTA INMEDIATA AL FRONTEND
