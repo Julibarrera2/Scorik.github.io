@@ -15,37 +15,36 @@ body {
     font-family: Arial, sans-serif;
 }
 
-/* ======= TOP BAR ======= */
-.topbar {
-    width: 100%;
-    height: 75px;
-    background: #5AE9DD;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-}
+/* TOP BAR */
+        .topbar {
+            width: 100%;
+            height: 70px;
+            background: #B573FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            z-index: 20;
+        }
 
-.menu-btn {
-    position: absolute;
-    left: 20px;
-    top: 18px;
-    width: 45px;
-    height: 45px;
-    background: white;
-    border-radius: 10px;
-    border: 3px solid #8300F6;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-}
-.menu-btn div {
-    width: 25px;
-    height: 3px;
-    background: #8300F6;
-    margin: 3px 0;
-}
+        .hamburger {
+            position: absolute;
+            left: 20px;
+            top: 12px;
+            background: #8B35FF;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .hamburger div {
+            width: 28px;
+            height: 4px;
+            background: white;
+            margin: 4px 0;
+            border-radius: 5px;
+        }
 
 .title-pill {
     background: #9B00F6;
@@ -57,49 +56,62 @@ body {
 }
 
 
- /* SIDEBAR MENU */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 100%;
-            background-color: #814ac495;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 80px;
-            box-sizing: border-box;
-        }
+ /* Sidebar */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #814ac495; /* Morado claro */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 80px;
+        box-sizing: border-box;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
 
-        .sidebar.open {
-            transform: translateX(0);
-        }
+    .menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-grow: 1;
+    }
 
-        .sidebar-btn {
-            background: white;
-            color: #8300F6;
-            font-weight: bold;
-            border: none;
-            border-radius: 15px;
-            width: 160px;
-            padding: 8px 20px;
-            margin: 15px auto;
-            display: block;
-        }
+    .menu-button {
+        background-color: #ffffff;
+        color: #8300F6;
+        font-weight: bold;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 20px;
+        margin: 15px 0;
+        width: 170px;
+        cursor: pointer;
+        font-size: 16px;
+        text-align: center;
+    }
+    .menu-button:hover {
+        background-color: #e0d7f8;
+    }
 
-        .bottom-area {
-            margin-top: auto;
-            margin-bottom: 30px;
-        }
+    .bottom-area {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
 
-        .bottom-icon {
-            cursor: pointer;
-        }
-
+    .bottom-icon {
+        margin-bottom: 20px;
+        cursor: pointer;
+    }
 
 /* ===== MAIN CONTENT (PICTURE + FORM) ===== */
 main {
@@ -171,12 +183,9 @@ main {
 
 <!-- ================ TOP BAR ================ -->
 <div class="topbar">
-    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">
-        <div></div>
-        <div></div>
-        <div></div>
-    </button>
-
+        <div class="hamburger" @click="sidebarOpen=!sidebarOpen">
+            <div></div><div></div><div></div>
+        </div>
     <div class="title-pill">Usuario</div>
 </div>
 
@@ -196,6 +205,7 @@ main {
         </div>
     </div>
 </div>
+
 <!-- ================ MAIN CONTENT ================ -->
 <main>
     <div class="section-title">Imagen</div>

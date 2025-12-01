@@ -58,62 +58,48 @@
             font-weight: bold;
         }
 
-        /* Sidebar */
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 250px;
-        height: 100%;
-        background-color: #814ac495; /* Morado claro */
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 80px;
-        box-sizing: border-box;
-    }
-    .sidebar.open {
-        transform: translateX(0);
-    }
+        /* SIDEBAR MENU */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #814ac495;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 80px;
+            box-sizing: border-box;
+        }
 
-    .menu {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex-grow: 1;
-    }
+        .sidebar.open {
+            transform: translateX(0);
+        }
 
-    .menu-button {
-        background-color: #ffffff;
-        color: #8300F6;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 20px;
-        margin: 15px 0;
-        width: 170px;
-        cursor: pointer;
-        font-size: 16px;
-        text-align: center;
-    }
-    .menu-button:hover {
-        background-color: #e0d7f8;
-    }
+        .sidebar-btn {
+            background: white;
+            color: #8300F6;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            width: 160px;
+            padding: 8px 20px;
+            margin: 15px auto;
+            display: block;
+        }
 
-    .bottom-area {
-        margin-top: auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
+        .bottom-area {
+            margin-top: auto;
+            margin-bottom: 30px;
+        }
 
-    .bottom-icon {
-        margin-bottom: 20px;
-        cursor: pointer;
-    }
+        .bottom-icon {
+            cursor: pointer;
+        }
 
         /* LEFT TOOLBAR */
         .tool-column {
@@ -231,30 +217,27 @@
 </head>
 <body x-data="creatorApp()" x-init="init()">
 
-    <!-- Sidebar -->
-<div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-    <div class="menu">
-        <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-        <button class="menu-button" onclick="location.href='library.html'">Library</button>
-        <button class="menu-button" onclick="location.href='create.html'">Create</button>
-        <button class="menu-button" onclick="location.href='User.html'">User</button>
-    </div>
-    <div class="bottom-area">
-        <div class="bottom-icon" @click="sidebarOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-                <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+    <!-- SIDEBAR -->
+    <div class="sidebar" :class="{ 'open': sidebarOpen }">
+        <button class="sidebar-btn" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+        <button class="sidebar-btn" onclick="location.href='library.html'">Library</button>
+        <button class="sidebar-btn" onclick="location.href='create.html'">Create</button>
+        <button class="sidebar-btn" onclick="location.href='User.html'">User</button>
+        <div class="bottom-area">
+            <div class="bottom-icon" @click="sidebarOpen = false">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
         </div>
     </div>
-</div>
-
 
     <!-- TOPBAR -->
     <div class="topbar">
         <div class="hamburger" @click="sidebarOpen=!sidebarOpen">
             <div></div><div></div><div></div>
         </div>
-        <div class="title">Creator</div>
+        <div class="title">creator</div>
     </div>
 
     <!-- LEFT TOOLBAR -->
@@ -341,15 +324,6 @@
             </div>
         </div>
 
-        <!-- BORRAR -->
-    <div class="panel-block" @click="panel.borrar=!panel.borrar">
-        Borrar
-        <div class="panel-content" :class="{ 'open': panel.borrar }">
-            <!-- Cambiá Img/eraser.png por el icono que tengas -->
-            <img src="Img/eraser.png" data-kind="erase" @mousedown="startDrag($event)">
-        </div>
-    </div>
-
         <button class="btn btn-success w-100 mt-2" @click="saveCanvas()">Save</button>
     </div>
 
@@ -369,8 +343,7 @@ function creatorApp() {
             claves: false,
             dinamica: false,
             armadura: false,
-            compas: false,
-            borrar: false
+            compas: false
         },
 
         dragging: null,
@@ -565,10 +538,10 @@ function creatorApp() {
             const mappedPitch = pitchMap[pitchIndex];
 
             if (symbol.kind === "note") {
-            const step   = mappedPitch.step;
-            const octave = mappedPitch.octave;
-            const dur    = symbol.duration || "quarter";
-            this.addNoteToXml(measure, step, octave, dur);
+                const step   = mappedPitch.step;
+                const octave = mappedPitch.octave;
+                const dur    = symbol.duration || "quarter";
+                this.addNoteToXml(measure, step, octave, dur);
 
             } else if (symbol.kind === "rest") {
                 const dur = symbol.duration || "quarter";
@@ -584,13 +557,8 @@ function creatorApp() {
                 this.setKeySignature(symbol.fifths || 0);
 
             } else if (symbol.kind === "dynamic") {
-            this.addDynamic(symbol.text || "mf");
-
-            } else if (symbol.kind === "erase") {
-                // borrar SIEMPRE la última nota del compás
-                this.deleteLastNoteInMeasure(measure);
+                this.addDynamic(symbol.text || "mf");
             }
-
         },
 
         addNoteToXml(measure, step, octave, type) {
@@ -620,40 +588,6 @@ function creatorApp() {
 
             measure.appendChild(note);
         },
-
-        deleteNoteAt(measure, step, octave) {
-            const notes = measure.getElementsByTagName("note");
-            let toRemove = null;
-
-            // buscamos de atrás para adelante (borra la última nota con ese tono)
-            for (let i = notes.length - 1; i >= 0; i--) {
-                const n = notes[i];
-                const pitch = n.querySelector("pitch");
-                if (!pitch) continue;
-
-                const s = pitch.querySelector("step")?.textContent;
-                const o = pitch.querySelector("octave")?.textContent;
-
-                if (s === step && o === String(octave)) {
-                    toRemove = n;
-                    break;
-                }
-            }
-
-    if (toRemove) {
-        measure.removeChild(toRemove);
-    }
-},
-        deleteLastNoteInMeasure(measure) {
-            const notes = measure.getElementsByTagName("note");
-            if (!notes.length) return;
-
-            // última nota del compás
-            const last = notes[notes.length - 1];
-            measure.removeChild(last);
-        },
-
-
 
         addRestToXml(measure, type) {
             const note = this.xmlDoc.createElement("note");
@@ -737,8 +671,10 @@ function creatorApp() {
         async saveCanvas() {
             if (!this.xmlDoc) return;
 
+            // 1) Pasar el XML de la partitura a string
             const xml = new XMLSerializer().serializeToString(this.xmlDoc);
 
+            // 2) Tomar el SVG que dibuja OSMD y convertirlo a PNG (base64)
             const svg = document.querySelector("#staffCanvas svg");
             if (!svg) {
                 alert("No hay nada para guardar todavía.");
@@ -754,21 +690,20 @@ function creatorApp() {
             img.src = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml" }));
 
             img.onload = async () => {
-                // Pasar SVG a PNG
-                canvas.width = img.width;
+                canvas.width  = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
+
+                // PNG en base64, tal como lo espera /api/editor/save
                 const png = canvas.toDataURL("image/png");
 
-                // MISMO sistema de usuario que en library.html
+                // 3) Obtener usuario logueado (igual que en library.html)
                 let usuario = "";
                 try {
                     const r = await fetch("/api/session", { credentials: "include" });
                     if (r.ok) {
                         const d = await r.json();
-                        if (d.logged_in) {
-                            usuario = d.email;   // igual que requireSessionOrRedirect()
-                        }
+                        if (d.logged_in) usuario = d.email;
                     }
                 } catch (err) {
                     console.error(err);
@@ -779,38 +714,33 @@ function creatorApp() {
                     return;
                 }
 
-                // Pedir nombre
+                // 4) Preguntar nombre de la partitura
                 let nombre = prompt("Nombre de la partitura:");
                 if (!nombre) return;
                 nombre = nombre.trim();
                 if (!nombre) return;
-
-                // Opcional: mismo formato que la librería (sin espacios)
                 nombre = nombre.replace(/\s+/g, "_");
 
-                // Guardar en el backend
+                // 5) Guardar en el backend → usa /api/editor/save (no /save_partitura)
                 const res = await fetch("/api/editor/save", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ usuario, nombre, xml, png })
                 });
 
-                try {
-                    const out = await res.json();
-                    if (!out.success) {
-                        alert("Error al guardar: " + (out.error || "desconocido"));
-                        return;
-                    }
-                } catch {
-                    // si el backend no devuelve JSON, por lo menos seguimos
+                const out = await res.json().catch(() => ({}));
+                if (!out.success && out.error) {
+                    alert("Error al guardar: " + out.error);
+                    return;
                 }
 
-                // Ir a la biblioteca
+                alert("Partitura guardada 🙂");
+                // 6) Ir a la biblioteca
                 window.location.href = "library.html";
             };
         }
-            };
-        }
+    };
+}
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>

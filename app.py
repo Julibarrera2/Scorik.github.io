@@ -417,35 +417,41 @@ def serve_css(filename):
 
 @app.route('/api/partituras_usuario/<usuario>')
 def api_partituras_usuario(usuario):
-    # Modo GCS (recomendado)
+    partituras = []
+
+    # 1) Intentar GCS
     if PARTITURAS_BUCKET:
         try:
             blobs = gcs_list(PARTITURAS_BUCKET, prefix=f"{usuario}/")
+            por_base = {}
+            for b in blobs:
+                fname = os.path.basename(b.name)
+                base, ext = os.path.splitext(fname)
+                if not base:
+                    continue
+                por_base.setdefault(base, {"nombre": base, "imagen": None, "xml": None})
+
+                user_q = quote(usuario, safe='')
+                if ext.lower() == ".png":
+                    por_base[base]["imagen"] = f"/gcs_partituras/{user_q}/{fname}"
+                if ext.lower() in (".xml", ".musicxml"):
+                    por_base[base]["xml"] = f"/gcs_partituras/{user_q}/{fname}"
+
+            partituras = [v for v in por_base.values() if v["imagen"]]
         except Exception as e:
             print("ERROR listando GCS:", e, file=sys.stderr)
-            return jsonify([])
+            partituras = []
 
-        por_base = {}
-        for b in blobs:
-            fname = os.path.basename(b.name)
-            base, ext = os.path.splitext(fname)
-            if not base:
-                continue
-            por_base.setdefault(base, {"nombre": base, "imagen": None, "xml": None})
+    # 2) Si GCS devolvió algo, lo usamos
+    if partituras:
+        return jsonify(partituras)
 
-            user_q = quote(usuario, safe='')
-            if ext.lower() == ".png":
-                por_base[base]["imagen"] = f"/gcs_partituras/{user_q}/{fname}"
-            if ext.lower() in (".xml", ".musicxml"):
-                por_base[base]["xml"] = f"/gcs_partituras/{user_q}/{fname}"
-
-        return jsonify([v for v in por_base.values() if v["imagen"]])
-
-    # Modo local (/tmp) – compatibilidad
+    # 3) Si no, modo local
     user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
     if not os.path.exists(user_dir):
         return jsonify([])
-    partituras = []
+
+    partituras_local = []
     for fname in os.listdir(user_dir):
         if fname.endswith('.png'):
             base = os.path.splitext(fname)[0]
@@ -454,12 +460,14 @@ def api_partituras_usuario(usuario):
                 if os.path.exists(os.path.join(user_dir, base + ext)):
                     xml = f"/partituras_usuario/{usuario}/{base + ext}"
                     break
-            partituras.append({
+            partituras_local.append({
                 "nombre": base,
                 "imagen": f"/partituras_usuario/{usuario}/{fname}",
                 "xml": xml
             })
-    return jsonify(partituras)
+
+    return jsonify(partituras_local)
+
 @app.route('/api/editor/save', methods=['POST'])
 def api_editor_save():
     data = request.get_json(silent=True) or {}
@@ -467,11 +475,11 @@ def api_editor_save():
     nombre = data.get("nombre")
     if not nombre:
         nombre = f"partitura_{int(time.time())}"
-    xml = data.get("xml")  # STRING del MusicXML completo
-    png_base64 = data.get("png")  # PNG en base64
+    xml = data.get("xml")
+    png_base64 = data.get("png")
 
     if not usuario or not xml or not png_base64:
-        return jsonify({"error": "Faltan datos"}), 400
+        return jsonify({"success": False, "error": "Faltan datos"}), 400
 
     user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
     os.makedirs(user_dir, exist_ok=True)
@@ -479,17 +487,25 @@ def api_editor_save():
     xml_path = os.path.join(user_dir, nombre + ".musicxml")
     png_path = os.path.join(user_dir, nombre + ".png")
 
-    # Guardar XML
     with open(xml_path, "w", encoding="utf-8") as f:
         f.write(xml)
 
-    # Guardar PNG desde base64
     import base64
     img_bytes = base64.b64decode(png_base64.split(",")[-1])
     with open(png_path, "wb") as f:
         f.write(img_bytes)
 
+    # Opcional: subir a GCS, pero **NO** borrar los archivos locales
+    if PARTITURAS_BUCKET:
+        try:
+            gcs_upload(PARTITURAS_BUCKET, f"{usuario}/{nombre}.png", png_path, content_type="image/png")
+            gcs_upload(PARTITURAS_BUCKET, f"{usuario}/{nombre}.musicxml", xml_path, content_type="application/xml")
+        except Exception as e:
+            print("ERROR subiendo a GCS:", e, file=sys.stderr)
+
     return jsonify({"success": True, "message": "Partitura guardada"})
+
+
 
 @app.route('/api/editor/load/<usuario>/<nombre>')
 def api_editor_load(usuario, nombre):
