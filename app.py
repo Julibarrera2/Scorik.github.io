@@ -461,8 +461,8 @@ def api_editor_save():
     nombre = data.get("nombre")
     if not nombre:
         nombre = f"partitura_{int(time.time())}"
-    xml = data.get("xml")  # STRING del MusicXML completo
-    png_base64 = data.get("png")  # PNG en base64
+    xml = data.get("xml")          # STRING del MusicXML completo
+    png_base64 = data.get("png")   # PNG en base64
 
     if not usuario or not xml or not png_base64:
         return jsonify({"error": "Faltan datos"}), 400
@@ -473,17 +473,48 @@ def api_editor_save():
     xml_path = os.path.join(user_dir, nombre + ".musicxml")
     png_path = os.path.join(user_dir, nombre + ".png")
 
-    # Guardar XML
+    # Guardar XML local
     with open(xml_path, "w", encoding="utf-8") as f:
         f.write(xml)
 
-    # Guardar PNG desde base64
+    # Guardar PNG desde base64 local
     import base64
     img_bytes = base64.b64decode(png_base64.split(",")[-1])
     with open(png_path, "wb") as f:
         f.write(img_bytes)
 
+    # 🔹 NUEVO: si hay bucket configurado, también subir a GCS
+    if PARTITURAS_BUCKET:
+        try:
+            # Subir PNG
+            gcs_upload(
+                PARTITURAS_BUCKET,
+                f"{usuario}/{nombre}.png",
+                png_path,
+                content_type="image/png"
+            )
+            # Subir XML
+            gcs_upload(
+                PARTITURAS_BUCKET,
+                f"{usuario}/{nombre}.musicxml",
+                xml_path,
+                content_type="application/xml"
+            )
+
+            # Opcional: limpiar archivos locales
+            try:
+                os.remove(png_path)
+            except:
+                pass
+            try:
+                os.remove(xml_path)
+            except:
+                pass
+        except Exception as e:
+            print("ERROR subiendo a GCS desde /api/editor/save:", e, file=sys.stderr)
+
     return jsonify({"success": True, "message": "Partitura guardada"})
+
 
 @app.route('/api/editor/load/<usuario>/<nombre>')
 def api_editor_load(usuario, nombre):
