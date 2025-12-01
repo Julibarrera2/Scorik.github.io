@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # INSTALAR MUSESCORE 3.6.2 AppImage
 # ================================
 WORKDIR /opt
-RUN wget https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2-x86_64.AppImage -O mscore.AppImage \
+RUN wget https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseScore-3.6.2.548021370-x86_64.AppImage -O mscore.AppImage \
     && chmod +x mscore.AppImage
 
 # Extraer AppImage (modo portable)
