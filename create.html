@@ -324,6 +324,15 @@
             </div>
         </div>
 
+        <!-- BORRAR -->
+    <div class="panel-block" @click="panel.borrar=!panel.borrar">
+        Borrar
+        <div class="panel-content" :class="{ 'open': panel.borrar }">
+            <!-- Cambiá Img/eraser.png por el icono que tengas -->
+            <img src="Img/eraser.png" data-kind="erase" @mousedown="startDrag($event)">
+        </div>
+    </div>
+
         <button class="btn btn-success w-100 mt-2" @click="saveCanvas()">Save</button>
     </div>
 
@@ -343,7 +352,8 @@ function creatorApp() {
             claves: false,
             dinamica: false,
             armadura: false,
-            compas: false
+            compas: false,
+            borrar: false
         },
 
         dragging: null,
@@ -538,10 +548,10 @@ function creatorApp() {
             const mappedPitch = pitchMap[pitchIndex];
 
             if (symbol.kind === "note") {
-                const step   = mappedPitch.step;
-                const octave = mappedPitch.octave;
-                const dur    = symbol.duration || "quarter";
-                this.addNoteToXml(measure, step, octave, dur);
+            const step   = mappedPitch.step;
+            const octave = mappedPitch.octave;
+            const dur    = symbol.duration || "quarter";
+            this.addNoteToXml(measure, step, octave, dur);
 
             } else if (symbol.kind === "rest") {
                 const dur = symbol.duration || "quarter";
@@ -557,8 +567,13 @@ function creatorApp() {
                 this.setKeySignature(symbol.fifths || 0);
 
             } else if (symbol.kind === "dynamic") {
-                this.addDynamic(symbol.text || "mf");
+            this.addDynamic(symbol.text || "mf");
+
+            } else if (symbol.kind === "erase") {
+                // borrar SIEMPRE la última nota del compás
+                this.deleteLastNoteInMeasure(measure);
             }
+
         },
 
         addNoteToXml(measure, step, octave, type) {
@@ -588,6 +603,40 @@ function creatorApp() {
 
             measure.appendChild(note);
         },
+
+        deleteNoteAt(measure, step, octave) {
+            const notes = measure.getElementsByTagName("note");
+            let toRemove = null;
+
+            // buscamos de atrás para adelante (borra la última nota con ese tono)
+            for (let i = notes.length - 1; i >= 0; i--) {
+                const n = notes[i];
+                const pitch = n.querySelector("pitch");
+                if (!pitch) continue;
+
+                const s = pitch.querySelector("step")?.textContent;
+                const o = pitch.querySelector("octave")?.textContent;
+
+                if (s === step && o === String(octave)) {
+                    toRemove = n;
+                    break;
+                }
+            }
+
+    if (toRemove) {
+        measure.removeChild(toRemove);
+    }
+},
+        deleteLastNoteInMeasure(measure) {
+            const notes = measure.getElementsByTagName("note");
+            if (!notes.length) return;
+
+            // última nota del compás
+            const last = notes[notes.length - 1];
+            measure.removeChild(last);
+        },
+
+
 
         addRestToXml(measure, type) {
             const note = this.xmlDoc.createElement("note");
