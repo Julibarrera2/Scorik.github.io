@@ -24,55 +24,33 @@ async function getSessionEmail() {
         margin: 0;
         padding: 0;
     }
+    
+    /* Sidebar */
     .sidebar {
         position: fixed;
         top: 0;
         left: 0;
         width: 250px;
         height: 100%;
-        background-color: #6b2bd97c;
+        background-color: #814ac495; /* Morado claro */
         transform: translateX(-100%);
         transition: transform 0.3s ease;
         z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 80px;
+        box-sizing: border-box;
     }
-
     .sidebar.open {
         transform: translateX(0);
-    }
-
-    .sidebar ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .sidebar li {
-        padding: 15px 20px;
-        color: rgb(18, 18, 18);
-        cursor: pointer;
-    }
-
-    .sidebar li:hover {
-        background-color: #5521b5e6;
-    }
-    
-    .menu-btn {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        background: transparent;
-        border: none;
-        font-size: 30px;
-        color: #6b00d6;
-        cursor: pointer;
-        z-index: 1001;
     }
 
     .menu {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding-top: 20px;
+        flex-grow: 1;
     }
 
     .menu-button {
@@ -83,15 +61,28 @@ async function getSessionEmail() {
         border-radius: 20px;
         padding: 10px 20px;
         margin: 15px 0;
-        width: 150px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        width: 170px;
         cursor: pointer;
-        transition: background-color 0.3s, transform 0.2s;
+        font-size: 16px;
+        text-align: center;
     }
     .menu-button:hover {
         background-color: #e0d7f8;
-        transform: scale(1.05);
     }
+
+    .bottom-area {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .bottom-icon {
+        margin-bottom: 20px;
+        cursor: pointer;
+    }
+
+    
     .barra-menu {
         background-color: #5AE9DD;
         width: 100%;
