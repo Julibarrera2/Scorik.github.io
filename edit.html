@@ -79,21 +79,21 @@
             color: #f5e8ff;
         }
 
-        /* SLIDE SIDEBAR (MENÚ) */
+        /* SIDEBAR MENU */
         .sidebar {
             position: fixed;
             top: 0;
             left: 0;
             width: 250px;
             height: 100%;
-            background-color: #814ac4;
+            background-color: #814ac495;
             transform: translateX(-100%);
             transition: transform 0.3s ease;
             z-index: 1000;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 90px;
+            padding-top: 80px;
             box-sizing: border-box;
         }
 
@@ -102,7 +102,7 @@
         }
 
         .sidebar-btn {
-            background: #ffffff;
+            background: white;
             color: #8300F6;
             font-weight: bold;
             border: none;
@@ -115,12 +115,13 @@
 
         .bottom-area {
             margin-top: auto;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .bottom-icon {
             cursor: pointer;
         }
+
 
         /* LEFT TOOLBAR */
         .tool-column {
@@ -245,20 +246,22 @@
 </head>
 <body>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar" :class="{ 'open': sidebarOpen }">
-        <button class="sidebar-btn" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-        <button class="sidebar-btn" onclick="location.href='library.html'">Library</button>
-        <button class="sidebar-btn" onclick="location.href='create.html'">Create</button>
-        <button class="sidebar-btn" onclick="location.href='User.html'">User</button>
-        <div class="bottom-area">
-            <div class="bottom-icon" @click="sidebarOpen = false">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
+    <!-- Sidebar -->
+<div :class="{ 'sidebar': true, 'open': sidebarOpen }">
+    <div class="menu">
+        <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
+        <button class="menu-button" onclick="location.href='library.html'">Library</button>
+        <button class="menu-button" onclick="location.href='create.html'">Create</button>
+        <button class="menu-button" onclick="location.href='User.html'">User</button>
+    </div>
+    <div class="bottom-area">
+        <div class="bottom-icon" @click="sidebarOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
+                <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
     </div>
+</div>
 
     <!-- TOPBAR -->
     <div class="topbar">

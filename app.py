@@ -458,7 +458,9 @@ def api_partituras_usuario(usuario):
 def api_editor_save():
     data = request.get_json(silent=True) or {}
     usuario = data.get("usuario")
-    nombre = data.get("nombre", "partitura")
+    nombre = data.get("nombre")
+    if not nombre:
+        nombre = f"partitura_{int(time.time())}"
     xml = data.get("xml")  # STRING del MusicXML completo
     png_base64 = data.get("png")  # PNG en base64
 
