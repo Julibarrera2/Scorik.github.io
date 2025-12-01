@@ -82,7 +82,37 @@ async function getSessionEmail() {
         cursor: pointer;
     }
 
-    
+    /* Top bar and tabs */
+.topbar {
+            width: 100%;
+            height: 70px;
+            background: #B573FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            z-index: 20;
+        }
+
+        .hamburger {
+            position: absolute;
+            left: 20px;
+            top: 12px;
+            background: #8B35FF;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .hamburger div {
+            width: 28px;
+            height: 4px;
+            background: white;
+            margin: 4px 0;
+            border-radius: 5px;
+        }
+
     .barra-menu {
         background-color: #5AE9DD;
         width: 100%;
@@ -110,6 +140,7 @@ async function getSessionEmail() {
     .tab-buttons button.active {
         background-color: #3e0076;
     }
+
     main {
         background-color: white;
         border-radius: 10px;
@@ -186,9 +217,10 @@ async function getSessionEmail() {
 <body>
 
 <!-- Barra superior con botón menú y tabs -->
-<div class="barra-menu">
-    <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">☰</button>
-    <div class="tab-buttons">
+<div class="topbar">
+        <div class="hamburger" @click="sidebarOpen=!sidebarOpen">
+            <div></div><div></div><div></div>
+        </div>
         <button :class="{ 'active': activeTab === 'mp3' }" @click="activeTab = 'mp3'">Mp3</button>
         <button :class="{ 'active': activeTab === 'sheet' }" @click="activeTab = 'sheet'">Music sheet</button>
     </div>
