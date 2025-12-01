@@ -4,8 +4,23 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# ====== SISTEMA ======
+# ====== SISTEMA (audio + Qt para MuseScore) ======
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    # audio / procesado
+    ffmpeg \
+    libsndfile1 \
+    # Xvfb para correr MuseScore sin pantalla
+    xvfb \
+    xauth \
+    # fuentes / render
+    libfontconfig1 \
+    libfreetype6 \
+    libxrender1 \
+    libxext6 \
+    libsm6 \
+    libxkbcommon0 \
+    libxcb-xinerama0 \
+    # deps extra de Qt / navegador
     libnss3 \
     libnspr4 \
     libxss1 \
@@ -17,8 +32,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libgl1-mesa-glx \
     libglvnd0 \
-    libfontconfig1 \
-    libfreetype6 \
+    # utilidades
+    ca-certificates \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # ================================
@@ -32,6 +48,8 @@ RUN wget https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseSco
 RUN ./mscore.AppImage --appimage-extract
 RUN mv squashfs-root /opt/mscore3
 ENV QT_QPA_PLATFORM=offscreen
+ENV APPIMAGE_EXTRACT_AND_RUN=1
+
 
 # Wrapper para llamarlo como "mscore3"
 RUN printf '%s\n' \
@@ -41,7 +59,6 @@ RUN printf '%s\n' \
     'exec xvfb-run -a /opt/mscore3/AppRun "$@"' \
     > /usr/local/bin/mscore3 \
     && chmod +x /usr/local/bin/mscore3
-ENV APPIMAGE_EXTRACT_AND_RUN=1
 
 
 WORKDIR /app
