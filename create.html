@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" x-data="creatorApp()">
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -41,6 +41,7 @@
             background: #8B35FF;
             border-radius: 8px;
             padding: 8px 12px;
+            cursor: pointer;
         }
 
         .hamburger div {
@@ -57,7 +58,7 @@
             font-weight: bold;
         }
 
-        /* SIDEBAR */
+        /* SIDEBAR MENU */
         .sidebar {
             position: fixed;
             top: 0;
@@ -91,6 +92,15 @@
             display: block;
         }
 
+        .bottom-area {
+            margin-top: auto;
+            margin-bottom: 30px;
+        }
+
+        .bottom-icon {
+            cursor: pointer;
+        }
+
         /* LEFT TOOLBAR */
         .tool-column {
             position: fixed;
@@ -100,6 +110,7 @@
             background: #b370ff;
             border-radius: 15px;
             padding: 10px;
+            z-index: 10;
         }
 
         .tool-btn {
@@ -126,7 +137,7 @@
             border-color: #6B2BD9;
         }
 
-        /* RIGHT PANEL */
+        /* RIGHT PANEL (NOTAS, CLAVES, ETC.) */
         .right-panel {
             position: fixed;
             right: 0;
@@ -138,6 +149,7 @@
             color: white;
             max-height: calc(100vh - 100px);
             overflow-y: auto;
+            z-index: 10;
         }
 
         .panel-block {
@@ -191,15 +203,19 @@
             padding: 10px 0;
         }
 
+        /* ÍCONO QUE SIGUE AL MOUSE CUANDO ARRASTRÁS */
         .draggable {
-            position: absolute;
+            position: fixed;
             width: 40px;
+            height: 40px;
             pointer-events: none;
+            z-index: 2000;
+            transform: translate(-50%, -50%);
         }
     </style>
 
 </head>
-<body>
+<body x-data="creatorApp()" x-init="init()">
 
     <!-- SIDEBAR -->
     <div class="sidebar" :class="{ 'open': sidebarOpen }">
@@ -221,7 +237,7 @@
         <div class="hamburger" @click="sidebarOpen=!sidebarOpen">
             <div></div><div></div><div></div>
         </div>
-        <div class="title">creator</div> 
+        <div class="title">creator</div>
     </div>
 
     <!-- LEFT TOOLBAR -->
@@ -245,7 +261,6 @@
             <img src="Img/corchea.png">
         </div>
 
-        <!-- Solo crea la partitura cuando apretás -->
         <button class="btn btn-success w-100 mt-2" @click="init()">Create</button>
     </div>
 
@@ -338,52 +353,50 @@ function creatorApp() {
         moveHandler: null,
         upHandler: null,
 
-        // CREA LA PARTITURA EN BLANCO (solo cuando apretás Create)
+        // CREA HOJA DE PARTITURA CON VARIOS SISTEMAS
         async init() {
-            const baseXml = `
-            <?xml version="1.0" encoding="UTF-8"?>
-            <score-partwise version="3.1">
-            <part-list>
-                <score-part id="P1">
-                <part-name>Music</part-name>
-                </score-part>
-            </part-list>
-            <part id="P1">
-                <measure number="1">
-                <attributes>
-                    <divisions>1</divisions>
-                    <key><fifths>0</fifths></key>
-                    <time><beats>4</beats><beat-type>4</beat-type></time>
-                    <clef><sign>G</sign><line>2</line></clef>
-                </attributes>
-                <note>
-                    <rest/>
-                    <duration>4</duration>
-                    <voice>1</voice>
-                    <type>whole</type>
-                </note>
-                </measure>
-            </part>
-            </score-partwise>`;
+            const baseXml = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+<part-list>
+    <score-part id="P1">
+    <part-name></part-name>
+    </score-part>
+</part-list>
+<part id="P1">
+
+    <!-- SISTEMA 1 -->
+    <measure number="1">
+    <print new-system="yes">
+        <system-layout>
+        <system-distance>90</system-distance>
+        </system-layout>
+    </print>
+    <attributes>
+        <divisions>4</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+    </attributes>
+    <note><rest/><duration>16</duration><voice>1</voice><type>whole</type></note>
+    </measure>
+
+    <!-- SISTEMA 2 -->
+    <measure number="2">
+    <print new-system="yes">
+        <system-layout>
+        <system-distance>90</system-distance>
+        </system-layout>
+</part>
+</score-partwise>`;
 
             const parser = new DOMParser();
             this.xmlDoc = parser.parseFromString(baseXml, "application/xml");
 
-            // crear más compases vacíos (para que parezca hoja entera)
-            const part = this.xmlDoc.querySelector('part[id="P1"]');
-            const measure1 = this.xmlDoc.querySelector('measure[number="1"]');
-
-            for (let i = 2; i <= 12; i++) {
-                const clone = measure1.cloneNode(true);
-                clone.setAttribute("number", String(i));
-                part.appendChild(clone);
-            }
-
             if (!this.osmd) {
                 this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("staffCanvas", {
                     drawTitle: false,
-                    drawComposer: false,
-                    drawCredits: false
+                    drawPartNames: false,
+                    drawPartAbbreviations: false
                 });
                 this.osmd.Zoom = 0.9;
             }
@@ -398,7 +411,7 @@ function creatorApp() {
             this.panel[name] = !this.panel[name];
         },
 
-        // Inicia el drag y guarda qué símbolo se está moviendo
+        // Inicia el drag y crea el ícono fantasma
         startDrag(event) {
             const img = event.target;
             const dataset = img.dataset;
@@ -413,16 +426,31 @@ function creatorApp() {
                 beats: dataset.beats,
                 beatType: dataset.beatType,
                 fifths: dataset.fifths,
-                text: dataset.text
+                text: dataset.text,
+                ghost: null
             };
 
+            const ghost = img.cloneNode(true);
+            ghost.classList.add("draggable");
+            ghost.style.left = event.clientX + "px";
+            ghost.style.top  = event.clientY + "px";
+            document.body.appendChild(ghost);
+            this.dragging.ghost = ghost;
+
             this.moveHandler = (e) => {
-                // acá podrías dibujar una nota fantasma si querés
+                if (this.dragging && this.dragging.ghost) {
+                    this.dragging.ghost.style.left = e.clientX + "px";
+                    this.dragging.ghost.style.top  = e.clientY + "px";
+                }
             };
 
             this.upHandler = async (e) => {
                 document.removeEventListener("mousemove", this.moveHandler);
                 document.removeEventListener("mouseup", this.upHandler);
+
+                if (this.dragging && this.dragging.ghost) {
+                    this.dragging.ghost.remove();
+                }
 
                 if (!this.dragging || !this.xmlDoc) {
                     this.dragging = null;
@@ -438,19 +466,16 @@ function creatorApp() {
                     x >= rect.left && x <= rect.right &&
                     y >= rect.top && y <= rect.bottom;
 
-                if (!inside) {
-                    this.dragging = null;
-                    return;
+                if (inside) {
+                    this.applySymbolToXml(this.dragging, rect, x, y);
+
+                    const serializer = new XMLSerializer();
+                    const xmlString = serializer.serializeToString(this.xmlDoc);
+                    await this.osmd.load(xmlString);
+                    this.osmd.render();
                 }
 
-                this.applySymbolToXml(this.dragging, rect, x, y);
-
                 this.dragging = null;
-
-                const serializer = new XMLSerializer();
-                const xmlString = serializer.serializeToString(this.xmlDoc);
-                await this.osmd.load(xmlString);
-                this.osmd.render();
             };
 
             document.addEventListener("mousemove", this.moveHandler);
@@ -529,9 +554,14 @@ function creatorApp() {
             pitch.appendChild(octaveEl);
             note.appendChild(pitch);
 
+            const durMap = { whole: 16, half: 8, quarter: 4, eighth: 2 };
             const duration = this.xmlDoc.createElement("duration");
-            duration.textContent = "1";
+            duration.textContent = durMap[type] || 4;
             note.appendChild(duration);
+
+            const voice = this.xmlDoc.createElement("voice");
+            voice.textContent = "1";
+            note.appendChild(voice);
 
             const typeEl = this.xmlDoc.createElement("type");
             typeEl.textContent = type;
@@ -546,9 +576,14 @@ function creatorApp() {
             const rest = this.xmlDoc.createElement("rest");
             note.appendChild(rest);
 
+            const durMap = { whole: 16, half: 8, quarter: 4, eighth: 2 };
             const duration = this.xmlDoc.createElement("duration");
-            duration.textContent = "1";
+            duration.textContent = durMap[type] || 4;
             note.appendChild(duration);
+
+            const voice = this.xmlDoc.createElement("voice");
+            voice.textContent = "1";
+            note.appendChild(voice);
 
             const typeEl = this.xmlDoc.createElement("type");
             typeEl.textContent = type;
@@ -615,6 +650,8 @@ function creatorApp() {
         },
 
         async saveCanvas() {
+            if (!this.xmlDoc) return;
+
             const xml = new XMLSerializer().serializeToString(this.xmlDoc);
 
             const svg = document.querySelector("#staffCanvas svg");
@@ -633,7 +670,8 @@ function creatorApp() {
                 const png = canvas.toDataURL("image/png");
 
                 const nombre = prompt("Nombre de la partitura:");
-                const usuario = JSON.parse(localStorage.getItem("currentUser")).email;
+                const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+                const usuario = currentUser ? currentUser.email : "anon";
 
                 await fetch("/api/editor/save", {
                     method: "POST",
@@ -646,10 +684,8 @@ function creatorApp() {
         }
     };
 }
-
 </script>
 
-<!-- HTML2CANVAS opcional -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </body>
