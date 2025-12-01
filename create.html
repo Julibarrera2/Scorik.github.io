@@ -671,33 +671,71 @@ function creatorApp() {
         async saveCanvas() {
             if (!this.xmlDoc) return;
 
+            // 1) Pasar el XML de la partitura a string
             const xml = new XMLSerializer().serializeToString(this.xmlDoc);
 
+            // 2) Tomar el SVG que dibuja OSMD y convertirlo a PNG (base64)
             const svg = document.querySelector("#staffCanvas svg");
+            if (!svg) {
+                alert("No hay nada para guardar todavía.");
+                return;
+            }
+
             const serializer = new XMLSerializer();
             const svgString = serializer.serializeToString(svg);
 
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
             const img = new Image();
-            img.src = URL.createObjectURL(new Blob([svgString], { type:"image/svg+xml" }));
+            img.src = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml" }));
 
             img.onload = async () => {
-                canvas.width = img.width;
+                canvas.width  = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
+
+                // PNG en base64, tal como lo espera /api/editor/save
                 const png = canvas.toDataURL("image/png");
 
-                const nombre = prompt("Nombre de la partitura:");
-                const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-                const usuario = currentUser ? currentUser.email : "anon";
+                // 3) Obtener usuario logueado (igual que en library.html)
+                let usuario = "";
+                try {
+                    const r = await fetch("/api/session", { credentials: "include" });
+                    if (r.ok) {
+                        const d = await r.json();
+                        if (d.logged_in) usuario = d.email;
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
 
-                await fetch("/api/editor/save", {
+                if (!usuario) {
+                    alert("Tenés que iniciar sesión para guardar la partitura.");
+                    return;
+                }
+
+                // 4) Preguntar nombre de la partitura
+                let nombre = prompt("Nombre de la partitura:");
+                if (!nombre) return;
+                nombre = nombre.trim();
+                if (!nombre) return;
+                nombre = nombre.replace(/\s+/g, "_");
+
+                // 5) Guardar en el backend → usa /api/editor/save (no /save_partitura)
+                const res = await fetch("/api/editor/save", {
                     method: "POST",
-                    headers: {"Content-Type": "application/json"},
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ usuario, nombre, xml, png })
                 });
 
+                const out = await res.json().catch(() => ({}));
+                if (!out.success && out.error) {
+                    alert("Error al guardar: " + out.error);
+                    return;
+                }
+
+                alert("Partitura guardada 🙂");
+                // 6) Ir a la biblioteca
                 window.location.href = "library.html";
             };
         }
