@@ -2,21 +2,14 @@ from music21 import stream, note, instrument, tempo as m21tempo, meter
 import os, sys, json, subprocess, traceback
 from time import time as timestamp
 
-# MuseScore: en Cloud Run viene por ENV como /usr/local/bin/mscore3-cli
-MUSESCORE_PATH = os.environ.get(
-    "MUSESCORE_PATH",
-    r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe" if os.name == "nt" else "mscore3-cli"
-)
+# --- PATH FIJO PARA MUSESCORE EN CLOUD RUN ---
+MUSESCORE_PATH = "mscore3"
 
 def safe_print(*a, **kw):
     print(*a, file=sys.stderr, **kw)
 
-# --- FIX DEFINITIVO: Cloud Run usa mscore3-cli (wrapper que usa xvfb-run) ---
-# Lo reemplazamos SIEMPRE por "mscore3", que sí existe y no usa X11.
-if "mscore3-cli" in MUSESCORE_PATH:
-    MUSESCORE_PATH = "mscore3"
-
 safe_print("MUSESCORE_PATH_RESOLVED:", MUSESCORE_PATH)
+
 
 def sanitize(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-_." else "_" for c in s)

@@ -6,20 +6,19 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # ====== SISTEMA ======
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    libsndfile1 \
-    xvfb \
-    xauth \
-    libxrender1 \
-    libxext6 \
-    libsm6 \
-    libfreetype6 \
-    libfontconfig1 \
-    libxkbcommon0 \
+    libnss3 \
+    libnspr4 \
+    libxss1 \
+    libxtst6 \
+    libxdamage1 \
+    libxcomposite1 \
+    libegl1 \
+    libgbm1 \
+    libgl1 \
     libgl1-mesa-glx \
-    libxcb-xinerama0 \
-    ca-certificates \
-    wget \
+    libglvnd0 \
+    libfontconfig1 \
+    libfreetype6 \
     && rm -rf /var/lib/apt/lists/*
 
 # ================================
@@ -32,6 +31,7 @@ RUN wget https://github.com/musescore/MuseScore/releases/download/v3.6.2/MuseSco
 # Extraer AppImage (modo portable)
 RUN ./mscore.AppImage --appimage-extract
 RUN mv squashfs-root /opt/mscore3
+ENV QT_QPA_PLATFORM=offscreen
 
 # Wrapper para llamarlo como "mscore3"
 RUN printf '%s\n' \
