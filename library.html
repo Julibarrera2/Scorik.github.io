@@ -339,7 +339,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- FUNCIONES AUXILIARES ---
 
             window.editarPartitura = function(usuario, nombre) {
-                location.href = `edit.html?usuario=${encodeURIComponent(usuario)}&nombre=${encodeURIComponent(nombre)}`;
+                // Usamos el mismo creator como editor
+                location.href = `create.html?nombre=${encodeURIComponent(nombre)}`;
             };
 
             window.verPartitura = function(imagen) {
