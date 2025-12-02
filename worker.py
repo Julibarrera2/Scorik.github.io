@@ -1,6 +1,11 @@
 import os, sys, json, time, subprocess, shutil
 from audio_separator import Separator
 
+print(">>> WORKER IMPORTED OK", flush=True)
+print(">>> TEST MUSESCORE:", flush=True)
+subprocess.run(["mscore3", "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+print(">>> MUSESCORE OK", flush=True)
+
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
 
