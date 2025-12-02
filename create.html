@@ -324,6 +324,14 @@
             </div>
         </div>
 
+        <!-- BORRAR -->
+        <div class="panel-block" @click="panel.borrar=!panel.borrar">
+            Borrar
+            <div class="panel-content" :class="{ 'open': panel.borrar }">
+                <img src="Img/eraser.png" data-kind="erase" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
         <button class="btn btn-success w-100 mt-2" @click="saveCanvas()">Save</button>
     </div>
 
@@ -597,7 +605,11 @@ function creatorApp() {
             } else if (symbol.kind === "erase") {
                 // Ejemplo: borrar última nota del compás
                 this.deleteLastNoteInMeasure(measure);
-            }
+            } else if (symbol.kind === "erase") {
+                // borrar SIEMPRE la última nota (o silencio) del compás
+                this.deleteLastNoteInMeasure(measure);
+}
+            
         },
 
         addNoteToXml(measure, step, octave, type) {
@@ -627,6 +639,7 @@ function creatorApp() {
 
             measure.appendChild(note);
         },
+        
 
         deleteLastNoteInMeasure(measure) {
             const notes = measure.getElementsByTagName("note");
