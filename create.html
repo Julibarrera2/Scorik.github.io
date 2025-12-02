@@ -324,6 +324,14 @@
             </div>
         </div>
 
+        <!-- BORRAR -->
+        <div class="panel-block" @click="panel.borrar=!panel.borrar">
+            Borrar
+            <div class="panel-content" :class="{ 'open': panel.borrar }">
+                <img src="Img/eraser.png" data-kind="erase" @mousedown="startDrag($event)">
+            </div>
+        </div>
+
         <button class="btn btn-success w-100 mt-2" @click="saveCanvas()">Save</button>
     </div>
 
@@ -343,7 +351,8 @@ function creatorApp() {
             claves: false,
             dinamica: false,
             armadura: false,
-            compas: false
+            compas: false,
+            borrar: false
         },
 
         dragging: null,
@@ -353,44 +362,78 @@ function creatorApp() {
         moveHandler: null,
         upHandler: null,
 
-        // CREA HOJA DE PARTITURA CON VARIOS SISTEMAS
+        // CREA O CARGA HOJA DE PARTITURA
         async init() {
-            const baseXml = `<?xml version="1.0" encoding="UTF-8"?>
-<score-partwise version="3.1">
-<part-list>
-    <score-part id="P1">
-    <part-name></part-name>
-    </score-part>
-</part-list>
-<part id="P1">
+            // 1) Averiguar usuario logueado (lo necesitamos para cargar si estamos editando)
+            let usuario = "";
+            try {
+                const r = await fetch("/api/session", { credentials: "include" });
+                if (r.ok) {
+                    const d = await r.json();
+                    if (d.logged_in) usuario = d.email;
+                }
+            } catch (err) {
+                console.error("Error leyendo sesión en init():", err);
+            }
 
-    <!-- SISTEMA 1 -->
+            // 2) Mirar si hay ?nombre= en la URL → modo edición
+            const params = new URLSearchParams(window.location.search);
+            const nombre = params.get("nombre");
+
+            let xmlString = null;
+
+            if (usuario && nombre) {
+                // Intentar cargar XML guardado
+                try {
+                    const resp = await fetch(`/api/editor/load/${encodeURIComponent(usuario)}/${encodeURIComponent(nombre)}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        xmlString = data.xml;
+                        console.log("Cargado XML existente para", nombre);
+                    } else {
+                        console.warn("No se pudo cargar XML, uso partitura vacía");
+                    }
+                } catch (err) {
+                    console.error("Error cargando XML existente:", err);
+                }
+            }
+
+            // 3) Si no había nada cargado (nuevo o error) → usar plantilla base
+            if (!xmlString) {
+                const baseXml = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name></part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
     <measure number="1">
-    <print new-system="yes">
+      <print new-system="yes">
         <system-layout>
-        <system-distance>90</system-distance>
+          <system-distance>90</system-distance>
         </system-layout>
-    </print>
-    <attributes>
+      </print>
+      <attributes>
         <divisions>4</divisions>
         <key><fifths>0</fifths></key>
         <time><beats>4</beats><beat-type>4</beat-type></time>
         <clef><sign>G</sign><line>2</line></clef>
-    </attributes>
-    <note><rest/><duration>16</duration><voice>1</voice><type>whole</type></note>
+      </attributes>
+      <note>
+        <rest/>
+        <duration>16</duration>
+        <voice>1</voice>
+        <type>whole</type>
+      </note>
     </measure>
-
-    <!-- SISTEMA 2 -->
-    <measure number="2">
-    <print new-system="yes">
-        <system-layout>
-        <system-distance>90</system-distance>
-        </system-layout>
-</part>
+  </part>
 </score-partwise>`;
+                xmlString = baseXml;
+            }
 
             const parser = new DOMParser();
-            this.xmlDoc = parser.parseFromString(baseXml, "application/xml");
+            this.xmlDoc = parser.parseFromString(xmlString, "application/xml");
 
             if (!this.osmd) {
                 this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("staffCanvas", {
@@ -402,8 +445,8 @@ function creatorApp() {
             }
 
             const serializer = new XMLSerializer();
-            const xmlString = serializer.serializeToString(this.xmlDoc);
-            await this.osmd.load(xmlString);
+            const xmlToRender = serializer.serializeToString(this.xmlDoc);
+            await this.osmd.load(xmlToRender);
             this.osmd.render();
         },
 
@@ -445,44 +488,44 @@ function creatorApp() {
             };
 
             this.upHandler = async (e) => {
-            document.removeEventListener("mousemove", this.moveHandler);
-            document.removeEventListener("mouseup", this.upHandler);
+                document.removeEventListener("mousemove", this.moveHandler);
+                document.removeEventListener("mouseup", this.upHandler);
 
-            if (this.dragging && this.dragging.ghost) {
-                this.dragging.ghost.remove();
-            }
+                if (this.dragging && this.dragging.ghost) {
+                    this.dragging.ghost.remove();
+                }
 
-            if (!this.dragging || !this.xmlDoc) {
+                if (!this.dragging || !this.xmlDoc) {
+                    this.dragging = null;
+                    return;
+                }
+
+                // usamos el SVG del pentagrama
+                const svgEl = document.querySelector("#staffCanvas svg");
+                if (!svgEl) {
+                    this.dragging = null;
+                    return;
+                }
+
+                const rect = svgEl.getBoundingClientRect();
+                const x = e.clientX;
+                const y = e.clientY;
+
+                const inside =
+                    x >= rect.left && x <= rect.right &&
+                    y >= rect.top && y <= rect.bottom;
+
+                if (inside) {
+                    this.applySymbolToXml(this.dragging, rect, x, y);
+
+                    const serializer = new XMLSerializer();
+                    const xmlString = serializer.serializeToString(this.xmlDoc);
+                    await this.osmd.load(xmlString);
+                    this.osmd.render();
+                }
+
                 this.dragging = null;
-                return;
-            }
-
-            // acá usamos el SVG del pentagrama, no el div blanco
-            const svgEl = document.querySelector("#staffCanvas svg");
-            if (!svgEl) {
-                this.dragging = null;
-                return;
-            }
-
-            const rect = svgEl.getBoundingClientRect();
-            const x = e.clientX;
-            const y = e.clientY;
-
-            const inside =
-                x >= rect.left && x <= rect.right &&
-                y >= rect.top && y <= rect.bottom;
-
-            if (inside) {
-                this.applySymbolToXml(this.dragging, rect, x, y);
-
-                const serializer = new XMLSerializer();
-                const xmlString = serializer.serializeToString(this.xmlDoc);
-                await this.osmd.load(xmlString);
-                this.osmd.render();
-            }
-
-            this.dragging = null;
-        };
+            };
 
             document.addEventListener("mousemove", this.moveHandler);
             document.addEventListener("mouseup", this.upHandler);
@@ -516,10 +559,10 @@ function creatorApp() {
                 { step: 'D', octave: 5 },
                 { step: 'E', octave: 5 },
                 { step: 'F', octave: 5 },
-                { step: 'G', octave: 5 }  // parte más arriba
+                { step: 'G', octave: 5 }  // arriba
             ];
 
-            // Usamos la franja central del SVG (evitando blanco)
+            // Usamos la franja central del SVG
             const topLimit    = rect.height * 0.25;
             const bottomLimit = rect.height * 0.75;
             let y = relY;
@@ -530,7 +573,7 @@ function creatorApp() {
             const usableHeight = bottomLimit - topLimit;
             const t = (y - topLimit) / usableHeight; // 0 = arriba, 1 = abajo
 
-            // Invertimos: mover el mouse hacia ARRIBA → nota más aguda
+            // mover el mouse hacia ARRIBA → nota más aguda
             let pitchIndex = Math.round((1 - t) * (pitchMap.length - 1));
             if (pitchIndex < 0) pitchIndex = 0;
             if (pitchIndex >= pitchMap.length) pitchIndex = pitchMap.length - 1;
@@ -558,7 +601,15 @@ function creatorApp() {
 
             } else if (symbol.kind === "dynamic") {
                 this.addDynamic(symbol.text || "mf");
-            }
+
+            } else if (symbol.kind === "erase") {
+                // Ejemplo: borrar última nota del compás
+                this.deleteLastNoteInMeasure(measure);
+            } else if (symbol.kind === "erase") {
+                // borrar SIEMPRE la última nota (o silencio) del compás
+                this.deleteLastNoteInMeasure(measure);
+}
+            
         },
 
         addNoteToXml(measure, step, octave, type) {
@@ -587,6 +638,14 @@ function creatorApp() {
             note.appendChild(typeEl);
 
             measure.appendChild(note);
+        },
+        
+
+        deleteLastNoteInMeasure(measure) {
+            const notes = measure.getElementsByTagName("note");
+            if (!notes.length) return;
+            const last = notes[notes.length - 1];
+            measure.removeChild(last);
         },
 
         addRestToXml(measure, type) {
@@ -668,13 +727,12 @@ function creatorApp() {
             measure.appendChild(direction);
         },
 
+        // GUARDAR (NUEVO o EDITANDO)
         async saveCanvas() {
             if (!this.xmlDoc) return;
 
-            // 1) Pasar el XML de la partitura a string
             const xml = new XMLSerializer().serializeToString(this.xmlDoc);
 
-            // 2) Tomar el SVG que dibuja OSMD y convertirlo a PNG (base64)
             const svg = document.querySelector("#staffCanvas svg");
             if (!svg) {
                 alert("No hay nada para guardar todavía.");
@@ -694,10 +752,9 @@ function creatorApp() {
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
 
-                // PNG en base64, tal como lo espera /api/editor/save
                 const png = canvas.toDataURL("image/png");
 
-                // 3) Obtener usuario logueado (igual que en library.html)
+                // usuario
                 let usuario = "";
                 try {
                     const r = await fetch("/api/session", { credentials: "include" });
@@ -714,14 +771,19 @@ function creatorApp() {
                     return;
                 }
 
-                // 4) Preguntar nombre de la partitura
-                let nombre = prompt("Nombre de la partitura:");
-                if (!nombre) return;
-                nombre = nombre.trim();
-                if (!nombre) return;
-                nombre = nombre.replace(/\s+/g, "_");
+                // ¿Estamos editando? → ?nombre= en la URL
+                const params = new URLSearchParams(window.location.search);
+                let nombre = params.get("nombre");
 
-                // 5) Guardar en el backend → usa /api/editor/save (no /save_partitura)
+                if (!nombre) {
+                    // NUEVA partitura → preguntar nombre
+                    nombre = prompt("Nombre de la partitura:");
+                    if (!nombre) return;
+                    nombre = nombre.trim();
+                    if (!nombre) return;
+                    nombre = nombre.replace(/\s+/g, "_");
+                }
+
                 const res = await fetch("/api/editor/save", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -735,13 +797,13 @@ function creatorApp() {
                 }
 
                 alert("Partitura guardada 🙂");
-                // 6) Ir a la biblioteca
                 window.location.href = "library.html";
             };
         }
     };
 }
 </script>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
