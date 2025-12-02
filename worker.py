@@ -1,163 +1,161 @@
-import os, sys, json, subprocess
+import os, sys, json, subprocess, resource
 from audio_separator import Separator
-import resource
 
 print(">>> WORKER IMPORTED OK", flush=True)
 print(">>> TEST MUSESCORE:", flush=True)
 subprocess.run(["mscore3", "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 print(">>> MUSESCORE OK", flush=True)
 
-soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-print("MEM LIMIT:", soft/1024/1024, "MB", flush=True)
-
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
+LOG_DIR = os.path.join(BASE, "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+def log(job_id, *msg):
+    """Guarda en /tmp/scorik/logs/{job_id}.log"""
+    text = " ".join(str(m) for m in msg)
+    print(text, flush=True)
+    with open(os.path.join(LOG_DIR, f"{job_id}.log"), "a") as f:
+        f.write(text + "\n")
 
 def update_meta(job_id, **kwargs):
     path = os.path.join(PROGRESS, f"{job_id}.json")
-    with open(path, "r") as f:
+    with open(path) as f:
         data = json.load(f)
-    for k, v in kwargs.items():
+    for k,v in kwargs.items():
         data[k] = v
     with open(path, "w") as f:
         json.dump(data, f)
 
 def main():
     job_id = sys.argv[1]
+    log(job_id, "WORKER START")
 
-    # cargar metadata
+    # --- cargar metadata ---
     meta_path = os.path.join(PROGRESS, f"{job_id}.json")
-    with open(meta_path, "r") as f:
+    with open(meta_path) as f:
         meta = json.load(f)
 
-    usuario     = meta["usuario"]
     instrumento = meta["instrumento"]
     filepath    = meta["filepath"]
     work_dir    = meta["work_dir"]
 
-    # -----------------------------
-    # 1) SEPARACIÓN DE INSTRUMENTOS
-    # -----------------------------
-    update_meta(job_id, msg="Separando instrumentos (MDX 0.7.3)...")
-    print(">>> WORKER INSTRUMENTO:", instrumento, flush=True)
-
-    MODEL_MAP = {
-        "guitarra": "UVR-MDX-NET-Inst_1",
-        "piano":    "UVR-MDX-NET-Inst_HQ_2",
-        "violin":   "UVR_MDXNET_3_9662",
-    }
-
-    model_name = MODEL_MAP.get(instrumento)
-    if not model_name:
-        update_meta(job_id, msg="Instrumento inválido", status="error")
-        return
-
     os.makedirs(work_dir, exist_ok=True)
 
-    pre_wav = os.path.join(work_dir, "pre.wav")
-    subprocess.run([
-        "ffmpeg", "-y", "-i", filepath, "-ac", "1", "-ar", "44100", pre_wav
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # -----------------------------
+    # 1) SEPARACIÓN
+    # -----------------------------
+    update_meta(job_id, msg="Separando instrumentos...")
+    log(job_id, "Separando instrumentos:", instrumento)
 
+    models = {
+        "guitarra":"UVR-MDX-NET-Inst_1",
+        "piano":"UVR-MDX-NET-Inst_HQ_2",
+        "violin":"UVR_MDXNET_3_9662",
+    }
+    model = models.get(instrumento)
+
+    # convertir a wav
+    pre_wav = os.path.join(work_dir, "pre.wav")
+    subprocess.run(["ffmpeg","-y","-i",filepath,"-ac","1","-ar","44100",pre_wav],
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     filepath = pre_wav
 
     # separar
-    sep = Separator(filepath, model_name=model_name)
+    sep = Separator(filepath, model_name=model)
     try:
         outputs = sep.separate()
+        log(job_id, "Separación OK")
     except Exception as e:
-        update_meta(job_id, msg=f"Error separando audio: {str(e)}", status="error")
+        update_meta(job_id, msg="Error separando", status="error")
+        log(job_id, "ERROR separando:", e)
         return
 
+    # normalizar outputs
+    wavs = []
     if isinstance(outputs, dict):
-        files = []
         for v in outputs.values():
             if isinstance(v, list):
-                files.extend(v)
+                wavs += v
             else:
-                files.append(v)
-        outputs = files
+                wavs.append(v)
     elif isinstance(outputs, str):
-        outputs = [outputs]
-    elif outputs is None:
-        outputs = []
+        wavs = [outputs]
 
-    candidates = [p for p in outputs if p.lower().endswith(".wav")]
-    if not candidates:
-        update_meta(job_id, msg="Error: no se generó WAV separado", status="error")
+    stem = next((w for w in wavs if w.endswith(".wav")), None)
+    if not stem:
+        update_meta(job_id, msg="No WAV", status="error")
+        log(job_id, "NO WAV SEPARADO")
         return
 
-    stem_wav = candidates[0]
-
     # -----------------------------
-    # 2) DETECCIÓN DE NOTAS
+    # 2) DETECTAR NOTAS
     # -----------------------------
     update_meta(job_id, msg="Detectando notas...")
+    log(job_id, "Detectando notas (CREPE)")
 
-    if instrumento == "piano":
-        script_det = "./ParteDeJuli/LeerArchivoYnota_piano.py"
-    elif instrumento == "guitarra":
-        script_det = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
-    else:
-        script_det = "./ParteDeJuli/LeerArchivoYnota_violin.py"
+    script_det = {
+        "guitarra":"./ParteDeJuli/LeerArchivoYnota_guitarra.py",
+        "piano":"./ParteDeJuli/LeerArchivoYnota_piano.py",
+        "violin":"./ParteDeJuli/LeerArchivoYnota_violin.py",
+    }[instrumento]
 
-    cmd = [sys.executable, script_det, stem_wav, work_dir]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
+    result = subprocess.run(
+        [sys.executable, script_det, stem, work_dir],
+        capture_output=True, text=True
+    )
     if result.returncode != 0:
-        update_meta(job_id, msg=result.stderr, status="error")
+        update_meta(job_id, msg="Error detectando", status="error")
+        log(job_id, "ERROR detectando:", result.stderr)
         return
 
+    log(job_id, "Notas detectadas OK")
+
     # -----------------------------
-    # 3) JSON → XML + PNG
+    # 3) XML + PNG
     # -----------------------------
     update_meta(job_id, msg="Generando partitura...")
+    log(job_id, "Generando PNG...")
 
-    if instrumento == "piano":
-        script_part = "./ParteDeTota/NotasAPartitura_piano.py"
-    elif instrumento == "guitarra":
-        script_part = "./ParteDeTota/NotasAPartitura_guitarra.py"
-    else:
-        script_part = "./ParteDeTota/NotasAPartitura_violin.py"
+    script_part = {
+        "guitarra":"./ParteDeTota/NotasAPartitura_guitarra.py",
+        "piano":"./ParteDeTota/NotasAPartitura_piano.py",
+        "violin":"./ParteDeTota/NotasAPartitura_violin.py",
+    }[instrumento]
 
-    cmd = [sys.executable, script_part, work_dir]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
+    result = subprocess.run(
+        [sys.executable, script_part, work_dir],
+        capture_output=True, text=True
+    )
     if result.returncode != 0:
-        update_meta(job_id, msg=result.stderr, status="error")
+        update_meta(job_id, msg="Error generando partitura", status="error")
+        log(job_id, "ERROR partitura:", result.stderr)
         return
 
     # -----------------------------
-    # 4) BUSCAR XML Y PNG
+    # 4) BUSCAR PNG Y XML
     # -----------------------------
-    xml_path = None
-    png_path = None
+    xml = None
+    png = None
 
-    for root, _, files in os.walk(work_dir):
+    for root,_,files in os.walk(work_dir):
         for f in files:
-            if f.lower().endswith((".xml", ".musicxml")) and xml_path is None:
-                xml_path = os.path.join(root, f)
-            if f.lower().endswith(".png") and png_path is None:
-                png_path = os.path.join(root, f)
+            p = os.path.join(root,f)
+            if f.endswith(".png"): png = p
+            if f.endswith(".xml") or f.endswith(".musicxml"): xml = p
 
-    if not png_path:
-        update_meta(job_id, msg="ERROR: no se generó PNG", status="error")
+    if not png or not xml:
+        update_meta(job_id,msg="No PNG/XML",status="error")
+        log(job_id,"ERROR: faltan archivos", xml, png)
         return
 
-    if not xml_path:
-        update_meta(job_id, msg="ERROR: no se generó XML", status="error")
-        return
-
-    # -----------------------------
-    # 5) FIN
-    # -----------------------------
-    update_meta(
-        job_id,
-        result_img=png_path,
-        result_xml=xml_path,
+    update_meta(job_id,
+        result_img=png,
+        result_xml=xml,
         status="done",
         msg="Completado"
     )
+    log(job_id, "FIN OK")
 
 if __name__ == "__main__":
     main()

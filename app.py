@@ -262,14 +262,25 @@ def upload_file():
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f)
 
-        # Lanzar Worker (asincrónico)
+        # ================================================================
+        # LANZAR WORKER – CON LOGS REALES
+        # ================================================================
+        LOG_FOLDER = os.path.join(TMP_BASE, "logs")
+        os.makedirs(LOG_FOLDER, exist_ok=True)
+
+        log_path = os.path.join(LOG_FOLDER, f"{job_id}.log")
+
+        # Abrir archivo de log sin buffering para ver TODO
+        logfile = open(log_path, "ab", buffering=0)
+
         subprocess.Popen(
             [PYTHON_EXEC, "worker.py", job_id],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=logfile,
+            stderr=logfile,
             stdin=subprocess.DEVNULL,
             close_fds=True
         )
+
 
         # ================================================================
         # RESPUESTA INMEDIATA AL FRONTEND
