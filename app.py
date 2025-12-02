@@ -543,15 +543,24 @@ def api_editor_save():
 @app.route('/api/editor/load/<usuario>/<nombre>')
 def api_editor_load(usuario, nombre):
     user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
-    xml_path = os.path.join(user_dir, nombre + ".musicxml")
 
-    if not os.path.exists(xml_path):
+    # 1) probamos .musicxml (archivos nuevos del creator)
+    xml_path_musicxml = os.path.join(user_dir, nombre + ".musicxml")
+    # 2) si no existe, probamos .xml (los que vienen del mp3 u otras rutas)
+    xml_path_xml = os.path.join(user_dir, nombre + ".xml")
+
+    if os.path.exists(xml_path_musicxml):
+        xml_path = xml_path_musicxml
+    elif os.path.exists(xml_path_xml):
+        xml_path = xml_path_xml
+    else:
         return jsonify({"error": "No existe ese archivo"}), 404
 
     with open(xml_path, "r", encoding="utf-8") as f:
         contenido = f.read()
 
     return jsonify({"xml": contenido})
+
 
 @app.route('/api/editor/png/<usuario>/<nombre>')
 def api_editor_png(usuario, nombre):
