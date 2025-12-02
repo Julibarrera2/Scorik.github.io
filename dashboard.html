@@ -58,110 +58,11 @@
     transform: scale(1.05);
     }
 
-    /* Botón menú estilo hamburguesa */
-    .menu-btn {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    background-color: #6B2BD9;
-    padding: 10px;
-    border-radius: 15px;
-    cursor: pointer;
-    z-index: 10;
-    }
-
-    .menu-btn div {
-    width: 25px;
-    height: 5px;
-    background-color: white;
-    margin: 4px 0;
-    border-radius: 3px;
-    }
-
-    /* Sidebar */
-    .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 250px;
-        height: 100%;
-        background-color: #814ac495; /* Morado claro */
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 80px;
-        box-sizing: border-box;
-    }
-    .sidebar.open {
-        transform: translateX(0);
-    }
-
-    .menu {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex-grow: 1;
-    }
-
-    .menu-button {
-        background-color: #ffffff;
-        color: #8300F6;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 20px;
-        margin: 15px 0;
-        width: 170px;
-        cursor: pointer;
-        font-size: 16px;
-        text-align: center;
-    }
-    .menu-button:hover {
-        background-color: #e0d7f8;
-    }
-
-    .bottom-area {
-        margin-top: auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .bottom-icon {
-        margin-bottom: 20px;
-        cursor: pointer;
-    }
-
+    
 </style>
 </head>
 <body x-data="{ sidebarOpen: false }">
 
-<!-- Botón menú hamburguesa -->
-<div class="menu-btn" @click="sidebarOpen = !sidebarOpen">
-    <div></div>
-    <div></div>
-    <div></div>
-</div>
-
-<!-- Sidebar -->
-<div :class="{ 'sidebar': true, 'open': sidebarOpen }">
-    <div class="menu">
-        <button class="menu-button" onclick="location.href='mp3tomusic.html'">mp3 to music sheet</button>
-        <button class="menu-button" onclick="location.href='library.html'">Library</button>
-        <button class="menu-button" onclick="location.href='create.html'">Create</button>
-        <button class="menu-button" onclick="location.href='User.html'">User</button>
-    </div>
-    <div class="bottom-area">
-        <div class="bottom-icon" @click="sidebarOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" width="40" height="40">
-                <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </div>
-    </div>
-</div>
 
 <!-- Contenido central -->
 <div class="center-content">
