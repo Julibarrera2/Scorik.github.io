@@ -475,8 +475,8 @@ def api_editor_save():
     nombre = data.get("nombre")
     if not nombre:
         nombre = f"partitura_{int(time.time())}"
-    xml = data.get("xml")
-    png_base64 = data.get("png")
+    xml = data.get("xml")  # STRING del MusicXML completo
+    png_base64 = data.get("png")  # PNG en base64 (data URL)
 
     if not usuario or not xml or not png_base64:
         return jsonify({"success": False, "error": "Faltan datos"}), 400
@@ -487,21 +487,43 @@ def api_editor_save():
     xml_path = os.path.join(user_dir, nombre + ".musicxml")
     png_path = os.path.join(user_dir, nombre + ".png")
 
+    # Guardar XML local
     with open(xml_path, "w", encoding="utf-8") as f:
         f.write(xml)
 
+    # Guardar PNG local desde base64
     import base64
     img_bytes = base64.b64decode(png_base64.split(",")[-1])
     with open(png_path, "wb") as f:
         f.write(img_bytes)
 
-    # Opcional: subir a GCS, pero **NO** borrar los archivos locales
+    # Si hay bucket de partituras, subir también allí (igual que save_partitura)
     if PARTITURAS_BUCKET:
         try:
-            gcs_upload(PARTITURAS_BUCKET, f"{usuario}/{nombre}.png", png_path, content_type="image/png")
-            gcs_upload(PARTITURAS_BUCKET, f"{usuario}/{nombre}.musicxml", xml_path, content_type="application/xml")
+            gcs_upload(
+                PARTITURAS_BUCKET,
+                f"{usuario}/{os.path.basename(png_path)}",
+                png_path,
+                content_type="image/png"
+            )
+            gcs_upload(
+                PARTITURAS_BUCKET,
+                f"{usuario}/{os.path.basename(xml_path)}",
+                xml_path,
+                content_type="application/xml"
+            )
+            # Opcional: borrar local para no llenar /tmp
+            try:
+                os.remove(png_path)
+            except:
+                pass
+            try:
+                os.remove(xml_path)
+            except:
+                pass
         except Exception as e:
-            print("ERROR subiendo a GCS:", e, file=sys.stderr)
+            print("ERROR subiendo a GCS en api_editor_save:", e, file=sys.stderr)
+            # Igual devolvemos success True, porque en local quedó guardado
 
     return jsonify({"success": True, "message": "Partitura guardada"})
 
@@ -532,7 +554,7 @@ def api_editor_png(usuario, nombre):
 
 @app.route('/api/editor/delete', methods=['POST'])
 def delete_partitura():
-    data = request.get_json()
+    data = request.get_json() or {}
     usuario = data.get("usuario")
     nombre = data.get("nombre")
 
@@ -542,16 +564,35 @@ def delete_partitura():
     user_dir = os.path.join(PARTITURAS_USER_FOLDER, usuario)
 
     eliminados = 0
+
+    # 1) Borrar archivos locales
     for ext in (".png", ".xml", ".musicxml"):
         path = os.path.join(user_dir, nombre + ext)
         if os.path.exists(path):
-            os.remove(path)
-            eliminados += 1
+            try:
+                os.remove(path)
+                eliminados += 1
+            except Exception as e:
+                print("ERROR borrando local:", path, e, file=sys.stderr)
+
+    # 2) Borrar también en GCS si hay bucket
+    if PARTITURAS_BUCKET:
+        try:
+            client = _gcs_client()
+            bucket = client.bucket(PARTITURAS_BUCKET)
+            for ext in (".png", ".xml", ".musicxml"):
+                blob = bucket.blob(f"{usuario}/{nombre}{ext}")
+                if blob.exists(client):
+                    blob.delete()
+                    eliminados += 1
+        except Exception as e:
+            print("ERROR borrando en GCS:", e, file=sys.stderr)
 
     if eliminados == 0:
         return jsonify({"success": False, "error": "No se encontró la partitura"}), 404
 
     return jsonify({"success": True})
+
 
 @app.route('/healthz')
 def healthz():
