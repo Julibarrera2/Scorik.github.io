@@ -1,11 +1,15 @@
 import os, sys, json, time, subprocess, shutil
 from audio_separator import Separator
+import resource
+
 
 print(">>> WORKER IMPORTED OK", flush=True)
 print(">>> TEST MUSESCORE:", flush=True)
 subprocess.run(["mscore3", "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 print(">>> MUSESCORE OK", flush=True)
 
+soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+print("MEM LIMIT:", soft/1024/1024, "MB", flush=True)
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
 
@@ -35,6 +39,7 @@ def main():
     # 1) SEPARACIÓN DE INSTRUMENTOS
     # -----------------------------
     update_meta(job_id, msg="Separando instrumentos (MDX 0.7.3)...")
+    print(">>> WORKER INSTRUMENTO:", instrumento, flush=True)
 
     MODEL_MAP = {
         "guitarra": "UVR-MDX-NET-Inst_1",
@@ -94,6 +99,8 @@ def main():
     # 2) DETECCIÓN DE NOTAS
     # -----------------------------
     update_meta(job_id, msg="Detectando notas...")
+    print("== CREPE ESTÁ POR EMPEZAR ==", file=sys.stderr)
+    print("adentro hijo de mil", file=sys.stderr)
 
     if instrumento == "piano":
         script_det = "./ParteDeJuli/LeerArchivoYnota_piano.py"
