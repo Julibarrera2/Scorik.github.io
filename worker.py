@@ -1,161 +1,160 @@
-import os, sys, json, subprocess, resource
-from audio_separator import Separator
-
-print(">>> WORKER IMPORTED OK", flush=True)
-print(">>> TEST MUSESCORE:", flush=True)
-subprocess.run(["mscore3", "-v"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-print(">>> MUSESCORE OK", flush=True)
+import os, sys, json, subprocess
 
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
-LOG_DIR = os.path.join(BASE, "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
-
-def log(job_id, *msg):
-    """Guarda en /tmp/scorik/logs/{job_id}.log"""
-    text = " ".join(str(m) for m in msg)
-    print(text, flush=True)
-    with open(os.path.join(LOG_DIR, f"{job_id}.log"), "a") as f:
-        f.write(text + "\n")
 
 def update_meta(job_id, **kwargs):
     path = os.path.join(PROGRESS, f"{job_id}.json")
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    for k,v in kwargs.items():
+    for k, v in kwargs.items():
         data[k] = v
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
 def main():
     job_id = sys.argv[1]
-    log(job_id, "WORKER START")
+    print(">>> WORKER START", job_id, flush=True)
 
-    # --- cargar metadata ---
+    # ---------------------------------
+    # CARGAR META
+    # ---------------------------------
     meta_path = os.path.join(PROGRESS, f"{job_id}.json")
-    with open(meta_path) as f:
+    with open(meta_path, "r", encoding="utf-8") as f:
         meta = json.load(f)
 
+    usuario     = meta["usuario"]
     instrumento = meta["instrumento"]
     filepath    = meta["filepath"]
     work_dir    = meta["work_dir"]
 
+    print(">>> USUARIO:", usuario, flush=True)
+    print(">>> INSTRUMENTO:", instrumento, flush=True)
+    print(">>> FILEPATH INICIAL:", filepath, "exists?", os.path.exists(filepath), flush=True)
+    print(">>> WORK_DIR:", work_dir, flush=True)
+
     os.makedirs(work_dir, exist_ok=True)
 
-    # -----------------------------
-    # 1) SEPARACIÓN
-    # -----------------------------
-    update_meta(job_id, msg="Separando instrumentos...")
-    log(job_id, "Separando instrumentos:", instrumento)
+    # ---------------------------------
+    # 1) PREPROCESO WAV (MONO 44.1k)
+    #    SIN SEPARAR INSTRUMENTOS
+    # ---------------------------------
+    update_meta(job_id, msg="Preparando audio...")
 
-    models = {
-        "guitarra":"UVR-MDX-NET-Inst_1",
-        "piano":"UVR-MDX-NET-Inst_HQ_2",
-        "violin":"UVR_MDXNET_3_9662",
-    }
-    model = models.get(instrumento)
-
-    # convertir a wav
     pre_wav = os.path.join(work_dir, "pre.wav")
-    subprocess.run(["ffmpeg","-y","-i",filepath,"-ac","1","-ar","44100",pre_wav],
-                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    filepath = pre_wav
+    print(">>> FFmpeg a mono 44.1k:", pre_wav, flush=True)
 
-    # separar
-    sep = Separator(filepath, model_name=model)
-    try:
-        outputs = sep.separate()
-        log(job_id, "Separación OK")
-    except Exception as e:
-        update_meta(job_id, msg="Error separando", status="error")
-        log(job_id, "ERROR separando:", e)
+    cmd_ffmpeg = [
+        "ffmpeg", "-y",
+        "-i", filepath,
+        "-ac", "1",
+        "-ar", "44100",
+        pre_wav
+    ]
+    proc_ff = subprocess.run(cmd_ffmpeg, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    print(">>> FFMPEG RETURN:", proc_ff.returncode, flush=True)
+    if proc_ff.returncode != 0:
+        print(">>> FFMPEG OUTPUT:\n", proc_ff.stdout, flush=True)
+        update_meta(job_id, msg="Error en ffmpeg", status="error")
         return
 
-    # normalizar outputs
-    wavs = []
-    if isinstance(outputs, dict):
-        for v in outputs.values():
-            if isinstance(v, list):
-                wavs += v
-            else:
-                wavs.append(v)
-    elif isinstance(outputs, str):
-        wavs = [outputs]
-
-    stem = next((w for w in wavs if w.endswith(".wav")), None)
-    if not stem:
-        update_meta(job_id, msg="No WAV", status="error")
-        log(job_id, "NO WAV SEPARADO")
+    if not os.path.exists(pre_wav):
+        print(">>> ERROR: pre.wav NO existe", flush=True)
+        update_meta(job_id, msg="No se pudo generar WAV", status="error")
         return
 
-    # -----------------------------
-    # 2) DETECTAR NOTAS
-    # -----------------------------
+    stem_wav = pre_wav
+    print(">>> STEM_WAV:", stem_wav, "exists?", os.path.exists(stem_wav), flush=True)
+
+    # ---------------------------------
+    # 2) DETECCIÓN DE NOTAS (CREPE)
+    # ---------------------------------
     update_meta(job_id, msg="Detectando notas...")
-    log(job_id, "Detectando notas (CREPE)")
+    print(">>> DETECCIÓN DE NOTAS", flush=True)
 
-    script_det = {
-        "guitarra":"./ParteDeJuli/LeerArchivoYnota_guitarra.py",
-        "piano":"./ParteDeJuli/LeerArchivoYnota_piano.py",
-        "violin":"./ParteDeJuli/LeerArchivoYnota_violin.py",
-    }[instrumento]
+    if instrumento == "piano":
+        script_det = "./ParteDeJuli/LeerArchivoYnota_piano.py"
+    elif instrumento == "guitarra":
+        script_det = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
+    else:
+        script_det = "./ParteDeJuli/LeerArchivoYnota_violin.py"
 
-    result = subprocess.run(
-        [sys.executable, script_det, stem, work_dir],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        update_meta(job_id, msg="Error detectando", status="error")
-        log(job_id, "ERROR detectando:", result.stderr)
+    cmd_det = [sys.executable, script_det, stem_wav, work_dir]
+    print(">>> CMD DET:", cmd_det, flush=True)
+
+    proc_det = subprocess.run(cmd_det, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    print(">>> DET RETURN:", proc_det.returncode, flush=True)
+    print(">>> DET OUTPUT:\n", proc_det.stdout, flush=True)
+
+    if proc_det.returncode != 0:
+        update_meta(job_id, msg="Error en detección de notas", status="error")
         return
 
-    log(job_id, "Notas detectadas OK")
+    notas_json = os.path.join(work_dir, "notas_detectadas.json")
+    print(">>> notas_detectadas.json exists?", os.path.exists(notas_json), flush=True)
+    if not os.path.exists(notas_json):
+        update_meta(job_id, msg="No se generó notas_detectadas.json", status="error")
+        return
 
-    # -----------------------------
-    # 3) XML + PNG
-    # -----------------------------
+    # ---------------------------------
+    # 3) JSON → XML + PNG (MuseScore)
+    # ---------------------------------
     update_meta(job_id, msg="Generando partitura...")
-    log(job_id, "Generando PNG...")
+    print(">>> GENERANDO PARTITURA", flush=True)
 
-    script_part = {
-        "guitarra":"./ParteDeTota/NotasAPartitura_guitarra.py",
-        "piano":"./ParteDeTota/NotasAPartitura_piano.py",
-        "violin":"./ParteDeTota/NotasAPartitura_violin.py",
-    }[instrumento]
+    if instrumento == "piano":
+        script_part = "./ParteDeTota/NotasAPartitura_piano.py"
+    elif instrumento == "guitarra":
+        script_part = "./ParteDeTota/NotasAPartitura_guitarra.py"
+    else:
+        script_part = "./ParteDeTota/NotasAPartitura_violin.py"
 
-    result = subprocess.run(
-        [sys.executable, script_part, work_dir],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
+    cmd_part = [sys.executable, script_part, work_dir]
+    print(">>> CMD PART:", cmd_part, flush=True)
+
+    proc_part = subprocess.run(cmd_part, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    print(">>> PART RETURN:", proc_part.returncode, flush=True)
+    print(">>> PART OUTPUT:\n", proc_part.stdout, flush=True)
+
+    if proc_part.returncode != 0:
         update_meta(job_id, msg="Error generando partitura", status="error")
-        log(job_id, "ERROR partitura:", result.stderr)
         return
 
-    # -----------------------------
-    # 4) BUSCAR PNG Y XML
-    # -----------------------------
-    xml = None
-    png = None
-
-    for root,_,files in os.walk(work_dir):
+    # ---------------------------------
+    # 4) BUSCAR XML Y PNG
+    # ---------------------------------
+    xml_path = None
+    png_path = None
+    for root, _, files in os.walk(work_dir):
         for f in files:
-            p = os.path.join(root,f)
-            if f.endswith(".png"): png = p
-            if f.endswith(".xml") or f.endswith(".musicxml"): xml = p
+            low = f.lower()
+            full = os.path.join(root, f)
+            if low.endswith((".xml", ".musicxml")) and xml_path is None:
+                xml_path = full
+            if low.endswith(".png") and png_path is None:
+                png_path = full
 
-    if not png or not xml:
-        update_meta(job_id,msg="No PNG/XML",status="error")
-        log(job_id,"ERROR: faltan archivos", xml, png)
+    print(">>> XML FOUND:", xml_path, flush=True)
+    print(">>> PNG FOUND:", png_path, flush=True)
+
+    if not png_path:
+        update_meta(job_id, msg="ERROR: no se generó PNG", status="error")
+        return
+    if not xml_path:
+        update_meta(job_id, msg="ERROR: no se generó XML", status="error")
         return
 
-    update_meta(job_id,
-        result_img=png,
-        result_xml=xml,
+    # ---------------------------------
+    # 5) FIN
+    # ---------------------------------
+    update_meta(
+        job_id,
+        result_img=png_path,
+        result_xml=xml_path,
         status="done",
         msg="Completado"
     )
-    log(job_id, "FIN OK")
+    print(">>> WORKER DONE OK", flush=True)
 
 if __name__ == "__main__":
     main()
