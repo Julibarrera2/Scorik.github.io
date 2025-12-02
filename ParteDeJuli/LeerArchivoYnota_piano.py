@@ -1,22 +1,10 @@
-import librosa
-import soundfile as sf
-import crepe
-import numpy as np
-import os
-from pydub import AudioSegment
-from pydub.utils import which
-from typing import List, Tuple, Dict
-import json
-import warnings
-import subprocess
-import sys
-import scipy.signal
-from scipy.signal import windows
-
+# Procesamiento de audio
 # ===========================
 #   🔥 FIX PARA CLOUD RUN
 #   Limitar TensorFlow / CREPE a 1 thread
 # ===========================
+import os
+
 import tensorflow as tf
 tf.config.threading.set_intra_op_parallelism_threads(1)
 tf.config.threading.set_inter_op_parallelism_threads(1)
@@ -26,6 +14,20 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 # ===========================
+import crepe
+
+import librosa
+import soundfile as sf
+import numpy as np
+from pydub import AudioSegment
+from pydub.utils import which
+from typing import List, Tuple, Dict
+import json
+import warnings
+import subprocess
+import sys
+import scipy.signal
+from scipy.signal import windows
 # ---- FIX librosa / scipy ----
 if not hasattr(scipy.signal, "hann"):
     scipy.signal.hann = windows.hann
