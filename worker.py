@@ -1,7 +1,6 @@
-import os, sys, json, time, subprocess, shutil
+import os, sys, json, subprocess
 from audio_separator import Separator
 import resource
-
 
 print(">>> WORKER IMPORTED OK", flush=True)
 print(">>> TEST MUSESCORE:", flush=True)
@@ -10,6 +9,7 @@ print(">>> MUSESCORE OK", flush=True)
 
 soft, hard = resource.getrlimit(resource.RLIMIT_AS)
 print("MEM LIMIT:", soft/1024/1024, "MB", flush=True)
+
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
 
@@ -54,14 +54,9 @@ def main():
 
     os.makedirs(work_dir, exist_ok=True)
 
-    # preprocesamiento WAV
     pre_wav = os.path.join(work_dir, "pre.wav")
     subprocess.run([
-        "ffmpeg", "-y",
-        "-i", filepath,
-        "-ac", "1",
-        "-ar", "44100",
-        pre_wav
+        "ffmpeg", "-y", "-i", filepath, "-ac", "1", "-ar", "44100", pre_wav
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     filepath = pre_wav
@@ -74,7 +69,6 @@ def main():
         update_meta(job_id, msg=f"Error separando audio: {str(e)}", status="error")
         return
 
-    # normalizar outputs
     if isinstance(outputs, dict):
         files = []
         for v in outputs.values():
@@ -99,8 +93,6 @@ def main():
     # 2) DETECCIÓN DE NOTAS
     # -----------------------------
     update_meta(job_id, msg="Detectando notas...")
-    print("== CREPE ESTÁ POR EMPEZAR ==", file=sys.stderr)
-    print("adentro hijo de mil", file=sys.stderr)
 
     if instrumento == "piano":
         script_det = "./ParteDeJuli/LeerArchivoYnota_piano.py"
@@ -109,15 +101,15 @@ def main():
     else:
         script_det = "./ParteDeJuli/LeerArchivoYnota_violin.py"
 
-    try:
-        # genera work_dir/notas_detectadas.json
-        subprocess.run([sys.executable, script_det, stem_wav, work_dir], check=True)
-    except Exception as e:
-        update_meta(job_id, msg=f"Error en detección: {str(e)}", status="error")
+    cmd = [sys.executable, script_det, stem_wav, work_dir]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        update_meta(job_id, msg=result.stderr, status="error")
         return
 
     # -----------------------------
-    # 3) JSON → XML + PNG (NotasAPartitura + MuseScore)
+    # 3) JSON → XML + PNG
     # -----------------------------
     update_meta(job_id, msg="Generando partitura...")
 
@@ -128,39 +120,36 @@ def main():
     else:
         script_part = "./ParteDeTota/NotasAPartitura_violin.py"
 
-    try:
-        # este script:
-        #   - lee work_dir/notas_detectadas.json
-        #   - crea XML
-        #   - llama a MuseScore y genera PNG
-        subprocess.run([sys.executable, script_part, work_dir], check=True)
-    except Exception as e:
-        update_meta(job_id, msg=f"Error generando partitura: {str(e)}", status="error")
+    cmd = [sys.executable, script_part, work_dir]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        update_meta(job_id, msg=result.stderr, status="error")
         return
 
     # -----------------------------
-    # 4) BUSCAR XML Y PNG GENERADOS
+    # 4) BUSCAR XML Y PNG
     # -----------------------------
     xml_path = None
     png_path = None
+
     for root, _, files in os.walk(work_dir):
         for f in files:
-            low = f.lower()
-            full = os.path.join(root, f)
-            if low.endswith((".xml", ".musicxml")) and xml_path is None:
-                xml_path = full
-            if low.endswith(".png") and png_path is None:
-                png_path = full
+            if f.lower().endswith((".xml", ".musicxml")) and xml_path is None:
+                xml_path = os.path.join(root, f)
+            if f.lower().endswith(".png") and png_path is None:
+                png_path = os.path.join(root, f)
 
     if not png_path:
         update_meta(job_id, msg="ERROR: no se generó PNG", status="error")
         return
+
     if not xml_path:
         update_meta(job_id, msg="ERROR: no se generó XML", status="error")
         return
 
     # -----------------------------
-    # 5) FIN — guardar rutas
+    # 5) FIN
     # -----------------------------
     update_meta(
         job_id,
