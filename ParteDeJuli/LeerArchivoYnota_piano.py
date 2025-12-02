@@ -13,25 +13,25 @@ import sys
 import scipy.signal
 from scipy.signal import windows
 
-# FIX: SciPy >=1.11 eliminó signal.hann, pero librosa todavía lo usa
+# ---- FIX librosa / scipy ----
+
+
 if not hasattr(scipy.signal, "hann"):
     scipy.signal.hann = windows.hann
 
 np.float = float
+import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-# --------------------------
-# CONFIG FFMPEG (igual violín)
-# --------------------------
-FFMPEG_BIN  = os.getenv("FFMPEG_BINARY") or which("ffmpeg") or which("ffmpeg.exe")
-FFPROBE_BIN = os.getenv("FFPROBE_BINARY") or which("ffprobe") or which("ffprobe.exe")
+# ---- FFmpeg para pydub (funciona en local y en Cloud Run) ----
 
-if (not FFMPEG_BIN or not FFPROBE_BIN) and os.name == "nt":
-    FFMPEG_BIN  = FFMPEG_BIN  or r"C:\\Users\\Julia Barrera\\Downloads\\ffmpeg-7.1.1-essentials_build\\bin\\ffmpeg.exe"
-    FFPROBE_BIN = FFPROBE_BIN or r"C:\\Users\\Julia Barrera\\Downloads\\ffmpeg-7.1.1-essentials_build\\bin\\ffprobe.exe"
+
+FFMPEG_BIN = which("ffmpeg") or "ffmpeg"
+FFPROBE_BIN = which("ffprobe") or "ffprobe"
 
 AudioSegment.converter = FFMPEG_BIN
 AudioSegment.ffprobe   = FFPROBE_BIN
+
 
 # --------------------------
 # FILTRO ENERGÍA
@@ -191,33 +191,9 @@ def main(filepath, carpeta_destino="static/temp"):
     notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
     write_notes_to_json(notas_json, carpeta_destino)
 
-    # --------------------------
-    # RECONSTRUCCIÓN (tu bloque original)
-    # --------------------------
-    audio_original, sr_original = sf.read(filepath)
-    expected = len(audio_original) / sr_original
-    sr_out = sr_original
+    print("🎼 Piano: JSON generado, listo para MuseScore (worker).")
+    return
 
-    total_samples = int(np.ceil(expected * sr_out))
-    audio_total = np.zeros(total_samples, dtype=np.float32)
-
-    for n in notas_json:
-        freq = notas_dict[n["nota"]]
-        start = int(n["inicio"] * sr_out)
-        end = start + int(n["duracion"] * sr_out)
-        wave = generate_note_wave_piano(freq, n["duracion"], sr_out)
-        audio_total[start:end] += wave[:min(len(wave), end-start)]
-
-    audio_total /= np.max(np.abs(audio_total) + 1e-9)
-    sf.write("reconstruccion.wav", audio_total, sr_out)
-    print("⬛ Piano reconstruido.")
-
-    # --------------------------
-    # Crear PNG/XML
-    # --------------------------
-    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_piano.py")
-    subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
 
 if __name__ == "__main__":

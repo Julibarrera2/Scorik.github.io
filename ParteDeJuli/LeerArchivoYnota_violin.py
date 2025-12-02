@@ -14,32 +14,26 @@ import sys
 import scipy.signal
 from scipy.signal import windows
 
-# FIX: SciPy >=1.11 eliminó signal.hann, pero librosa todavía lo usa
+# ---- FIX librosa / scipy ----
+
+
 if not hasattr(scipy.signal, "hann"):
     scipy.signal.hann = windows.hann
 
 np.float = float
+import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-# 1) Primero: variables de entorno (Dockerfile ya exporta FFMPEG_BINARY=ffmpeg)
-FFMPEG_BIN  = os.getenv("FFMPEG_BINARY") or which("ffmpeg") or which("ffmpeg.exe")
-FFPROBE_BIN = os.getenv("FFPROBE_BINARY") or which("ffprobe") or which("ffprobe.exe")
+# ---- FFmpeg para pydub (funciona en local y en Cloud Run) ----
 
-# 2) Si en Windows local no encontraste nada, podés dejar un ÚLTIMO fallback opcional
-if (not FFMPEG_BIN or not FFPROBE_BIN) and os.name == "nt":  # typo: fix below
-    # <-- si querés, podés dejar tu ruta local como último recurso:
-    FFMPEG_BIN  = FFMPEG_BIN  or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffmpeg.exe"
-    FFPROBE_BIN = FFPROBE_BIN or r"C:\Users\Julia Barrera\Downloads\ffmpeg-7.1.1-essentials_build\bin\ffprobe.exe"
 
-# 3) Asignar a pydub y validar
+FFMPEG_BIN = which("ffmpeg") or "ffmpeg"
+FFPROBE_BIN = which("ffprobe") or "ffprobe"
+
 AudioSegment.converter = FFMPEG_BIN
 AudioSegment.ffprobe   = FFPROBE_BIN
-if not AudioSegment.converter or not AudioSegment.ffprobe:
-    raise RuntimeError(
-        "FFmpeg/ffprobe no encontrados. "
-        "En Docker vienen instalados; en Windows podés setear "
-        "FFMPEG_BINARY y FFPROBE_BINARY o agregar ffmpeg al PATH."
-    )
+
+
 
 def filtrar_pitch_por_energia(pitch_list, y_signal, sr_signal, threshold_db=-60):
     hop = int(sr_signal * 0.01)
@@ -224,146 +218,67 @@ def verificar_notas_detectadas(audio_path: str, reconstruido_path: str, ruta_jso
             print("   →", err)
 
 def main(filepath: str, carpeta_destino="static/temp"):
+    # --- Cargar audio ---
     y, sr, filepath = load_and_preprocess_audio(filepath)
     y_trim = y
+
+    # --- Pitch detection ---
     pitches = detect_pitch(y_trim, sr)
     pitches = filtrar_pitch_por_energia(pitches, y_trim, sr)
+
     dur_trim = librosa.get_duration(y=y_trim, sr=sr)
     pitches = [p for p in pitches if p[0] < dur_trim - 0.2 or p[1] > 100]
-    print("Primeros 10 pitches:", pitches[:10])
+
+    print("👉 Primeros 10 pitches:", pitches[:10])
+
+    # --- Tempo ---
     tempo, _ = librosa.beat.beat_track(y=y_trim, sr=sr)
+
+    # --- Conversión y agrupación ---
     notas_json = group_pitches_to_notes(pitches, tempo, notas_dict)
 
-    valid_notes = set([
-        "C","C#","D","D#","E","F","F#","G","G#","A","A#","B"
-    ])
-
+    # --- Filtrado de notas inválidas ---
+    valid_notes = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"}
     notas_filtradas = []
 
     for n in notas_json:
         nombre = n["nota"].strip().upper()
 
-        # 1) Base de nota inválida (ej: H, J#, Z)
         base = ''.join([c for c in nombre if not c.isdigit()])
         if base not in valid_notes:
-            print("❌ Nota descartada (no existe):", nombre)
             continue
 
-        # 2) Octava inexistente para music21
         num = ''.join([c for c in nombre if c.isdigit()])
         if num == "" or not num.isdigit():
-            print("❌ Nota descartada (sin octava):", nombre)
             continue
         if not (0 <= int(num) <= 7):
-            print("❌ Nota descartada (octava fuera de rango):", nombre)
             continue
 
-        # 3) Duración inválida
         if float(n["duracion"]) <= 0:
-            print("❌ Nota descartada (duración <= 0):", nombre)
             continue
 
-        # 4) Figura inválida
-        if n["figura"].lower() not in ["corchea", "negra", "blanca", "redonda", "semicorchea"]:
-            print("❌ Nota descartada (figura inválida):", nombre, n["figura"])
+        if n["figura"].lower() not in ["corchea","negra","blanca","redonda","semicorchea"]:
             continue
 
         notas_filtradas.append(n)
 
     notas_json = notas_filtradas
-    print(f"✅ {len(notas_json)} notas válidas después del filtrado.")
+    print(f"🎼 Violín: {len(notas_json)} notas válidas final.")
 
-    # Guardar JSON en la carpeta destino:
+    # --- Guardar JSON ---
     write_notes_to_json(notas_json, carpeta_destino)
-    print(f"\n=== Después de filtrar últimos 2 s, notas_json tiene {len(notas_json)} elementos ===")
+    print(f"📄 JSON guardado en {carpeta_destino}/notas_detectadas.json")
 
-    # ====== RECONSTRUCCIÓN DEL AUDIO COMO ANTES ======
-    ruta_json = os.path.join(carpeta_destino, "notas_detectadas.json")
-    with open(ruta_json, "r") as f:
-        notas = json.load(f)
-    if not notas:
-        print("⚠️ No se detectaron notas válidas. Abortando reconstrucción.")
-        exit()
-    audio_original, sr_original = sf.read(filepath)
-    expected_duration = len(audio_original) / sr_original
-    sr_out = sr_original
-    notas = [n for n in notas if n["inicio"] + n["duracion"] <= expected_duration]
-    total_samples = int(np.ceil(expected_duration * sr_original))
-    audio_total = np.zeros((total_samples, ) + (() if audio_original.ndim == 1 else (audio_original.shape[1],)), dtype=np.float32)
-    if audio_original.ndim > 1:
-        n_channels = audio_original.shape[1]
-        audio_total = np.zeros((audio_original.shape[0], n_channels), dtype=np.float32)
-    else:
-        audio_total = np.zeros(audio_total.shape, dtype=np.float32)
-    
-    end = 0
-    start = 0
-    for n in notas:
-        freq = notas_dict[n["nota"]]
-        start = int(n["inicio"] * sr_out)
-        end = start + int(n["duracion"] * sr_out)
-        wave = generate_note_wave(freq, n["duracion"], sr=sr_out, volume=1.0)
-        fade_ms = int(0.005 * sr_out)
-        if wave.shape[0] > fade_ms*2:
-            ramp = np.linspace(0,1,fade_ms)
-            if wave.ndim == 1:
-                wave[:fade_ms] *= ramp
-                wave[-fade_ms:] *= ramp[::-1]
-            else:
-                wave[:fade_ms] *= ramp[:,None]
-                wave[-fade_ms:] *= ramp[::-1][:,None]
-        slice_end = min(end, audio_total.shape[0])
-        existing = audio_total[start:slice_end]
-        wave = wave[:len(existing)]
-        if existing.ndim == 2 and wave.ndim == 1:
-            wave = np.tile(wave[:, None], (1, existing.shape[1]))
-        mix = existing + wave
-        audio_total[start:slice_end] = np.clip(mix, -1.0, 1.0)
-        seg = audio_original[start: slice_end]
-        power = seg**2
-        if seg.ndim > 1:
-            power = power.mean(axis=1)
-        orig_rms = np.sqrt(np.mean(power)) + 1e-8
-        wave_rms = np.sqrt(np.mean(wave**2)) + 1e-8
-        wave *= (orig_rms / wave_rms)
-    slice_end = min(end, audio_total.shape[0])
-    existing = audio_total[start: slice_end]
-    wave_part = wave[: len(existing)]
-    mix = existing + wave_part
-    audio_total[start: slice_end] = np.clip(mix, -1.0, 1.0)
-    fade_dur = min(10.0, expected_duration)
-    fs = min(int(fade_dur * sr_original), len(audio_total))
-    fade_env = np.linspace(1.0, 0.0, fs)
-    if audio_total.ndim == 1:
-        audio_total[-fs:] *= fade_env
-    else:
-        audio_total[-fs:, :] *= fade_env[:, None]
-    peak = np.max(np.abs(audio_total))
-    if peak > 0:
-        audio_total /= peak
-    sf.write("reconstruccion.wav", audio_total, sr_out)
-    print("✅ 'reconstruccion.wav' generado correctamente con fade-out al final.")
+    print("🎯 Script violin listo. El worker generará PNG + XML con MuseScore.")
+    return
 
-    # ====== LLAMADA FINAL A NotasAPartitura.py PASANDO LA CARPETA DE DESTINO ======
-    print("\n Generando imagen...")
-    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    notas_script = os.path.join(REPO_ROOT, "ParteDeTota", "NotasAPartitura_violin.py")
-    json_file = os.path.join(carpeta_destino, "notas_detectadas.json")
-    if not os.path.exists(json_file):
-        print("❌ JSON no creado, abortando conversión")
-        return
-    with open(json_file, "r") as f:
-        data = json.load(f)
-    if not data:
-        print("❌ JSON vacío, abortando conversión")
-        return
-    subprocess.run([sys.executable, notas_script, carpeta_destino], check=True)
 
-# ========== ENTRADA SCRIPT: recibe carpeta_destino opcional ==========
+# ========== ENTRADA SCRIPT ==========
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Uso: python LeerArchivoYnota.py <ruta_mp3> [carpeta_destino]")
+        print("Uso: python LeerArchivoYnota_violin.py <ruta_mp3> [carpeta_destino]")
         exit(1)
+
     mp3_path = sys.argv[1]
     carpeta_destino = sys.argv[2] if len(sys.argv) > 2 else "static/temp"
     main(mp3_path, carpeta_destino)

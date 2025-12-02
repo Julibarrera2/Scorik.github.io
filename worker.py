@@ -1,37 +1,22 @@
-import os, sys, json, time, subprocess
-import shutil
-import os
-import json
+import os, sys, json, time, subprocess, shutil
 from audio_separator import Separator
-
-
-# --- DEBUG PARA VER SI MUSESCORE EXISTE EN EL CONTENEDOR ---
-print("CHECK mscore3:", shutil.which("mscore3"))
-print("CHECK mscore3-cli:", shutil.which("mscore3-cli"))
-print("CHECK MuseScore3:", shutil.which("MuseScore3"))
-print("WORKER START", sys.argv, flush=True)
-
 
 BASE = "/tmp/scorik"
 PROGRESS = os.path.join(BASE, "progress")
 
 def update_meta(job_id, **kwargs):
-    """Actualiza SOLO los campos enviados, sin borrar los demás."""
     path = os.path.join(PROGRESS, f"{job_id}.json")
     with open(path, "r") as f:
         data = json.load(f)
-
     for k, v in kwargs.items():
         data[k] = v
-
     with open(path, "w") as f:
         json.dump(data, f)
-
 
 def main():
     job_id = sys.argv[1]
 
-    # Cargar metadata generada por /upload
+    # cargar metadata
     meta_path = os.path.join(PROGRESS, f"{job_id}.json")
     with open(meta_path, "r") as f:
         meta = json.load(f)
@@ -41,9 +26,9 @@ def main():
     filepath    = meta["filepath"]
     work_dir    = meta["work_dir"]
 
-    # ================================================================
-    # 4) SEPARACIÓN DE INSTRUMENTOS – audio-separator 0.7.3
-    # ================================================================
+    # -----------------------------
+    # 1) SEPARACIÓN DE INSTRUMENTOS
+    # -----------------------------
     update_meta(job_id, msg="Separando instrumentos (MDX 0.7.3)...")
 
     MODEL_MAP = {
@@ -59,37 +44,31 @@ def main():
 
     os.makedirs(work_dir, exist_ok=True)
 
-    # ======= PRE-PROCESAMIENTO FFmpeg PARA EVITAR CUELGUES =======
+    # preprocesamiento WAV
     pre_wav = os.path.join(work_dir, "pre.wav")
-
     subprocess.run([
         "ffmpeg", "-y",
         "-i", filepath,
-        "-ac", "1",        # 1 canal (mono)
-        "-ar", "44100",    # sample rate estándar
+        "-ac", "1",
+        "-ar", "44100",
         pre_wav
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     filepath = pre_wav
-    # ===============================================================
 
-    # EXACTO como en app.py
-    sep = Separator(
-        filepath,          # audio_file
-        model_name=model_name
-    )
-
+    # separar
+    sep = Separator(filepath, model_name=model_name)
     try:
         outputs = sep.separate()
     except Exception as e:
         update_meta(job_id, msg=f"Error separando audio: {str(e)}", status="error")
         return
 
-    # Normalización de outputs
+    # normalizar outputs
     if isinstance(outputs, dict):
         files = []
         for v in outputs.values():
-            if isinstance(v, (list, tuple)):
+            if isinstance(v, list):
                 files.extend(v)
             else:
                 files.append(v)
@@ -106,60 +85,78 @@ def main():
 
     stem_wav = candidates[0]
 
-    # ================================================================
-    # 5) DETECCIÓN DE NOTAS
-    # ================================================================
-    if instrumento == "piano":
-        script = "./ParteDeJuli/LeerArchivoYnota_piano.py"
-    elif instrumento == "guitarra":
-        script = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
-    elif instrumento == "violin":
-        script = "./ParteDeJuli/LeerArchivoYnota_violin.py"
-
+    # -----------------------------
+    # 2) DETECCIÓN DE NOTAS
+    # -----------------------------
     update_meta(job_id, msg="Detectando notas...")
 
+    if instrumento == "piano":
+        script_det = "./ParteDeJuli/LeerArchivoYnota_piano.py"
+    elif instrumento == "guitarra":
+        script_det = "./ParteDeJuli/LeerArchivoYnota_guitarra.py"
+    else:
+        script_det = "./ParteDeJuli/LeerArchivoYnota_violin.py"
+
     try:
-        subprocess.run([sys.executable, script, stem_wav, work_dir], check=True)
+        # genera work_dir/notas_detectadas.json
+        subprocess.run([sys.executable, script_det, stem_wav, work_dir], check=True)
     except Exception as e:
         update_meta(job_id, msg=f"Error en detección: {str(e)}", status="error")
         return
 
-    update_meta(job_id, msg="Generando imagen...")
+    # -----------------------------
+    # 3) JSON → XML + PNG (NotasAPartitura + MuseScore)
+    # -----------------------------
+    update_meta(job_id, msg="Generando partitura...")
 
-    # ================================================================
-    # 7) Buscar PNG y XML
-    # ================================================================
-    IMG_EXTS = ('.png', '.jpg', '.jpeg', '.svg')
-    XML_EXTS = ('.xml', '.musicxml')
+    if instrumento == "piano":
+        script_part = "./ParteDeTota/NotasAPartitura_piano.py"
+    elif instrumento == "guitarra":
+        script_part = "./ParteDeTota/NotasAPartitura_guitarra.py"
+    else:
+        script_part = "./ParteDeTota/NotasAPartitura_violin.py"
 
-    def find_outputs(base_dir):
-        img, xml = None, None
-        for root, _, files in os.walk(base_dir):
-            for f in files:
-                fl = f.lower()
-                if not img and fl.endswith(IMG_EXTS):
-                    img = os.path.join(root, f)
-                if not xml and fl.endswith(XML_EXTS):
-                    xml = os.path.join(root, f)
-                if img and xml:
-                    return img, xml
-        return img, xml
-
-    img_path, xml_path = find_outputs(work_dir)
-
-    if not img_path:
-        update_meta(job_id, msg="Error: no se generó imagen", status="error")
+    try:
+        # este script:
+        #   - lee work_dir/notas_detectadas.json
+        #   - crea XML
+        #   - llama a MuseScore y genera PNG
+        subprocess.run([sys.executable, script_part, work_dir], check=True)
+    except Exception as e:
+        update_meta(job_id, msg=f"Error generando partitura: {str(e)}", status="error")
         return
 
-    # Guardar resultados finales en metadata
+    # -----------------------------
+    # 4) BUSCAR XML Y PNG GENERADOS
+    # -----------------------------
+    xml_path = None
+    png_path = None
+    for root, _, files in os.walk(work_dir):
+        for f in files:
+            low = f.lower()
+            full = os.path.join(root, f)
+            if low.endswith((".xml", ".musicxml")) and xml_path is None:
+                xml_path = full
+            if low.endswith(".png") and png_path is None:
+                png_path = full
+
+    if not png_path:
+        update_meta(job_id, msg="ERROR: no se generó PNG", status="error")
+        return
+    if not xml_path:
+        update_meta(job_id, msg="ERROR: no se generó XML", status="error")
+        return
+
+    # -----------------------------
+    # 5) FIN — guardar rutas
+    # -----------------------------
     update_meta(
         job_id,
-        result_img=img_path,
+        result_img=png_path,
         result_xml=xml_path,
         status="done",
         msg="Completado"
     )
-
 
 if __name__ == "__main__":
     main()
